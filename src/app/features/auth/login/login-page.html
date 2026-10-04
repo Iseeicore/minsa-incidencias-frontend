@@ -1,0 +1,18 @@
+<app-auth-layout>
+  <div aside class="space-y-8">
+    <h1 class="text-3xl font-bold">
+      Te damos la bienvenida a la <span class="text-primary-600">gestión de incidencias</span>
+    </h1>
+    <div>
+      <p class="font-bold text-gray-600">Desde aquí podrás:</p>
+      <ul class="ml-6 list-disc">
+        @for (item of asideItems; track item) {
+          <li>{{ item }}</li>
+        }
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="text-center text-2xl font-bold">Ingresa a la plataforma</h2>
+  <app-login-form />
+</app-auth-layout>

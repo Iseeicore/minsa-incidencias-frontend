@@ -1,0 +1,13 @@
+services:
+  minsa-incidencias-frontend:
+    build:
+      context: .
+      target: deps
+    command: npm start -- --host 0.0.0.0 --poll 1000
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.angular
+    healthcheck:
+      disable: true

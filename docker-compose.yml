@@ -1,0 +1,23 @@
+
+services:
+  minsa-incidencias-frontend:
+    build:
+      context: .
+      args:
+        API_URL: ${API_URL:-http://localhost:3033}
+    image: minsa-incidencias-frontend:latest
+    container_name: minsa-incidencias-frontend
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-4010}:4010"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4010/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

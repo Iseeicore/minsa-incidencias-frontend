@@ -1,0 +1,15 @@
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary-50: oklch(0.9751 0.0127 244.25);
+  --color-primary-100: oklch(0.9474 0.0255 244.42);
+  --color-primary-500: oklch(0.6511 0.1625 245.37);
+  --color-primary-600: oklch(0.6104 0.1723 249.9);
+  --color-primary-700: oklch(0.4719 0.1345 250.39);
+
+  --color-danger-50: oklch(0.9694 0.0152 12.42);
+  --color-danger-200: oklch(0.8933 0.0535 11.01);
+  --color-danger-500: oklch(0.6644 0.1909 15.38);
+  --color-danger-600: oklch(0.5791 0.2152 17.9);
+  --color-danger-700: oklch(0.508 0.1925 17.57);
+}

@@ -1,0 +1,31 @@
+<form class="space-y-6" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  @if (serverError(); as message) {
+    <div role="alert" class="flex items-start gap-2 rounded-md border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+      <app-icon [name]="IconName.ALERT" />
+      <p>{{ message }}</p>
+    </div>
+  }
+
+  <app-form-field label="Correo institucional" fieldId="correo" [error]="errors().correo">
+    <input
+      appTextInput
+      id="correo"
+      type="email"
+      formControlName="correo"
+      autocomplete="username"
+      placeholder="nombre@minsa.gob.pe"
+      [invalid]="!!errors().correo"
+    />
+  </app-form-field>
+
+  <app-form-field label="Contraseña" fieldId="password" [error]="errors().password">
+    <app-password-input
+      fieldId="password"
+      placeholder="Ingresa tu contraseña"
+      [control]="form.controls.password"
+      [invalid]="!!errors().password"
+    />
+  </app-form-field>
+
+  <app-button type="submit" block [loading]="submitting()">Ingresar</app-button>
+</form>
