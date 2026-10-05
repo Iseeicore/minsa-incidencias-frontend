@@ -8,7 +8,7 @@
   />
   <div class="flex min-w-0 flex-1 flex-col">
     <app-topbar [nombre]="nombre()" [compact]="compact()" (alternar)="alternarMenu()" />
-    <main class="flex-1 px-6 pb-8">
+    <main class="min-w-0 flex-1 px-4 pb-8 sm:px-6">
       <router-outlet />
     </main>
   </div>

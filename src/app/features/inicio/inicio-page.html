@@ -7,7 +7,7 @@
     <app-badge [tone]="BadgeTone.PRIMARY">Datos de demostración</app-badge>
   </header>
 
-  <section aria-label="Indicadores principales" class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+  <section aria-label="Indicadores principales" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
     @for (kpi of kpis; track kpi.id) {
       <app-stat-card [label]="kpi.label" [value]="kpi.value" [delta]="kpi.delta" [tone]="kpi.tone" />
     }

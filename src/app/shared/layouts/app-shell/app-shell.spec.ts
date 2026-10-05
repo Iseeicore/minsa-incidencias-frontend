@@ -56,6 +56,19 @@ describe("AppShell", () => {
     expect(grupo?.getAttribute("aria-expanded")).toBe("false");
   });
 
+  it("la fecha es solo un icono y el texto completo va en el tooltip", async () => {
+    const { element } = await setup(ana);
+    const fecha = element.querySelector("app-topbar [role='img']");
+    expect(fecha?.textContent?.trim()).toBe("");
+    expect(fecha?.getAttribute("title")).toContain(String(new Date().getFullYear()));
+    expect(fecha?.getAttribute("aria-label")).toBe(fecha?.getAttribute("title"));
+  });
+
+  it("el saludo usa solo el primer nombre", async () => {
+    const { element } = await setup(ana);
+    expect(element.querySelector("app-topbar p")?.textContent?.trim()).toBe("Hola, Ana");
+  });
+
   it("cerrar sesión llama al store y vuelve al login", async () => {
     const { fixture, cerrar, navigate, boton } = await setup(ana);
     boton("Cerrar sesión")?.click();

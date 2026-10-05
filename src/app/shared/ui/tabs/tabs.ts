@@ -6,7 +6,7 @@ export interface TabOption {
 }
 
 const TAB_BASE_CLASSES =
-  "rounded-full px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500";
+  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors sm:px-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500";
 const TAB_ACTIVE_CLASSES = `${TAB_BASE_CLASSES} bg-gray-900 text-white`;
 const TAB_IDLE_CLASSES = `${TAB_BASE_CLASSES} text-gray-600 hover:bg-gray-200`;
 

@@ -1,5 +1,5 @@
-const FORMATO = new Intl.DateTimeFormat("es-PE", { weekday: "short", day: "numeric", month: "short" });
+const FORMATO_LARGO = new Intl.DateTimeFormat("es-PE", { dateStyle: "full" });
 
-export function formatToday(date: Date = new Date()): string {
-  return FORMATO.format(date);
+export function formatLongDate(date: Date = new Date()): string {
+  return FORMATO_LARGO.format(date);
 }
