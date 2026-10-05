@@ -38,7 +38,7 @@ describe("CasoRevision", () => {
   });
 
   it("al abrir muestra los datos del caso, las pruebas, la propuesta de la IA, las acciones y el historial", async () => {
-    const { panel } = await abrir(RolDemo.REVISOR, "MINSA-2026-003230");
+    const { panel } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
     const texto = panel()?.textContent ?? "";
     expect(texto).toContain("Revisar caso");
     expect(texto).toContain("MINSA-2026-003230");
@@ -52,35 +52,36 @@ describe("CasoRevision", () => {
   });
 
   it("un caso sin archivos lo dice", async () => {
-    const { panel } = await abrir(RolDemo.REVISOR, "MINSA-2026-003230");
+    const { panel } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
     expect(panel()?.textContent).toContain("no adjuntó archivos");
   });
 
   it("el texto del ciudadano se muestra como texto, no como HTML", async () => {
-    const { panel } = await abrir(RolDemo.REVISOR, "MINSA-2026-003230");
+    const { panel } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
     expect(panel()?.querySelector("script")).toBeNull();
   });
 
-  describe("revisor", () => {
+  describe("gestor que revisa", () => {
     it("ve confirmar y corregir, y no ve derivar ni resolver", async () => {
-      const { boton } = await abrir(RolDemo.REVISOR, "MINSA-2026-003230");
+      const { boton } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
       expect(boton("Confirmar categoría")).toBeDefined();
       expect(boton("Corregir categoría")).toBeDefined();
       expect(boton("Derivar")).toBeUndefined();
       expect(boton("Resolver")).toBeUndefined();
     });
 
-    it("confirmar muestra el éxito, anota el historial y ya no ofrece acciones", async () => {
-      const { panel, pulsar, boton } = await abrir(RolDemo.REVISOR, "MINSA-2026-003230");
+    it("confirmar muestra el éxito, anota el historial, cierra la revisión y ofrece derivar", async () => {
+      const { panel, pulsar, boton } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
       await pulsar("Confirmar categoría");
       expect(panel()?.querySelector("[role='status']")?.textContent).toContain("Categoría confirmada");
       expect(panel()?.textContent).toContain("Confirmada por una persona");
       expect(boton("Confirmar categoría")).toBeUndefined();
-      expect(panel()?.textContent).toContain("No hay acciones disponibles");
+      expect(boton("Corregir categoría")).toBeUndefined();
+      expect(boton("Derivar al Área de reclamos")).toBeDefined();
     });
 
     it("corregir pide la nueva categoría, muestra el área a la que irá y exige elegir", async () => {
-      const { panel, pulsar, boton, escribir } = await abrir(RolDemo.REVISOR, "MINSA-2026-003230");
+      const { panel, pulsar, boton, escribir } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
       await pulsar("Corregir categoría");
       expect(boton("Aplicar corrección")?.disabled).toBe(true);
 
@@ -94,7 +95,7 @@ describe("CasoRevision", () => {
     });
 
     it("cancelar la corrección no cambia nada", async () => {
-      const { panel, pulsar, boton } = await abrir(RolDemo.REVISOR, "MINSA-2026-003230");
+      const { panel, pulsar, boton } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
       await pulsar("Corregir categoría");
       await pulsar("Cancelar");
       expect(boton("Confirmar categoría")).toBeDefined();
@@ -112,12 +113,48 @@ describe("CasoRevision", () => {
     });
 
     it("un caso de categoría Otro explica por qué no se puede derivar", async () => {
-      const { fixture, panel, boton, pulsar } = await abrir(RolDemo.REVISOR, "MINSA-2026-002930");
+      const { panel, boton, pulsar } = await abrir(RolDemo.GESTOR, "MINSA-2026-002930");
       await pulsar("Confirmar categoría");
-      TestBed.inject(CasosStore).cambiarRol(RolDemo.GESTOR);
-      await fixture.whenStable();
       expect(boton("Derivar")).toBeUndefined();
       expect(panel()?.textContent).toContain("La categoría Otro no tiene un área");
+    });
+
+    it("al corregir a corrupción el caso sale de su vista: el panel avisa a qué área pasó y se cierra sin error", async () => {
+      const { fixture, panel, pulsar, escribir } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
+      await pulsar("Corregir categoría");
+      await escribir("select", "denuncia-corrupcion");
+      await pulsar("Aplicar corrección");
+
+      const texto = panel()?.textContent ?? "";
+      expect(panel()?.querySelector("[role='status']")?.textContent).toContain("Área de denuncias por corrupción");
+      expect(texto).toContain("ya no aparece en tu lista");
+      expect(texto).not.toContain("ya no está disponible para tu rol");
+
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      await fixture.whenStable();
+      expect(panel()).toBeNull();
+      expect(fixture.componentInstance.codigo()).toBeNull();
+    });
+  });
+
+  describe("área de denuncias por corrupción", () => {
+    it("revisa sus casos: ve confirmar y corregir en uno sin revisar", async () => {
+      const { boton } = await abrir(RolDemo.AREA_DENUNCIA_CORRUPCION, "MINSA-2026-002960");
+      expect(boton("Confirmar categoría")).toBeDefined();
+      expect(boton("Corregir categoría")).toBeDefined();
+      expect(boton("Tomar en gestión")).toBeUndefined();
+    });
+
+    it("confirmada la categoría, toma el caso directo y no se le ofrece derivar", async () => {
+      const { panel, boton, pulsar } = await abrir(RolDemo.AREA_DENUNCIA_CORRUPCION, "MINSA-2026-002960");
+      await pulsar("Confirmar categoría");
+      expect(boton("Derivar")).toBeUndefined();
+      expect(boton("Tomar en gestión")).toBeDefined();
+
+      await pulsar("Tomar en gestión");
+      expect(panel()?.querySelector("[role='status']")?.textContent).toContain("en gestión");
+      expect(panel()?.textContent).toContain("sin derivar");
+      expect(boton("Resolver el caso")).toBeDefined();
     });
   });
 
@@ -143,7 +180,7 @@ describe("CasoRevision", () => {
 
   describe("pruebas sensibles", () => {
     it("no se abren solas: salen tapadas con una advertencia y se abren a pedido", async () => {
-      const { panel, pulsar } = await abrir(RolDemo.REVISOR, "MINSA-2026-003152");
+      const { panel, pulsar } = await abrir(RolDemo.AREA_DENUNCIA_CORRUPCION, "MINSA-2026-003152");
       expect(panel()?.textContent).toContain("Hay evidencias sensibles");
       expect(panel()?.textContent).toContain("Archivo sensible");
       expect(panel()?.textContent).not.toContain("captura-mensaje.png");
@@ -155,7 +192,7 @@ describe("CasoRevision", () => {
   });
 
   it("Escape cierra el panel y limpia el código", async () => {
-    const { fixture, panel } = await abrir(RolDemo.REVISOR, "MINSA-2026-003230");
+    const { fixture, panel } = await abrir(RolDemo.GESTOR, "MINSA-2026-003230");
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     await fixture.whenStable();
     expect(panel()).toBeNull();

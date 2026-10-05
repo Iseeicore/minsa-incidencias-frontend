@@ -69,6 +69,19 @@ El frontend **no guarda nada de la sesión en el navegador** (ni `localStorage` 
 - **Cierre de sesión:** el botón del encabezado llama a `POST /auth/logout`, que revoca la sesión en la base.
 - El menú y las pantallas se deciden con las vistas de `/auth/me`, pero **eso solo es presentación**: el backend vuelve a comprobar el acceso en cada petición.
 
+### Roles de la demostración
+
+Mientras no exista el backend de incidencias, `CasosStore` reproduce las reglas de la base y el selector **Ver como** ofrece cinco roles (el Revisor ya no existe; el Gestor revisa y deriva):
+
+| Rol | Ve | Acciones sobre los casos |
+|---|---|---|
+| Administrador | Todos | Ninguna |
+| Gestor (rol por defecto) | Queja, reclamo, otro y sin categoría; **no** corrupción | Confirmar o corregir la categoría (una sola vez) y derivar |
+| Área de denuncias por corrupción | Solo corrupción | Confirmar o corregir, tomar directo desde CLASIFICADO sin derivar, y resolver |
+| Área de quejas y área de reclamos | Solo su categoría | Tomar y resolver lo derivado, y resolver lo que está en gestión |
+
+Si una corrección deja el caso fuera de lo que el rol ve, el panel avisa a qué área pasó y el caso sale de su lista.
+
 ## Entornos y URL del backend
 
 El frontend llama a la API en otro origen (el backend, puerto 3033), con cookies (`withCredentials`). La URL sale de `src/environments/`:

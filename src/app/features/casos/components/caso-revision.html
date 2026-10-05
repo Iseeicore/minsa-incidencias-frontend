@@ -184,6 +184,12 @@
       </section>
     </div>
   } @else if (codigo() !== null) {
-    <p class="text-sm text-gray-600">Este caso ya no está disponible para tu rol.</p>
+    @if (feedback(); as resultado) {
+      <app-alert [tone]="resultado.ok ? BadgeTone.SUCCESS : BadgeTone.DANGER">
+        {{ resultado.ok ? resultado.mensaje : resultado.error }}
+      </app-alert>
+    } @else {
+      <p class="text-sm text-gray-600">Este caso ya no está disponible para tu rol.</p>
+    }
   }
 </app-drawer>

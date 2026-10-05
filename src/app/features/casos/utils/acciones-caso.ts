@@ -13,11 +13,31 @@ const CATEGORIAS_DEL_GESTOR: readonly (CategoriaCaso | null)[] = [
   null,
 ];
 
-/** Qué casos ve cada rol (gestion.rol_categoria): la corrupción solo la ven el administrador, el revisor y su área. */
+/** Qué casos ve cada rol (gestion.rol_categoria): la corrupción solo la ven el administrador y su área. */
 export function visiblePara(caso: Caso, rol: RolDemo): boolean {
-  if (rol === RolDemo.ADMINISTRADOR || rol === RolDemo.REVISOR) return true;
+  if (rol === RolDemo.ADMINISTRADOR) return true;
   if (rol === RolDemo.GESTOR) return CATEGORIAS_DEL_GESTOR.includes(caso.categoria);
   return caso.categoria !== null && caso.categoria === CATEGORIA_DE_AREA[rol];
+}
+
+/** El gestor revisa la categoría una sola vez y, ya revisada, deriva al área si la categoría tiene una. */
+function accionesDelGestor(caso: Caso): AccionCaso[] {
+  if (caso.estado !== EstadoCaso.CLASIFICADO) return [];
+  if (!caso.revisadoPorHumano) return [AccionCaso.CONFIRMAR, AccionCaso.CORREGIR];
+  return tieneArea(caso.categoria) ? [AccionCaso.DERIVAR] : [];
+}
+
+/**
+ * Las áreas atienden lo derivado. El área de corrupción además revisa sus propios casos y los toma directo desde
+ * CLASIFICADO, sin derivar, porque la base permite pasar de CLASIFICADO a EN_GESTION.
+ */
+function accionesDelArea(caso: Caso, rol: RolDemo): AccionCaso[] {
+  if (caso.estado === EstadoCaso.CLASIFICADO && rol === RolDemo.AREA_DENUNCIA_CORRUPCION) {
+    return caso.revisadoPorHumano ? [AccionCaso.TOMAR] : [AccionCaso.CONFIRMAR, AccionCaso.CORREGIR];
+  }
+  if (caso.estado === EstadoCaso.DERIVADO) return [AccionCaso.TOMAR, AccionCaso.RESOLVER];
+  if (caso.estado === EstadoCaso.EN_GESTION) return [AccionCaso.RESOLVER];
+  return [];
 }
 
 /**
@@ -26,22 +46,7 @@ export function visiblePara(caso: Caso, rol: RolDemo): boolean {
  */
 export function accionesPermitidas(caso: Caso, rol: RolDemo): AccionCaso[] {
   if (!visiblePara(caso, rol)) return [];
-
-  if (rol === RolDemo.REVISOR) {
-    return caso.estado === EstadoCaso.CLASIFICADO && !caso.revisadoPorHumano
-      ? [AccionCaso.CONFIRMAR, AccionCaso.CORREGIR]
-      : [];
-  }
-
-  if (rol === RolDemo.GESTOR) {
-    return caso.estado === EstadoCaso.CLASIFICADO && caso.revisadoPorHumano && tieneArea(caso.categoria)
-      ? [AccionCaso.DERIVAR]
-      : [];
-  }
-
   if (rol === RolDemo.ADMINISTRADOR) return [];
-
-  if (caso.estado === EstadoCaso.DERIVADO) return [AccionCaso.TOMAR, AccionCaso.RESOLVER];
-  if (caso.estado === EstadoCaso.EN_GESTION) return [AccionCaso.RESOLVER];
-  return [];
+  if (rol === RolDemo.GESTOR) return accionesDelGestor(caso);
+  return accionesDelArea(caso, rol);
 }

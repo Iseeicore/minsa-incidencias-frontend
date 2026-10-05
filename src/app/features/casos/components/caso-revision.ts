@@ -95,7 +95,7 @@ export class CasoRevision {
     if (!caso || this.acciones().length > 0) return "";
     if (caso.estado === EstadoCaso.RESUELTO || caso.estado === EstadoCaso.ARCHIVADO) return "Este caso ya está cerrado.";
     if (caso.categoria === CategoriaCaso.OTRO && caso.estado === EstadoCaso.CLASIFICADO && caso.revisadoPorHumano) {
-      return "La categoría Otro no tiene un área a la que derivar. Si no corresponde, una persona revisora debe corregir la categoría.";
+      return "La categoría Otro no tiene un área a la que derivar y la revisión de la categoría ya se hizo.";
     }
     return "No hay acciones disponibles para tu rol en este estado del caso.";
   });
