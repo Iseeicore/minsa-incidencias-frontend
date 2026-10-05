@@ -1,9 +1,9 @@
 import { TestBed } from "@angular/core/testing";
-import { TableScroll } from "./table-scroll";
+import { ScrollArea } from "./scroll-area";
 
-describe("TableScroll", () => {
+describe("ScrollArea", () => {
   async function setup() {
-    const fixture = TestBed.createComponent(TableScroll);
+    const fixture = TestBed.createComponent(ScrollArea);
     fixture.componentRef.setInput("label", "Listado de casos");
     await fixture.whenStable();
     return fixture.nativeElement as HTMLElement;
@@ -16,9 +16,10 @@ describe("TableScroll", () => {
     expect(element.getAttribute("tabindex")).toBe("0");
   });
 
-  it("desplaza en los dos ejes y limita la altura", async () => {
+  it("desplaza en los dos ejes, limita la altura y nunca excede a su contenedor", async () => {
     const element = await setup();
     expect(element.className).toContain("overflow-auto");
     expect(element.className).toContain("max-h-128");
+    expect(element.className).toContain("max-w-full");
   });
 });

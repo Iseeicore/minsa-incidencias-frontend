@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from "@angular/core";
+import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 import { niceScale } from "@/shared/utils/nice-scale";
 
 export interface BarDatum {
@@ -11,6 +12,7 @@ const FORMATO_NUMERO = new Intl.NumberFormat("es-PE");
 
 @Component({
   selector: "app-bar-chart",
+  imports: [ScrollArea],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: "block" },
   template: `
@@ -25,7 +27,8 @@ const FORMATO_NUMERO = new Intl.NumberFormat("es-PE");
       </span>
     </div>
 
-    <div class="flex gap-3">
+    <app-scroll-area [label]="description()">
+    <div class="flex min-w-112 gap-3">
       <div class="flex h-56 w-10 flex-col justify-between text-right text-xs font-medium text-gray-500" aria-hidden="true">
         @for (marca of escala().ticks; track marca) {
           <span class="leading-none">{{ formato(marca) }}</span>
@@ -61,6 +64,7 @@ const FORMATO_NUMERO = new Intl.NumberFormat("es-PE");
         </div>
       </div>
     </div>
+    </app-scroll-area>
   `,
 })
 export class BarChart {

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from "@angular/core";
 import { PRIORIDAD_BADGE } from "@/features/inicio/constants/prioridad-badge";
 import type { CasoAtencion } from "@/features/inicio/types/dashboard.types";
 import { Badge } from "@/shared/ui/badge/badge";
-import { TableScroll } from "@/shared/ui/table-scroll/table-scroll";
+import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 
 const ENCABEZADO = "sticky top-0 z-10 bg-white pb-3 pr-6 text-xs font-medium text-gray-500";
 
@@ -16,11 +16,11 @@ const COLUMNAS = [
 
 @Component({
   selector: "app-casos-atencion-tabla",
-  imports: [Badge, TableScroll],
+  imports: [Badge, ScrollArea],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: "block" },
   template: `
-    <app-table-scroll label="Casos que requieren atención">
+    <app-scroll-area label="Casos que requieren atención">
       <table class="w-full whitespace-nowrap text-left text-sm">
         <thead>
           <tr>
@@ -43,7 +43,7 @@ const COLUMNAS = [
           }
         </tbody>
       </table>
-    </app-table-scroll>
+    </app-scroll-area>
   `,
 })
 export class CasosAtencionTabla {

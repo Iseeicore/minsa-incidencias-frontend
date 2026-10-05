@@ -13,9 +13,9 @@
     }
   </section>
 
-  <section class="grid gap-4 lg:grid-cols-3">
+  <section class="grid grid-cols-1 gap-4 lg:grid-cols-3">
     <app-card class="lg:col-span-2">
-      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-base font-bold text-gray-900">Evolución de casos</h2>
         <app-tabs label="Periodo" [options]="periodoOpciones" [(value)]="periodo" />
       </div>
@@ -28,17 +28,19 @@
     </app-card>
 
     <app-card titulo="Distribución por categoría">
-      <ul class="space-y-4">
-        @for (categoria of categorias; track categoria.label) {
-          <li>
-            <div class="mb-1.5 flex items-center justify-between text-sm">
-              <span class="text-gray-700">{{ categoria.label }}</span>
-              <span class="font-medium text-gray-900">{{ categoria.casos }}</span>
-            </div>
-            <app-progress-bar [value]="categoria.porcentaje" [label]="categoria.label" />
-          </li>
-        }
-      </ul>
+      <app-scroll-area label="Distribución por categoría">
+        <ul class="space-y-4">
+          @for (categoria of categorias; track categoria.label) {
+            <li>
+              <div class="mb-1.5 flex items-center justify-between text-sm">
+                <span class="text-gray-700">{{ categoria.label }}</span>
+                <span class="font-medium text-gray-900">{{ categoria.casos }}</span>
+              </div>
+              <app-progress-bar [value]="categoria.porcentaje" [label]="categoria.label" />
+            </li>
+          }
+        </ul>
+      </app-scroll-area>
     </app-card>
   </section>
 
@@ -46,30 +48,34 @@
     <app-casos-atencion-tabla [casos]="casosAtencion" />
   </app-card>
 
-  <section class="grid gap-4 lg:grid-cols-2">
+  <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <app-card titulo="Derivaciones">
-      <ul class="divide-y divide-gray-100">
-        @for (fila of derivaciones; track fila.label) {
-          <li class="flex items-center justify-between py-2.5 text-sm">
-            <span class="text-gray-700">{{ fila.label }}</span>
-            <span class="font-medium text-gray-900">{{ fila.valor }}</span>
-          </li>
-        }
-      </ul>
+      <app-scroll-area label="Derivaciones">
+        <ul class="divide-y divide-gray-100">
+          @for (fila of derivaciones; track fila.label) {
+            <li class="flex items-center justify-between gap-3 py-2.5 text-sm">
+              <span class="text-gray-700">{{ fila.label }}</span>
+              <span class="font-medium text-gray-900">{{ fila.valor }}</span>
+            </li>
+          }
+        </ul>
+      </app-scroll-area>
     </app-card>
 
     <app-card titulo="Alertas">
-      <ul class="divide-y divide-gray-100">
-        @for (alerta of alertas; track alerta.id) {
-          <li class="flex items-center justify-between gap-3 py-2.5">
-            <div class="min-w-0">
-              <p class="truncate text-sm font-medium text-gray-900">{{ alerta.titulo }}</p>
-              <p class="truncate text-xs text-gray-500">{{ alerta.detalle }}</p>
-            </div>
-            <app-badge [tone]="alerta.tone">{{ alerta.etiqueta }}</app-badge>
-          </li>
-        }
-      </ul>
+      <app-scroll-area label="Alertas">
+        <ul class="divide-y divide-gray-100">
+          @for (alerta of alertas; track alerta.id) {
+            <li class="flex items-center justify-between gap-3 py-2.5">
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-gray-900">{{ alerta.titulo }}</p>
+                <p class="truncate text-xs text-gray-500">{{ alerta.detalle }}</p>
+              </div>
+              <app-badge class="shrink-0" [tone]="alerta.tone">{{ alerta.etiqueta }}</app-badge>
+            </li>
+          }
+        </ul>
+      </app-scroll-area>
     </app-card>
   </section>
 </div>

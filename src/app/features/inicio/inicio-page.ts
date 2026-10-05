@@ -4,6 +4,7 @@ import { Badge } from "@/shared/ui/badge/badge";
 import { BarChart } from "@/shared/ui/bar-chart/bar-chart";
 import { Card } from "@/shared/ui/card/card";
 import { ProgressBar } from "@/shared/ui/progress-bar/progress-bar";
+import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 import { StatCard } from "@/shared/ui/stat-card/stat-card";
 import { Tabs } from "@/shared/ui/tabs/tabs";
 import { CasosAtencionTabla } from "./components/casos-atencion-tabla";
@@ -20,7 +21,7 @@ import { Periodo } from "./enums/periodo.enum";
 
 @Component({
   selector: "app-inicio-page",
-  imports: [Badge, BarChart, Card, CasosAtencionTabla, ProgressBar, StatCard, Tabs],
+  imports: [Badge, BarChart, Card, CasosAtencionTabla, ProgressBar, ScrollArea, StatCard, Tabs],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./inicio-page.html",
 })

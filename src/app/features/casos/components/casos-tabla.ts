@@ -3,7 +3,7 @@ import { CATEGORIA_LABEL, ESTADO_BADGE, PRIORIDAD_CASO_BADGE } from "@/features/
 import type { Caso } from "@/features/casos/types/caso.types";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
 import { Badge } from "@/shared/ui/badge/badge";
-import { TableScroll } from "@/shared/ui/table-scroll/table-scroll";
+import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 
 const ENCABEZADO = "sticky top-0 z-10 bg-white pb-3 pr-6 text-xs font-medium text-gray-500";
 
@@ -21,11 +21,11 @@ const COLUMNAS = [
 
 @Component({
   selector: "app-casos-tabla",
-  imports: [Badge, TableScroll],
+  imports: [Badge, ScrollArea],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: "block" },
   template: `
-    <app-table-scroll label="Listado de casos">
+    <app-scroll-area label="Listado de casos">
       <table class="w-full whitespace-nowrap text-left text-sm">
         <thead>
           <tr>
@@ -66,7 +66,7 @@ const COLUMNAS = [
           }
         </tbody>
       </table>
-    </app-table-scroll>
+    </app-scroll-area>
   `,
 })
 export class CasosTabla {

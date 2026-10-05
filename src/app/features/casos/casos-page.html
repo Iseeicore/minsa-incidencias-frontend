@@ -18,9 +18,7 @@
     <app-select-field label="Filtrar por estado" [options]="estadoOpciones" [(value)]="estado" />
   </section>
 
-  <div class="max-w-full overflow-x-auto">
-    <app-tabs label="Tipo de caso" [options]="tabsOpciones" [(value)]="tab" />
-  </div>
+  <app-tabs label="Tipo de caso" [options]="tabsOpciones" [(value)]="tab" />
 
   <app-card>
     <div class="mb-4 flex items-center justify-between gap-3">

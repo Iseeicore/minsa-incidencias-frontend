@@ -1,17 +1,17 @@
 import { ChangeDetectionStrategy, Component, input } from "@angular/core";
 
 @Component({
-  selector: "app-table-scroll",
+  selector: "app-scroll-area",
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class:
-      "block max-h-128 overflow-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+      "block max-h-128 max-w-full overflow-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
     role: "region",
     tabindex: "0",
     "[attr.aria-label]": "label()",
   },
   template: "<ng-content />",
 })
-export class TableScroll {
+export class ScrollArea {
   readonly label = input.required<string>();
 }

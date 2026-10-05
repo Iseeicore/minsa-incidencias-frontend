@@ -6,16 +6,16 @@ export interface TabOption {
 }
 
 const TAB_BASE_CLASSES =
-  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors sm:px-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500";
+  "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors sm:px-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500";
 const TAB_ACTIVE_CLASSES = `${TAB_BASE_CLASSES} bg-gray-900 text-white`;
 const TAB_IDLE_CLASSES = `${TAB_BASE_CLASSES} text-gray-600 hover:bg-gray-200`;
 
 @Component({
   selector: "app-tabs",
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: "inline-flex" },
+  host: { class: "block max-w-full overflow-x-auto rounded-full" },
   template: `
-    <div role="tablist" [attr.aria-label]="label()" class="inline-flex gap-1 rounded-full bg-gray-100 p-1">
+    <div role="tablist" [attr.aria-label]="label()" class="flex w-max gap-1 rounded-full bg-gray-100 p-1">
       @for (option of options(); track option.value) {
         <button
           type="button"
