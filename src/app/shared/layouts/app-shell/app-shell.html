@@ -3,11 +3,18 @@
     [secciones]="secciones()"
     [nombre]="nombre()"
     [correo]="correo()"
-    [compact]="compact()"
+    [compact]="!pantallaChica() && compact()"
+    [drawer]="pantallaChica()"
+    [abierto]="menuAbierto()"
     (cerrar)="cerrarSesion()"
+    (ocultar)="cerrarMenu()"
+    (navegado)="cerrarMenu()"
   />
+  @if (pantallaChica() && menuAbierto()) {
+    <div class="fixed inset-0 z-30 bg-gray-900/40" aria-hidden="true" (click)="cerrarMenu()"></div>
+  }
   <div class="flex min-w-0 flex-1 flex-col">
-    <app-topbar [nombre]="nombre()" [compact]="compact()" (alternar)="alternarMenu()" />
+    <app-topbar [nombre]="nombre()" [compact]="compact()" [pantallaChica]="pantallaChica()" (alternar)="alternarMenu()" />
     <main class="min-w-0 flex-1 px-4 pb-8 sm:px-6">
       <router-outlet />
     </main>

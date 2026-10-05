@@ -12,11 +12,7 @@ import { firstName } from "@/shared/utils/initials";
   host: { class: "flex items-center justify-between gap-3 px-4 py-4 sm:px-6" },
   template: `
     <div class="flex min-w-0 items-center gap-3">
-      <app-icon-button
-        [icon]="compact() ? IconName.SIDEBAR_OPEN : IconName.SIDEBAR_CLOSE"
-        [label]="compact() ? 'Expandir el menú' : 'Contraer el menú'"
-        (click)="alternar.emit()"
-      />
+      <app-icon-button [icon]="iconoMenu()" [label]="etiquetaMenu()" (click)="alternar.emit()" />
       <p class="hidden truncate text-sm font-medium text-gray-600 sm:block">Hola, {{ saludo() }}</p>
     </div>
     <div class="flex shrink-0 items-center gap-2">
@@ -36,9 +32,20 @@ import { firstName } from "@/shared/utils/initials";
 export class Topbar {
   readonly nombre = input.required<string>();
   readonly compact = input(false, { transform: booleanAttribute });
+  readonly pantallaChica = input(false, { transform: booleanAttribute });
   readonly alternar = output<void>();
 
   protected readonly IconName = IconName;
   protected readonly fecha = formatLongDate();
   protected readonly saludo = computed(() => firstName(this.nombre()));
+
+  protected readonly iconoMenu = computed(() => {
+    if (this.pantallaChica()) return IconName.MENU;
+    return this.compact() ? IconName.SIDEBAR_OPEN : IconName.SIDEBAR_CLOSE;
+  });
+
+  protected readonly etiquetaMenu = computed(() => {
+    if (this.pantallaChica()) return "Abrir el menú";
+    return this.compact() ? "Expandir el menú" : "Contraer el menú";
+  });
 }

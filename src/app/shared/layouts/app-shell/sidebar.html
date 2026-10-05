@@ -1,10 +1,15 @@
 <aside class="flex h-full flex-col rounded-2xl bg-white" aria-label="Navegación principal">
-  <div class="flex h-16 items-center px-5">
-    @if (compact()) {
-      <span class="text-lg font-bold text-primary-700">M</span>
-    } @else {
-      <span class="text-xl font-bold text-primary-700">MINSA</span>
-      <span class="ml-2 text-xs text-gray-500">Gestión</span>
+  <div class="flex h-16 items-center justify-between px-5">
+    <div class="flex items-center">
+      @if (compact()) {
+        <span class="text-lg font-bold text-primary-700">M</span>
+      } @else {
+        <span class="text-xl font-bold text-primary-700">MINSA</span>
+        <span class="ml-2 text-xs text-gray-500">Gestión</span>
+      }
+    </div>
+    @if (drawer()) {
+      <app-icon-button [icon]="IconName.CLOSE" label="Cerrar el menú" (click)="ocultar.emit()" />
     }
   </div>
 
@@ -22,6 +27,7 @@
                   [class]="enlace.isActive ? activeClasses : idleClasses"
                   [attr.aria-label]="compact() ? entrada.label : null"
                   [attr.title]="compact() ? entrada.label : null"
+                  (click)="navegado.emit()"
                 >
                   <app-icon [name]="entrada.icon" />
                   @if (!compact()) {

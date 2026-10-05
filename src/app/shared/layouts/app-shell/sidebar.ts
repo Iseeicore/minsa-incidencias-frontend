@@ -14,6 +14,9 @@ const ENTRY_ACTIVE_CLASSES = `${ENTRY_BASE_CLASSES} bg-gray-900 text-white`;
 const ENTRY_IDLE_CLASSES = `${ENTRY_BASE_CLASSES} text-gray-700 transition-colors hover:bg-gray-100`;
 const ENTRY_DISABLED_CLASSES = `${ENTRY_BASE_CLASSES} cursor-not-allowed text-gray-400`;
 
+const DOCKED_CLASSES = "sticky top-0 block h-dvh shrink-0 p-3 transition-all";
+const DRAWER_CLASSES = "fixed inset-y-0 left-0 z-40 block w-sidebar p-3 transition-transform";
+
 @Component({
   selector: "app-sidebar",
   imports: [RouterLink, RouterLinkActive, Icon, IconButton, SidebarGroup],
@@ -26,17 +29,21 @@ export class Sidebar {
   readonly nombre = input.required<string>();
   readonly correo = input.required<string>();
   readonly compact = input(false, { transform: booleanAttribute });
+  readonly drawer = input(false, { transform: booleanAttribute });
+  readonly abierto = input(false, { transform: booleanAttribute });
   readonly cerrar = output<void>();
+  readonly ocultar = output<void>();
+  readonly navegado = output<void>();
 
   protected readonly IconName = IconName;
   protected readonly activeClasses = ENTRY_ACTIVE_CLASSES;
   protected readonly idleClasses = ENTRY_IDLE_CLASSES;
   protected readonly disabledClasses = ENTRY_DISABLED_CLASSES;
   protected readonly iniciales = computed(() => initials(this.nombre()));
-  protected readonly hostClasses = computed(() =>
-    joinClasses(
-      "sticky top-0 block h-dvh shrink-0 p-3 transition-all",
-      this.compact() ? "w-sidebar-collapsed" : "w-sidebar",
-    ),
-  );
+  protected readonly hostClasses = computed(() => {
+    if (this.drawer()) {
+      return joinClasses(DRAWER_CLASSES, this.abierto() ? "translate-x-0" : "invisible -translate-x-full");
+    }
+    return joinClasses(DOCKED_CLASSES, this.compact() ? "w-sidebar-collapsed" : "w-sidebar");
+  });
 }

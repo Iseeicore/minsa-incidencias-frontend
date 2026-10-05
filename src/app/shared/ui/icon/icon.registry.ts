@@ -15,6 +15,7 @@ import {
   LucideLayoutDashboard,
   LucideLoaderCircle,
   LucideLogOut,
+  LucideMenu,
   LucidePanelLeftClose,
   LucidePanelLeftOpen,
   LucideScale,
@@ -23,6 +24,7 @@ import {
   LucideSparkles,
   LucideTag,
   LucideUsers,
+  LucideX,
   type LucideIconData,
 } from "@lucide/angular";
 import { IconName } from "@/shared/enums/icon-name.enum";
@@ -52,4 +54,6 @@ export const ICONS: Record<IconName, LucideIconData> = {
   [IconName.LOGOUT]: LucideLogOut.icon,
   [IconName.CALENDAR]: LucideCalendarDays.icon,
   [IconName.SEARCH]: LucideSearch.icon,
+  [IconName.MENU]: LucideMenu.icon,
+  [IconName.CLOSE]: LucideX.icon,
 };
