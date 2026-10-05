@@ -14,8 +14,8 @@ describe("CasosStore", () => {
 
   const buscar = (store: CasosStore, codigo: string) => store.casos().find((caso) => caso.codigo === codigo) as Caso;
 
-  it("empieza con el rol de revisor", () => {
-    expect(crearStore([]).rol()).toBe(RolDemo.REVISOR);
+  it("empieza con el rol de gestor", () => {
+    expect(crearStore([]).rol()).toBe(RolDemo.GESTOR);
   });
 
   it("solo expone los casos que el rol puede ver", () => {
@@ -33,7 +33,7 @@ describe("CasosStore", () => {
   });
 
   describe("confirmar", () => {
-    it("el revisor confirma: queda revisado y se anota en el historial", () => {
+    it("el gestor confirma: queda revisado y se anota en el historial", () => {
       const store = crearStore([crearCaso({ codigo: "A" })]);
       const resultado = store.confirmar("A");
       expect(resultado.ok).toBe(true);
@@ -77,6 +77,62 @@ describe("CasosStore", () => {
       store.corregir("A", CategoriaCaso.QUEJA);
       expect(store.corregir("A", CategoriaCaso.OTRO).ok).toBe(false);
       expect(buscar(store, "A").categoria).toBe(CategoriaCaso.QUEJA);
+    });
+
+    it("una corrección dentro de lo que el rol ve no avisa de ningún traslado", () => {
+      const store = crearStore([crearCaso({ codigo: "A" })]);
+      const resultado = store.corregir("A", CategoriaCaso.QUEJA);
+      expect(resultado.ok).toBe(true);
+      expect(resultado.ok && resultado.mensaje).not.toContain("ya no aparece");
+    });
+
+    it("el gestor que corrige a corrupción pierde el caso de su lista y se le avisa a qué área pasó", () => {
+      const store = crearStore([crearCaso({ codigo: "A" })]);
+      const resultado = store.corregir("A", CategoriaCaso.DENUNCIA_CORRUPCION);
+      expect(resultado.ok).toBe(true);
+      expect(resultado.ok && resultado.mensaje).toContain("Área de denuncias por corrupción");
+      expect(resultado.ok && resultado.mensaje).toContain("ya no aparece en tu lista");
+      expect(store.casos().map((caso) => caso.codigo)).toEqual([]);
+
+      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
+      const caso = buscar(store, "A");
+      expect(caso.categoria).toBe(CategoriaCaso.DENUNCIA_CORRUPCION);
+      expect(caso.corregida).toBe(true);
+      expect(caso.estado).toBe(EstadoCaso.CLASIFICADO);
+    });
+
+    it("si el área de corrupción corrige a Otro, que no tiene área, el aviso lo manda a la bandeja del gestor", () => {
+      const store = crearStore([
+        crearCaso({
+          codigo: "A",
+          categoria: CategoriaCaso.DENUNCIA_CORRUPCION,
+          categoriaIa: CategoriaCaso.DENUNCIA_CORRUPCION,
+        }),
+      ]);
+      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
+      const resultado = store.corregir("A", CategoriaCaso.OTRO);
+      expect(resultado.ok && resultado.mensaje).toContain("bandeja del gestor");
+      expect(resultado.ok && resultado.mensaje).toContain("ya no aparece en tu lista");
+    });
+
+    it("el área de corrupción que corrige a queja pasa el caso al gestor", () => {
+      const store = crearStore([
+        crearCaso({
+          codigo: "A",
+          categoria: CategoriaCaso.DENUNCIA_CORRUPCION,
+          categoriaIa: CategoriaCaso.DENUNCIA_CORRUPCION,
+        }),
+      ]);
+      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
+      const resultado = store.corregir("A", CategoriaCaso.QUEJA);
+      expect(resultado.ok).toBe(true);
+      expect(resultado.ok && resultado.mensaje).toContain("Área de quejas");
+      expect(resultado.ok && resultado.mensaje).toContain("ya no aparece en tu lista");
+      expect(store.casos()).toEqual([]);
+
+      store.cambiarRol(RolDemo.GESTOR);
+      expect(buscar(store, "A").categoria).toBe(CategoriaCaso.QUEJA);
+      expect(buscar(store, "A").revisadoPorHumano).toBe(true);
     });
   });
 
@@ -132,10 +188,65 @@ describe("CasosStore", () => {
     });
   });
 
+  describe("el área de corrupción toma directo, sin derivar", () => {
+    const denuncia = (parcial: Partial<Caso> = {}) =>
+      crearCaso({
+        codigo: "A",
+        categoria: CategoriaCaso.DENUNCIA_CORRUPCION,
+        categoriaIa: CategoriaCaso.DENUNCIA_CORRUPCION,
+        ...parcial,
+      });
+
+    it("revisada la categoría, toma el caso clasificado y pasa a EN_GESTION", () => {
+      const store = crearStore([denuncia({ revisadoPorHumano: true })]);
+      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
+      expect(store.tomar("A").ok).toBe(true);
+      const caso = buscar(store, "A");
+      expect(caso.estado).toBe(EstadoCaso.EN_GESTION);
+      expect(caso.historial.at(-1)?.titulo).toBe("En gestión");
+      expect(caso.historial.at(-1)?.detalle).toContain("sin derivar");
+    });
+
+    it("sin revisar la categoría no puede tomarlo", () => {
+      const store = crearStore([denuncia()]);
+      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
+      expect(store.tomar("A")).toEqual({ ok: false, error: "No tienes permiso para esta acción sobre este caso." });
+      expect(buscar(store, "A").estado).toBe(EstadoCaso.CLASIFICADO);
+    });
+
+    it("otra área no puede tomar un caso clasificado: debe esperar la derivación", () => {
+      const store = crearStore([crearCaso({ codigo: "A", revisadoPorHumano: true })]);
+      store.cambiarRol(RolDemo.AREA_RECLAMO);
+      expect(store.tomar("A").ok).toBe(false);
+      expect(buscar(store, "A").estado).toBe(EstadoCaso.CLASIFICADO);
+    });
+
+    it("flujo completo de corrupción: confirma, toma y resuelve, y todo alimenta el historial", () => {
+      const store = crearStore([denuncia()]);
+      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
+
+      expect(store.confirmar("A").ok).toBe(true);
+      expect(store.tomar("A").ok).toBe(true);
+      expect(store.resolver("A", "Se remitió a Integridad.").ok).toBe(true);
+
+      const caso = buscar(store, "A");
+      expect(caso.estado).toBe(EstadoCaso.RESUELTO);
+      expect(caso.historial.map((paso) => paso.titulo)).toEqual(["Categoría confirmada", "En gestión", "Resuelto"]);
+    });
+  });
+
   describe("permisos", () => {
     it("un rol sin la acción es rechazado, como haría el servidor", () => {
       const store = crearStore([crearCaso({ codigo: "A", revisadoPorHumano: true })]);
+      store.cambiarRol(RolDemo.AREA_RECLAMO);
       expect(store.derivar("A")).toEqual({ ok: false, error: "No tienes permiso para esta acción sobre este caso." });
+    });
+
+    it("el administrador no puede ejecutar ninguna acción sobre los casos", () => {
+      const store = crearStore([crearCaso({ codigo: "A" })]);
+      store.cambiarRol(RolDemo.ADMINISTRADOR);
+      expect(store.confirmar("A").ok).toBe(false);
+      expect(store.corregir("A", CategoriaCaso.QUEJA).ok).toBe(false);
     });
 
     it("un caso inexistente se informa", () => {
@@ -149,11 +260,10 @@ describe("CasosStore", () => {
     });
   });
 
-  it("flujo completo: revisor confirma, gestor deriva, el área toma y resuelve", () => {
+  it("flujo completo: el gestor confirma y deriva, el área toma y resuelve", () => {
     const store = crearStore([crearCaso({ codigo: "A" })]);
 
     expect(store.confirmar("A").ok).toBe(true);
-    store.cambiarRol(RolDemo.GESTOR);
     expect(store.derivar("A").ok).toBe(true);
     store.cambiarRol(RolDemo.AREA_RECLAMO);
     expect(store.tomar("A").ok).toBe(true);

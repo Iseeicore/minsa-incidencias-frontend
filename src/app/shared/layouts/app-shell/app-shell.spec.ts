@@ -21,13 +21,18 @@ describe("AppShell", () => {
     return { element, fixture, cerrar, navigate, boton };
   }
 
-  const ana: SesionUsuario = { nombreCompleto: "Ana Prueba", correo: "ana@minsa.gob.pe", modulos: ["INCIDENCIAS"] };
+  const ana: SesionUsuario = {
+    nombreCompleto: "Ana Prueba",
+    correo: "ana@minsa.gob.pe",
+    vistas: ["INICIO", "CASOS", "BANDEJAS", "DERIVACIONES"],
+  };
 
-  it("muestra el nombre y solo el menú de los módulos del usuario", async () => {
-    const { element } = await setup(ana);
+  it("muestra el nombre y solo el menú de las vistas del usuario", async () => {
+    const { element } = await setup({ ...ana, vistas: ["CASOS"] });
     expect(element.textContent).toContain("Ana Prueba");
     expect(element.textContent).toContain("Casos");
-    expect(element.textContent).not.toContain("Revisión IA");
+    expect(element.textContent).not.toContain("Mis bandejas");
+    expect(element.textContent).not.toContain("Derivaciones");
   });
 
   it("solo las entradas con pantalla son enlace y el resto queda deshabilitado", async () => {

@@ -36,7 +36,6 @@ export const CATEGORIA_DE_AREA: Partial<Record<RolDemo, CategoriaCaso>> = {
 export const ROL_LABEL: Record<RolDemo, string> = {
   [RolDemo.ADMINISTRADOR]: "Administrador",
   [RolDemo.GESTOR]: "Gestor",
-  [RolDemo.REVISOR]: "Revisor",
   [RolDemo.AREA_RECLAMO]: "Área de reclamos",
   [RolDemo.AREA_QUEJA]: "Área de quejas",
   [RolDemo.AREA_DENUNCIA_CORRUPCION]: "Área de denuncias por corrupción",

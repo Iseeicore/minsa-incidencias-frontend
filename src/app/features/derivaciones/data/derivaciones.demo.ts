@@ -62,7 +62,7 @@ export const DERIVACIONES_DEMO: readonly Derivacion[] = [
   {
     id: "d-002915",
     codigoCaso: "MINSA-2026-002915",
-    origen: "Revisor",
+    origen: GESTOR,
     destino: `${AREA_RECLAMO} (propuesta)`,
     regla: "Reclamo → Área de reclamos",
     usuario: "Sin derivar",

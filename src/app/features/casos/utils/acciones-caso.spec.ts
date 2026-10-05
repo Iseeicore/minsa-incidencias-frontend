@@ -5,22 +5,36 @@ import { RolDemo } from "@/features/casos/enums/rol-demo.enum";
 import { crearCaso } from "@/features/casos/testing/caso-builder";
 import { accionesPermitidas, visiblePara } from "./acciones-caso";
 
+const { CONFIRMAR, CORREGIR, DERIVAR, TOMAR, RESOLVER } = AccionCaso;
+
+describe("roles de la demostración", () => {
+  it("son cinco: el revisor ya no existe", () => {
+    expect(Object.values(RolDemo).sort()).toEqual([
+      "ADMINISTRADOR",
+      "AREA_DENUNCIA_CORRUPCION",
+      "AREA_QUEJA",
+      "AREA_RECLAMO",
+      "GESTOR",
+    ]);
+  });
+});
+
 describe("visiblePara", () => {
   const denuncia = crearCaso({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION });
   const queja = crearCaso({ categoria: CategoriaCaso.QUEJA });
+  const otro = crearCaso({ categoria: CategoriaCaso.OTRO });
   const sinCategoria = crearCaso({ categoria: null, estado: EstadoCaso.REGISTRADO });
 
-  it("el administrador y el revisor ven todo", () => {
-    for (const rol of [RolDemo.ADMINISTRADOR, RolDemo.REVISOR]) {
-      expect(visiblePara(denuncia, rol)).toBe(true);
-      expect(visiblePara(queja, rol)).toBe(true);
-      expect(visiblePara(sinCategoria, rol)).toBe(true);
+  it("el administrador ve todo", () => {
+    for (const caso of [denuncia, queja, otro, sinCategoria]) {
+      expect(visiblePara(caso, RolDemo.ADMINISTRADOR)).toBe(true);
     }
   });
 
-  it("el gestor no ve las denuncias por corrupción", () => {
+  it("el gestor ve queja, reclamo, otro y sin categoría, pero no la corrupción", () => {
     expect(visiblePara(denuncia, RolDemo.GESTOR)).toBe(false);
     expect(visiblePara(queja, RolDemo.GESTOR)).toBe(true);
+    expect(visiblePara(otro, RolDemo.GESTOR)).toBe(true);
     expect(visiblePara(sinCategoria, RolDemo.GESTOR)).toBe(true);
   });
 
@@ -28,65 +42,97 @@ describe("visiblePara", () => {
     expect(visiblePara(queja, RolDemo.AREA_QUEJA)).toBe(true);
     expect(visiblePara(queja, RolDemo.AREA_RECLAMO)).toBe(false);
     expect(visiblePara(denuncia, RolDemo.AREA_DENUNCIA_CORRUPCION)).toBe(true);
+    expect(visiblePara(queja, RolDemo.AREA_DENUNCIA_CORRUPCION)).toBe(false);
     expect(visiblePara(sinCategoria, RolDemo.AREA_QUEJA)).toBe(false);
   });
 });
 
-describe("accionesPermitidas", () => {
-  it("el revisor puede confirmar o corregir un caso clasificado que nadie revisó", () => {
-    expect(accionesPermitidas(crearCaso(), RolDemo.REVISOR)).toEqual([AccionCaso.CONFIRMAR, AccionCaso.CORREGIR]);
-  });
+type Celda = { sinRevisar: AccionCaso[]; revisado: AccionCaso[] };
+const NADA: Celda = { sinRevisar: [], revisado: [] };
+const CERRADOS = { [EstadoCaso.RESUELTO]: NADA, [EstadoCaso.ARCHIVADO]: NADA };
 
-  it("la revisión es una sola vez: ya revisado, el revisor no tiene acciones", () => {
-    expect(accionesPermitidas(crearCaso({ revisadoPorHumano: true }), RolDemo.REVISOR)).toEqual([]);
-  });
+const CATEGORIA_DEL_ROL: Record<RolDemo, CategoriaCaso> = {
+  [RolDemo.ADMINISTRADOR]: CategoriaCaso.RECLAMO,
+  [RolDemo.GESTOR]: CategoriaCaso.RECLAMO,
+  [RolDemo.AREA_RECLAMO]: CategoriaCaso.RECLAMO,
+  [RolDemo.AREA_QUEJA]: CategoriaCaso.QUEJA,
+  [RolDemo.AREA_DENUNCIA_CORRUPCION]: CategoriaCaso.DENUNCIA_CORRUPCION,
+};
 
-  it("el revisor no actúa sobre un caso aún no clasificado", () => {
-    expect(accionesPermitidas(crearCaso({ estado: EstadoCaso.REGISTRADO, categoriaIa: null }), RolDemo.REVISOR)).toEqual([]);
-  });
+const AREA_COMUN: Record<EstadoCaso, Celda> = {
+  [EstadoCaso.REGISTRADO]: NADA,
+  [EstadoCaso.CLASIFICADO]: NADA,
+  [EstadoCaso.DERIVADO]: { sinRevisar: [TOMAR, RESOLVER], revisado: [TOMAR, RESOLVER] },
+  [EstadoCaso.EN_GESTION]: { sinRevisar: [RESOLVER], revisado: [RESOLVER] },
+  ...CERRADOS,
+};
 
-  it("el gestor deriva un caso clasificado y ya revisado", () => {
-    expect(accionesPermitidas(crearCaso({ revisadoPorHumano: true }), RolDemo.GESTOR)).toEqual([AccionCaso.DERIVAR]);
-  });
+const MATRIZ: Record<RolDemo, Record<EstadoCaso, Celda>> = {
+  [RolDemo.ADMINISTRADOR]: {
+    [EstadoCaso.REGISTRADO]: NADA,
+    [EstadoCaso.CLASIFICADO]: NADA,
+    [EstadoCaso.DERIVADO]: NADA,
+    [EstadoCaso.EN_GESTION]: NADA,
+    ...CERRADOS,
+  },
+  [RolDemo.GESTOR]: {
+    [EstadoCaso.REGISTRADO]: NADA,
+    [EstadoCaso.CLASIFICADO]: { sinRevisar: [CONFIRMAR, CORREGIR], revisado: [DERIVAR] },
+    [EstadoCaso.DERIVADO]: NADA,
+    [EstadoCaso.EN_GESTION]: NADA,
+    ...CERRADOS,
+  },
+  [RolDemo.AREA_RECLAMO]: AREA_COMUN,
+  [RolDemo.AREA_QUEJA]: AREA_COMUN,
+  [RolDemo.AREA_DENUNCIA_CORRUPCION]: {
+    [EstadoCaso.REGISTRADO]: NADA,
+    [EstadoCaso.CLASIFICADO]: { sinRevisar: [CONFIRMAR, CORREGIR], revisado: [TOMAR] },
+    [EstadoCaso.DERIVADO]: { sinRevisar: [TOMAR, RESOLVER], revisado: [TOMAR, RESOLVER] },
+    [EstadoCaso.EN_GESTION]: { sinRevisar: [RESOLVER], revisado: [RESOLVER] },
+    ...CERRADOS,
+  },
+};
 
-  it("el gestor no deriva si nadie revisó la categoría", () => {
-    expect(accionesPermitidas(crearCaso(), RolDemo.GESTOR)).toEqual([]);
-  });
+describe("accionesPermitidas: una prueba por rol, estado y revisión", () => {
+  for (const rol of Object.values(RolDemo)) {
+    for (const estado of Object.values(EstadoCaso)) {
+      for (const revisado of [false, true]) {
+        const titulo = `${rol} · ${estado} · ${revisado ? "revisado" : "sin revisar"}`;
+        it(titulo, () => {
+          const caso = crearCaso({ estado, revisadoPorHumano: revisado, categoria: CATEGORIA_DEL_ROL[rol] });
+          const esperado = MATRIZ[rol][estado][revisado ? "revisado" : "sinRevisar"];
+          expect(accionesPermitidas(caso, rol)).toEqual(esperado);
+        });
+      }
+    }
+  }
+});
 
-  it("la categoría Otro no tiene área: no se puede derivar", () => {
-    const otro = crearCaso({ categoria: CategoriaCaso.OTRO, revisadoPorHumano: true });
-    expect(accionesPermitidas(otro, RolDemo.GESTOR)).toEqual([]);
+describe("accionesPermitidas: reglas de categoría", () => {
+  it("el gestor revisa también la categoría Otro, pero no la puede derivar: no tiene área", () => {
+    const sinRevisar = crearCaso({ categoria: CategoriaCaso.OTRO });
+    const revisado = crearCaso({ categoria: CategoriaCaso.OTRO, revisadoPorHumano: true });
+    expect(accionesPermitidas(sinRevisar, RolDemo.GESTOR)).toEqual([CONFIRMAR, CORREGIR]);
+    expect(accionesPermitidas(revisado, RolDemo.GESTOR)).toEqual([]);
   });
 
   it("el gestor no ve ni actúa sobre denuncias por corrupción", () => {
-    const denuncia = crearCaso({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION, revisadoPorHumano: true });
-    expect(accionesPermitidas(denuncia, RolDemo.GESTOR)).toEqual([]);
-  });
-
-  it("el área toma y resuelve lo derivado de su categoría", () => {
-    const derivado = crearCaso({ estado: EstadoCaso.DERIVADO, revisadoPorHumano: true });
-    expect(accionesPermitidas(derivado, RolDemo.AREA_RECLAMO)).toEqual([AccionCaso.TOMAR, AccionCaso.RESOLVER]);
-  });
-
-  it("el área solo resuelve lo que ya está en gestión", () => {
-    const enGestion = crearCaso({ estado: EstadoCaso.EN_GESTION, revisadoPorHumano: true });
-    expect(accionesPermitidas(enGestion, RolDemo.AREA_RECLAMO)).toEqual([AccionCaso.RESOLVER]);
+    for (const revisadoPorHumano of [false, true]) {
+      const denuncia = crearCaso({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION, revisadoPorHumano });
+      expect(accionesPermitidas(denuncia, RolDemo.GESTOR)).toEqual([]);
+    }
   });
 
   it("un área no actúa sobre casos de otra categoría", () => {
     const derivado = crearCaso({ estado: EstadoCaso.DERIVADO, revisadoPorHumano: true });
     expect(accionesPermitidas(derivado, RolDemo.AREA_QUEJA)).toEqual([]);
+    expect(accionesPermitidas(derivado, RolDemo.AREA_DENUNCIA_CORRUPCION)).toEqual([]);
   });
 
-  it("un caso resuelto o archivado no admite acciones de nadie", () => {
-    for (const estado of [EstadoCaso.RESUELTO, EstadoCaso.ARCHIVADO]) {
-      for (const rol of Object.values(RolDemo)) {
-        expect(accionesPermitidas(crearCaso({ estado, revisadoPorHumano: true }), rol)).toEqual([]);
-      }
-    }
-  });
-
-  it("el administrador no tiene acciones del flujo diario", () => {
-    expect(accionesPermitidas(crearCaso(), RolDemo.ADMINISTRADOR)).toEqual([]);
+  it("solo el área de corrupción toma directo un caso clasificado y revisado", () => {
+    const revisado = crearCaso({ revisadoPorHumano: true });
+    expect(accionesPermitidas(revisado, RolDemo.AREA_RECLAMO)).toEqual([]);
+    const denuncia = crearCaso({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION, revisadoPorHumano: true });
+    expect(accionesPermitidas(denuncia, RolDemo.AREA_DENUNCIA_CORRUPCION)).toEqual([TOMAR]);
   });
 });

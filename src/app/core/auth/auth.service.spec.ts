@@ -42,16 +42,16 @@ describe("AuthService", () => {
     await expect(result).rejects.toMatchObject({ code: AuthErrorCode.NETWORK });
   });
 
-  it("me() pide la sesión con cookies y devuelve nombre, correo y módulos", async () => {
+  it("me() pide la sesión con cookies y devuelve nombre, correo y vistas", async () => {
     const { service, http } = setup();
     const result = service.me();
 
     const request = http.expectOne(`${base}/auth/me`);
     expect(request.request.method).toBe("GET");
     expect(request.request.withCredentials).toBe(true);
-    request.flush({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", modulos: ["INCIDENCIAS"] });
+    request.flush({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"] });
 
-    await expect(result).resolves.toEqual({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", modulos: ["INCIDENCIAS"] });
+    await expect(result).resolves.toEqual({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"] });
   });
 
   it("me() sin sesión se rechaza", async () => {

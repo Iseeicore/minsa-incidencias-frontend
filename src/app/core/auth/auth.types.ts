@@ -1,4 +1,4 @@
-import type { ModuloCodigo } from "@/shared/enums/modulo-codigo.enum";
+import type { VistaCodigo } from "@/shared/enums/vista-codigo.enum";
 
 export interface Credentials {
   correo: string;
@@ -8,5 +8,5 @@ export interface Credentials {
 export interface SesionUsuario {
   nombreCompleto: string;
   correo: string;
-  modulos: ModuloCodigo[];
+  vistas: VistaCodigo[];
 }

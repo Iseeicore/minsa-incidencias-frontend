@@ -53,8 +53,13 @@ describe("BandejasPage", () => {
     const { fixture, pestana, filas, store } = await setup();
     store.cambiarRol(RolDemo.GESTOR);
     await fixture.whenStable();
-    expect(pestana("Para actuar").textContent).toContain("(2)");
-    expect(filas()).toBe(2);
+    expect(pestana("Para actuar").textContent).toContain("(5)");
+    expect(filas()).toBe(5);
+
+    store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
+    await fixture.whenStable();
+    expect(pestana("Para actuar").textContent).toContain("(3)");
+    expect(filas()).toBe(3);
 
     store.cambiarRol(RolDemo.ADMINISTRADOR);
     await fixture.whenStable();

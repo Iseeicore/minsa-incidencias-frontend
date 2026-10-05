@@ -8,7 +8,7 @@ import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { RolDemo } from "@/features/casos/enums/rol-demo.enum";
 import type { Caso, ResultadoAccion } from "@/features/casos/types/caso.types";
 import { accionesPermitidas, visiblePara } from "@/features/casos/utils/acciones-caso";
-import { areaDe } from "@/features/casos/utils/area-de-categoria";
+import { areaDe, tieneArea } from "@/features/casos/utils/area-de-categoria";
 import { aplicarArchivadoAutomatico } from "@/features/casos/utils/plazos-caso";
 import type { TimelineItem } from "@/shared/ui/timeline/timeline";
 
@@ -46,7 +46,7 @@ export class CasosStore {
   private readonly plazos = inject(PLAZOS_TOKEN);
   private readonly todos = signal<readonly Caso[]>(aplicarArchivadoAutomatico(inject(CASOS_INICIALES), this.plazos));
 
-  readonly rol = signal<RolDemo>(RolDemo.REVISOR);
+  readonly rol = signal<RolDemo>(RolDemo.GESTOR);
   readonly casos = computed(() => this.todos().filter((caso) => visiblePara(caso, this.rol())));
 
   cambiarRol(rol: RolDemo): void {
@@ -70,13 +70,15 @@ export class CasosStore {
       if (caso.revisadoPorHumano) return fallo("La categoría ya fue revisada: solo se confirma o se corrige una vez.");
       if (nueva === caso.categoria) return fallo("Elige una categoría distinta de la actual; para dejarla igual, confírmala.");
       const anterior = caso.categoria ? CATEGORIA_LABEL[caso.categoria] : "sin categoría";
+      const corregido: Caso = { ...caso, categoria: nueva, corregida: true, revisadoPorHumano: true };
+      const traslado = visiblePara(corregido, this.rol()) ? "" : ` ${this.avisoDeTraslado(nueva)}`;
       return {
         caso: this.conPaso(
-          { ...caso, categoria: nueva, corregida: true, revisadoPorHumano: true },
+          corregido,
           "Categoría corregida",
           `De ${anterior} a ${CATEGORIA_LABEL[nueva]}. El caso corresponde a: ${areaDe(nueva)}.`,
         ),
-        mensaje: `Categoría corregida a ${CATEGORIA_LABEL[nueva]}. Se guardó para mejorar la IA.`,
+        mensaje: `Categoría corregida a ${CATEGORIA_LABEL[nueva]}. Se guardó para mejorar la IA.${traslado}`,
       };
     });
   }
@@ -95,9 +97,14 @@ export class CasosStore {
 
   tomar(codigo: string): ResultadoAccion {
     return this.ejecutar(codigo, AccionCaso.TOMAR, (caso) => {
-      if (caso.estado !== EstadoCaso.DERIVADO) return fallo("Transición de estado no permitida.");
+      const directo = caso.estado === EstadoCaso.CLASIFICADO && caso.revisadoPorHumano;
+      if (caso.estado !== EstadoCaso.DERIVADO && !directo) return fallo("Transición de estado no permitida.");
       return {
-        caso: this.conPaso({ ...caso, estado: EstadoCaso.EN_GESTION }, "En gestión", "El área tomó el caso."),
+        caso: this.conPaso(
+          { ...caso, estado: EstadoCaso.EN_GESTION },
+          "En gestión",
+          directo ? "El área tomó el caso directo, sin derivar." : "El área tomó el caso.",
+        ),
         mensaje: "El caso quedó en gestión.",
       };
     });
@@ -134,6 +141,13 @@ export class CasosStore {
     if ("error" in resultado) return resultado;
     this.todos.update((lista) => lista.map((actual) => (actual.codigo === codigo ? resultado.caso : actual)));
     return exito(resultado.mensaje);
+  }
+
+  private avisoDeTraslado(nueva: CategoriaCaso): string {
+    const destino = tieneArea(nueva)
+      ? `al área correspondiente (${areaDe(nueva)})`
+      : "a la bandeja del gestor (la categoría Otro no tiene área)";
+    return `El caso pasó ${destino} y ya no aparece en tu lista.`;
   }
 
   private conPaso(caso: Caso, titulo: string, detalle: string): Caso {

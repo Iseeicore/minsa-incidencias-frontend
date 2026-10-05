@@ -14,7 +14,7 @@ const codigos = (tab: BandejaTab, rol: RolDemo = RolDemo.ADMINISTRADOR) =>
 
 describe("filtrarBandeja", () => {
   it("En revisión IA son los clasificados que ninguna persona revisó", () => {
-    const resultado = filtrarBandeja(CASOS, BandejaTab.REVISION_IA, RolDemo.REVISOR, PLAZOS_POR_DEFECTO);
+    const resultado = filtrarBandeja(CASOS, BandejaTab.REVISION_IA, RolDemo.GESTOR, PLAZOS_POR_DEFECTO);
     expect(resultado.length).toBeGreaterThan(0);
     expect(resultado.every((caso) => caso.estado === EstadoCaso.CLASIFICADO && !caso.revisadoPorHumano)).toBe(true);
   });
@@ -48,17 +48,26 @@ describe("filtrarBandeja", () => {
   });
 
   describe("Para actuar depende del rol", () => {
-    it("el revisor ve lo clasificado sin revisar", () => {
-      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.REVISOR)).toEqual([
+    it("el gestor ve lo clasificado sin revisar (menos corrupción) y lo revisado que se puede derivar", () => {
+      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.GESTOR)).toEqual([
+        "MINSA-2026-002890",
+        "MINSA-2026-002915",
         "MINSA-2026-002930",
-        "MINSA-2026-002960",
         "MINSA-2026-003012",
         "MINSA-2026-003230",
       ]);
     });
 
-    it("el gestor ve lo revisado que se puede derivar", () => {
-      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.GESTOR)).toEqual(["MINSA-2026-002890", "MINSA-2026-002915"]);
+    it("el área de corrupción revisa sus propios casos y atiende los suyos", () => {
+      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.AREA_DENUNCIA_CORRUPCION)).toEqual([
+        "MINSA-2026-002960",
+        "MINSA-2026-003051",
+        "MINSA-2026-003152",
+      ]);
+    });
+
+    it("el área de quejas ve sus derivados y en gestión", () => {
+      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.AREA_QUEJA)).toEqual(["MINSA-2026-002941", "MINSA-2026-003198"]);
     });
 
     it("el área de reclamos ve sus derivados y en gestión", () => {

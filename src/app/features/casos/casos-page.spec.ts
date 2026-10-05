@@ -5,6 +5,9 @@ import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { RolDemo } from "@/features/casos/enums/rol-demo.enum";
 import { CasosPage } from "./casos-page";
 
+const VISIBLES_PARA_EL_GESTOR = CASOS_DEMO.filter((caso) => caso.categoria !== CategoriaCaso.DENUNCIA_CORRUPCION);
+const PARA_ACTUAR_DEL_GESTOR = 5;
+
 describe("CasosPage", () => {
   async function setup() {
     TestBed.configureTestingModule({ imports: [CasosPage] });
@@ -26,11 +29,26 @@ describe("CasosPage", () => {
 
   afterEach(() => document.body.replaceChildren());
 
-  it("muestra el título, el aviso de demostración y todos los casos", async () => {
+  it("muestra el título, el aviso de demostración y los casos que ve el gestor, que no incluyen la corrupción", async () => {
     const { element, filas } = await setup();
     expect(element.querySelector("h1")?.textContent).toContain("Casos");
     expect(element.textContent).toContain("Datos de demostración");
-    expect(filas()).toBe(CASOS_DEMO.length);
+    expect(filas()).toBe(VISIBLES_PARA_EL_GESTOR.length);
+    expect(filas()).toBeLessThan(CASOS_DEMO.length);
+  });
+
+  it("el selector de rol ofrece los cinco roles y ninguno es el revisor", async () => {
+    const { element } = await setup();
+    const opciones = Array.from(element.querySelectorAll("app-rol-demo-selector option")).map((opcion) =>
+      opcion.textContent?.trim(),
+    );
+    expect(opciones).toEqual([
+      "Administrador",
+      "Gestor",
+      "Área de reclamos",
+      "Área de quejas",
+      "Área de denuncias por corrupción",
+    ]);
   });
 
   it("muestra todas las columnas dentro de una región desplazable, sin ocultar ninguna", async () => {
@@ -59,11 +77,20 @@ describe("CasosPage", () => {
   });
 
   it("cambiar de pestaña filtra la tabla", async () => {
-    const { fixture, filas, pestana } = await setup();
+    const { fixture, filas, pestana, store } = await setup();
+    store.cambiarRol(RolDemo.ADMINISTRADOR);
+    await fixture.whenStable();
     pestana("Corrupción")?.click();
     await fixture.whenStable();
     expect(filas()).toBeGreaterThan(0);
     expect(filas()).toBeLessThan(CASOS_DEMO.length);
+  });
+
+  it("el gestor no ve ningún caso de corrupción: esa pestaña queda vacía", async () => {
+    const { fixture, filas, pestana } = await setup();
+    pestana("Corrupción")?.click();
+    await fixture.whenStable();
+    expect(filas()).toBe(0);
   });
 
   it("buscar filtra y sin resultados ofrece limpiar los filtros", async () => {
@@ -77,7 +104,7 @@ describe("CasosPage", () => {
     );
     limpiar?.click();
     await fixture.whenStable();
-    expect(filas()).toBe(CASOS_DEMO.length);
+    expect(filas()).toBe(VISIBLES_PARA_EL_GESTOR.length);
   });
 
   it("el contador refleja la cantidad de casos visibles", async () => {
@@ -91,8 +118,10 @@ describe("CasosPage", () => {
     const etiquetas = Array.from(element.querySelectorAll("tbody tr")).map((fila) =>
       fila.querySelector("button")?.textContent?.trim().split(" ")[0],
     );
-    expect(etiquetas.filter((texto) => texto === "Revisar")).toHaveLength(4);
-    expect(etiquetas.filter((texto) => texto === "Ver")).toHaveLength(CASOS_DEMO.length - 4);
+    expect(etiquetas.filter((texto) => texto === "Revisar")).toHaveLength(PARA_ACTUAR_DEL_GESTOR);
+    expect(etiquetas.filter((texto) => texto === "Ver")).toHaveLength(
+      VISIBLES_PARA_EL_GESTOR.length - PARA_ACTUAR_DEL_GESTOR,
+    );
   });
 
   it("Revisar abre el panel del caso elegido", async () => {
