@@ -27,6 +27,14 @@ describe("CasosPage", () => {
     expect(filas()).toBe(CASOS_DEMO.length);
   });
 
+  it("muestra todas las columnas dentro de una región desplazable, sin ocultar ninguna", async () => {
+    const { element } = await setup();
+    const encabezados = Array.from(element.querySelectorAll("thead th"));
+    expect(encabezados).toHaveLength(9);
+    expect(encabezados.some((th) => th.className.includes("hidden"))).toBe(false);
+    expect(element.querySelector("app-table-scroll[role='region']")).not.toBeNull();
+  });
+
   it("tiene las cinco pestañas", async () => {
     const { element } = await setup();
     const etiquetas = Array.from(element.querySelectorAll("[role='tab']")).map((tab) => tab.textContent?.trim());
