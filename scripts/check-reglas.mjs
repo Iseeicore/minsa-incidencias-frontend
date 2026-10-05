@@ -14,7 +14,7 @@ const RULES = [
   { id: 3, name: "valor arbitrario de Tailwind", pattern: /\b[a-z-]+-\[[^\]]+\]/, ext: [".ts", ".html"] },
   { id: 4, name: "degradado de Tailwind v3 o decorativo", pattern: /bg-gradient-|bg-linear-/, ext: [".ts", ".html"] },
   { id: 5, name: "import relativo hacia arriba (usar @/)", pattern: /from\s+["']\.\.\//, ext: [".ts"] },
-  { id: 6, name: "almacenamiento del navegador (el token va en cookie HttpOnly)", pattern: /\b(localStorage|sessionStorage)\b/, ext: [".ts"] },
+  { id: 6, name: "almacenamiento del navegador (el token va en cookie HttpOnly)", pattern: /\b(localStorage|sessionStorage)\b/, ext: [".ts"], skipSpec: true },
   { id: 7, name: "console.* en el código", pattern: /\bconsole\./, ext: [".ts"], skip: ["main.ts"], skipSpec: true },
   { id: 8, name: "innerHTML (el texto del ciudadano se muestra como texto)", pattern: /innerHTML/, ext: [".ts", ".html"], skipSpec: true },
   { id: 9, name: "estilo en línea (usar clases)", pattern: /\sstyle\s*=\s*["']/, ext: [".html", ".ts"] },

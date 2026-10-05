@@ -1,4 +1,5 @@
 import type { Routes } from "@angular/router";
+import { authGuard } from "@/core/auth/auth.guard";
 import { ROUTE_PATH } from "@/shared/constants/routes";
 
 export const routes: Routes = [
@@ -9,6 +10,7 @@ export const routes: Routes = [
   },
   {
     path: ROUTE_PATH.INICIO,
+    canActivate: [authGuard],
     loadComponent: () => import("@/features/inicio/inicio-page").then((module) => module.InicioPage),
   },
   { path: "**", redirectTo: ROUTE_PATH.LOGIN },

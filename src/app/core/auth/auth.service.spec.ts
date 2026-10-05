@@ -7,7 +7,7 @@ import { AuthErrorCode } from "./enums/auth-error-code.enum";
 
 describe("AuthService", () => {
   const credentials = { correo: "persona@minsa.gob.pe", password: "clave" };
-  const url = `${environment.apiUrl}/auth/login`;
+  const base = environment.apiUrl;
 
   function setup() {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
@@ -18,7 +18,7 @@ describe("AuthService", () => {
     const { service, http } = setup();
     const result = service.login(credentials);
 
-    const request = http.expectOne(url);
+    const request = http.expectOne(`${base}/auth/login`);
     expect(request.request.method).toBe("POST");
     expect(request.request.body).toEqual(credentials);
     expect(request.request.withCredentials).toBe(true);
@@ -31,14 +31,45 @@ describe("AuthService", () => {
   it("traduce un 401 a credenciales inválidas", async () => {
     const { service, http } = setup();
     const result = service.login(credentials);
-    http.expectOne(url).flush(null, { status: 401, statusText: "Unauthorized" });
+    http.expectOne(`${base}/auth/login`).flush(null, { status: 401, statusText: "Unauthorized" });
     await expect(result).rejects.toMatchObject({ code: AuthErrorCode.INVALID_CREDENTIALS });
   });
 
   it("traduce un fallo de red", async () => {
     const { service, http } = setup();
     const result = service.login(credentials);
-    http.expectOne(url).error(new ProgressEvent("error"));
+    http.expectOne(`${base}/auth/login`).error(new ProgressEvent("error"));
     await expect(result).rejects.toMatchObject({ code: AuthErrorCode.NETWORK });
+  });
+
+  it("me() pide la sesión con cookies y devuelve nombre, correo y módulos", async () => {
+    const { service, http } = setup();
+    const result = service.me();
+
+    const request = http.expectOne(`${base}/auth/me`);
+    expect(request.request.method).toBe("GET");
+    expect(request.request.withCredentials).toBe(true);
+    request.flush({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", modulos: ["INCIDENCIAS"] });
+
+    await expect(result).resolves.toEqual({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", modulos: ["INCIDENCIAS"] });
+  });
+
+  it("me() sin sesión se rechaza", async () => {
+    const { service, http } = setup();
+    const result = service.me();
+    http.expectOne(`${base}/auth/me`).flush(null, { status: 401, statusText: "Unauthorized" });
+    await expect(result).rejects.toMatchObject({ code: AuthErrorCode.INVALID_CREDENTIALS });
+  });
+
+  it("logout() envía un POST con cookies", async () => {
+    const { service, http } = setup();
+    const result = service.logout();
+
+    const request = http.expectOne(`${base}/auth/logout`);
+    expect(request.request.method).toBe("POST");
+    expect(request.request.withCredentials).toBe(true);
+    request.flush(null);
+
+    await expect(result).resolves.toBeUndefined();
   });
 });

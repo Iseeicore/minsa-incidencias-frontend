@@ -1,0 +1,26 @@
+<main class="mx-auto max-w-3xl space-y-6 p-6">
+  <header class="flex items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold">Panel de gestión</h1>
+      @if (sesion(); as actual) {
+        <p class="text-gray-600">{{ actual.nombreCompleto }} · {{ actual.correo }}</p>
+      }
+    </div>
+    <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cerrarSesion()">Cerrar sesión</app-button>
+  </header>
+
+  <section class="space-y-2">
+    <h2 class="text-lg font-medium">Tus módulos</h2>
+    @if (modulos().length > 0) {
+      <ul class="flex flex-wrap gap-2">
+        @for (modulo of modulos(); track modulo) {
+          <li class="rounded-md bg-primary-50 px-3 py-1.5 text-sm text-primary-700">{{ modulo }}</li>
+        }
+      </ul>
+    } @else {
+      <p class="text-gray-600">Tu usuario todavía no tiene módulos asignados.</p>
+    }
+  </section>
+
+  <p class="text-gray-600">Las pantallas de cada módulo llegan en la siguiente fase.</p>
+</main>

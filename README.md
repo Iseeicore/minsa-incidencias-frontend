@@ -2,7 +2,7 @@
 
 Panel de la plataforma de gestión de incidencias: visor, revisión, entrenamiento de la IA e indicadores, más el portal público de carga de archivos en rutas separadas. Está construido con Angular 22 (sin zonas) y Tailwind CSS 4. Habla con `minsa-incidencias-backend`.
 
-> **Estado (v0.1.0):** proyecto base con la vista de login. Todavía no hay sesión real ni pantallas de negocio: dependen de la autenticación del backend.
+> **Estado:** proyecto base con la vista de login conectada a la **autenticación real del backend** (sesión por cookie, cierre de sesión, rutas protegidas y panel con los módulos del usuario). Todavía no hay pantallas de negocio: llegan en la fase siguiente.
 
 ## Inicio rápido
 
@@ -58,6 +58,17 @@ npm start          # http://localhost:4010 (el backend debe estar en el puerto 3
 
 > **Windows con control de aplicaciones.** Si una política de Windows bloquea `esbuild.exe` o el binario nativo de Tailwind, `npm start`, `npm run build` y `npm test` no arrancan. Usa Docker (`npm run docker:up` y el override de desarrollo) o WSL. No se modifica la política. Tailwind tiene una variante WebAssembly (`npm i --force --no-save @tailwindcss/oxide-wasm32-wasi@4.3.3`) que **no debe quedar en `package.json`** porque rompe `npm ci` en otras plataformas.
 
+## Sesión y acceso
+
+El frontend **no guarda nada de la sesión en el navegador** (ni `localStorage` ni `sessionStorage`): la cookie `HttpOnly` la pone y la lee el navegador, y el JavaScript nunca la ve.
+
+- **Login:** `LoginForm` pide **correo** y contraseña y llama a `POST /auth/login`. Los errores del servidor se traducen por código (401 credenciales incorrectas, 429 demasiados intentos, sin red) a mensajes del diccionario `AUTH_ERROR_MESSAGES`.
+- **Quién soy:** `SessionStore` (en memoria, con *signals*) pide `GET /auth/me` y guarda solo el nombre, el correo y los **módulos** que devuelve el backend. No hay id ni roles.
+- **Rutas protegidas:** `authGuard` deja pasar si hay sesión en memoria; si no, la pide al backend; si tampoco hay, redirige a `/login`. Hoy protege `/inicio`.
+- **Sesión caducada:** `unauthorizedInterceptor` limpia la sesión y manda al login ante un 401 de cualquier llamada (salvo las propias de `/auth/...`).
+- **Panel (`/inicio`):** muestra el nombre y la lista de módulos del usuario y el botón de cerrar sesión (`POST /auth/logout`, que revoca la sesión en la base).
+- El menú y las pantallas se deciden con los módulos de `/auth/me`, pero **eso solo es presentación**: el backend vuelve a comprobar el módulo en cada petición.
+
 ## Entornos y URL del backend
 
 El frontend llama a la API en otro origen (el backend, puerto 3033), con cookies (`withCredentials`). La URL sale de `src/environments/`:
@@ -93,7 +104,7 @@ src/
   environments/                URL del backend por entorno (alias @env/)
   app/
     app.ts · app.config.ts · app.routes.ts
-    core/                      Infraestructura transversal (config, auth)
+    core/                      Infraestructura transversal (config, auth, http)
     shared/                    Reutilizable, sin conocimiento del negocio
       enums/ constants/ utils/ layouts/ ui/
     features/                  Un directorio por módulo (auth, inicio, ...)
