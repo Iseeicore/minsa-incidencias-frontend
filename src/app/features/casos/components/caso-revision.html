@@ -29,7 +29,13 @@
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Prioridad</dt>
-            <dd><app-badge [tone]="prioridadBadge[c.prioridad].tone">{{ prioridadBadge[c.prioridad].label }}</app-badge></dd>
+            <dd>
+              @if (c.prioridad; as nivel) {
+                <app-badge [tone]="prioridadBadge[nivel].tone">{{ prioridadBadge[nivel].label }}</app-badge>
+              } @else {
+                <span class="text-gray-900">{{ sinDato }}</span>
+              }
+            </dd>
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Plazo</dt>
@@ -37,7 +43,7 @@
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Organismo</dt>
-            <dd class="text-gray-900">{{ c.organismo }}</dd>
+            <dd class="text-gray-900">{{ c.organismo ?? sinDato }}</dd>
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Reclamante</dt>
@@ -90,7 +96,7 @@
                   </div>
                 </div>
                 @if (evidencia.sensible && estaAbierta(evidencia.nombre)) {
-                  <p class="mt-2 text-xs text-gray-600">Vista previa no disponible en la demostración.</p>
+                  <p class="mt-2 text-xs text-gray-600">La vista previa de archivos aún no está disponible.</p>
                 }
               </li>
             }
@@ -132,7 +138,7 @@
               La categoría se confirma o se corrige una sola vez. Revisa bien antes de aplicar.
             </app-alert>
             <div class="flex flex-wrap gap-2">
-              <app-button [disabled]="nuevaCategoria() === ''" (click)="aplicarCorreccion()">Aplicar corrección</app-button>
+              <app-button [disabled]="nuevaCategoria() === '' || procesando()" (click)="aplicarCorreccion()">Aplicar corrección</app-button>
               <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar()">Cancelar</app-button>
             </div>
           </div>
@@ -146,30 +152,29 @@
               [(value)]="resolucion"
             />
             <app-alert [tone]="BadgeTone.WARNING">
-              Al registrar la resolución el caso queda resuelto y no se puede deshacer. Se archivará solo a los
-              {{ plazos.vigenciaResolucionDias }} días.
+              Al registrar la resolución el caso queda resuelto y no se puede deshacer.
             </app-alert>
             <div class="flex flex-wrap gap-2">
-              <app-button [disabled]="resolucion().trim() === ''" (click)="aplicarResolucion()">Registrar resolución</app-button>
+              <app-button [disabled]="resolucion().trim() === '' || procesando()" (click)="aplicarResolucion()">Registrar resolución</app-button>
               <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar()">Cancelar</app-button>
             </div>
           </div>
         } @else {
           <div class="flex flex-wrap gap-2">
             @if (acciones().includes(AccionCaso.CONFIRMAR)) {
-              <app-button (click)="confirmar()">Confirmar categoría</app-button>
+              <app-button [disabled]="procesando()" (click)="confirmar()">Confirmar categoría</app-button>
             }
             @if (acciones().includes(AccionCaso.CORREGIR)) {
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="abrirCorreccion()">Corregir categoría</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="abrirCorreccion()">Corregir categoría</app-button>
             }
             @if (acciones().includes(AccionCaso.DERIVAR)) {
-              <app-button (click)="derivar()">Derivar al {{ areaDestino() }}</app-button>
+              <app-button [disabled]="procesando()" (click)="derivar()">Derivar al {{ areaDestino() }}</app-button>
             }
             @if (acciones().includes(AccionCaso.TOMAR)) {
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="tomar()">Tomar en gestión</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="tomar()">Tomar en gestión</app-button>
             }
             @if (acciones().includes(AccionCaso.RESOLVER)) {
-              <app-button (click)="abrirResolucion()">Resolver el caso</app-button>
+              <app-button [disabled]="procesando()" (click)="abrirResolucion()">Resolver el caso</app-button>
             }
           </div>
           @if (acciones().includes(AccionCaso.CONFIRMAR) || acciones().includes(AccionCaso.CORREGIR)) {
@@ -183,11 +188,20 @@
         <app-timeline label="Historial del caso" [items]="c.historial" />
       </section>
     </div>
+  } @else if (cargando()) {
+    <p class="text-sm text-gray-600" aria-live="polite">Cargando el caso…</p>
   } @else if (codigo() !== null) {
     @if (feedback(); as resultado) {
       <app-alert [tone]="resultado.ok ? BadgeTone.SUCCESS : BadgeTone.DANGER">
         {{ resultado.ok ? resultado.mensaje : resultado.error }}
       </app-alert>
+    } @else if (errorCarga(); as mensaje) {
+      <div class="space-y-3">
+        <app-alert [tone]="noDisponible() ? BadgeTone.NEUTRAL : BadgeTone.DANGER">{{ mensaje }}</app-alert>
+        @if (!noDisponible()) {
+          <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="reintentar()">Reintentar</app-button>
+        }
+      </div>
     } @else {
       <p class="text-sm text-gray-600">Este caso ya no está disponible para tu rol.</p>
     }

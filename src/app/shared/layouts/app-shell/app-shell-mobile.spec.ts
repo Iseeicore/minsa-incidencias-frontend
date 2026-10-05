@@ -1,3 +1,5 @@
+import { provideHttpClient } from "@angular/common/http";
+import { provideHttpClientTesting } from "@angular/common/http/testing";
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
@@ -28,6 +30,8 @@ describe("AppShell en pantalla chica", () => {
       imports: [AppShell],
       providers: [
         provideRouter([{ path: "**", children: [] }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: SessionStore, useValue: { sesion: signal(ana), cerrar: vi.fn() } },
       ],
     });

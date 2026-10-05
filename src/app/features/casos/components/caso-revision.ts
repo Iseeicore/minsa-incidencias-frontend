@@ -1,19 +1,20 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, model, signal, untracked } from "@angular/core";
-import { PLAZOS_TOKEN } from "@/core/config/plazos.config";
-import { CasosStore, MAX_RESOLUCION } from "@/features/casos/casos.store";
+import { CasosStore } from "@/features/casos/casos.store";
 import {
   CATEGORIA_LABEL,
   ESTADO_BADGE,
+  MAX_RESOLUCION,
   PRIORIDAD_CASO_BADGE,
   SIN_DATO,
   TIPO_EVIDENCIA_LABEL,
 } from "@/features/casos/constants/casos-constants";
+import { MENSAJE_ERROR } from "@/features/casos/constants/casos-messages";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
+import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { ModoPanel } from "@/features/casos/enums/modo-panel.enum";
 import type { ResultadoAccion } from "@/features/casos/types/caso.types";
-import { accionesPermitidas } from "@/features/casos/utils/acciones-caso";
 import { areaDe } from "@/features/casos/utils/area-de-categoria";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
 import { textoPlazo } from "@/features/casos/utils/texto-plazo";
@@ -35,7 +36,6 @@ import { Timeline } from "@/shared/ui/timeline/timeline";
 })
 export class CasoRevision {
   private readonly store = inject(CasosStore);
-  protected readonly plazos = inject(PLAZOS_TOKEN);
 
   readonly codigo = model<string | null>(null);
 
@@ -58,20 +58,18 @@ export class CasoRevision {
   protected readonly resolucion = signal("");
   protected readonly feedback = signal<ResultadoAccion | null>(null);
   protected readonly evidenciasAbiertas = signal<readonly string[]>([]);
+  protected readonly procesando = signal(false);
 
-  protected readonly caso = computed(() => {
-    const codigo = this.codigo();
-    return codigo ? (this.store.casos().find((candidato) => candidato.codigo === codigo) ?? null) : null;
-  });
+  protected readonly caso = this.store.detalle;
+  protected readonly errorCarga = this.store.errorDetalle;
+  protected readonly cargando = computed(() => this.store.estadoDetalle() === CargaEstado.CARGANDO);
+  protected readonly noDisponible = computed(() => this.errorCarga() === MENSAJE_ERROR.NO_DISPONIBLE);
 
-  protected readonly acciones = computed(() => {
-    const caso = this.caso();
-    return caso ? accionesPermitidas(caso, this.store.rol()) : [];
-  });
+  protected readonly acciones = computed(() => this.caso()?.acciones ?? []);
 
   protected readonly plazoTexto = computed(() => {
     const caso = this.caso();
-    return caso ? textoPlazo(caso, this.plazos) : "";
+    return caso ? textoPlazo(caso) : "";
   });
 
   protected readonly hayEvidenciaSensible = computed(() => this.caso()?.evidencias.some((item) => item.sensible) ?? false);
@@ -88,7 +86,10 @@ export class CasoRevision {
     return nueva ? areaDe(nueva as CategoriaCaso) : null;
   });
 
-  protected readonly areaDestino = computed(() => areaDe(this.caso()?.categoria ?? null));
+  protected readonly areaDestino = computed(() => {
+    const caso = this.caso();
+    return caso?.area ?? areaDe(caso?.categoria ?? null);
+  });
 
   protected readonly motivoSinAcciones = computed(() => {
     const caso = this.caso();
@@ -102,8 +103,12 @@ export class CasoRevision {
 
   constructor() {
     effect(() => {
-      this.codigo();
-      untracked(() => this.reiniciar());
+      const codigo = this.codigo();
+      untracked(() => {
+        this.reiniciar();
+        if (codigo) void this.store.abrir(codigo);
+        else this.store.cerrar();
+      });
     });
   }
 
@@ -111,16 +116,20 @@ export class CasoRevision {
     if (!abierto) this.codigo.set(null);
   }
 
+  protected reintentar(): void {
+    void this.store.reintentar();
+  }
+
   protected confirmar(): void {
-    this.ejecutar((codigo) => this.store.confirmar(codigo));
+    void this.ejecutar((codigo) => this.store.confirmar(codigo));
   }
 
   protected derivar(): void {
-    this.ejecutar((codigo) => this.store.derivar(codigo));
+    void this.ejecutar((codigo) => this.store.derivar(codigo));
   }
 
   protected tomar(): void {
-    this.ejecutar((codigo) => this.store.tomar(codigo));
+    void this.ejecutar((codigo) => this.store.tomar(codigo));
   }
 
   protected abrirCorreccion(): void {
@@ -131,7 +140,7 @@ export class CasoRevision {
   protected aplicarCorreccion(): void {
     const nueva = this.nuevaCategoria();
     if (!nueva) return;
-    this.ejecutar((codigo) => this.store.corregir(codigo, nueva as CategoriaCaso));
+    void this.ejecutar((codigo) => this.store.corregir(codigo, nueva as CategoriaCaso));
   }
 
   protected abrirResolucion(): void {
@@ -140,7 +149,7 @@ export class CasoRevision {
   }
 
   protected aplicarResolucion(): void {
-    this.ejecutar((codigo) => this.store.resolver(codigo, this.resolucion()));
+    void this.ejecutar((codigo) => this.store.resolver(codigo, this.resolucion()));
   }
 
   protected cancelar(): void {
@@ -157,17 +166,24 @@ export class CasoRevision {
     return this.evidenciasAbiertas().includes(nombre);
   }
 
-  private ejecutar(accion: (codigo: string) => ResultadoAccion): void {
+  private async ejecutar(accion: (codigo: string) => Promise<ResultadoAccion>): Promise<void> {
     const codigo = this.codigo();
-    if (!codigo) return;
-    const resultado = accion(codigo);
-    this.feedback.set(resultado);
-    if (resultado.ok) this.cancelar();
+    if (!codigo || this.procesando()) return;
+    this.procesando.set(true);
+    try {
+      const resultado = await accion(codigo);
+      if (this.codigo() !== codigo) return;
+      this.feedback.set(resultado);
+      if (resultado.ok) this.cancelar();
+    } finally {
+      this.procesando.set(false);
+    }
   }
 
   private reiniciar(): void {
     this.cancelar();
     this.feedback.set(null);
     this.evidenciasAbiertas.set([]);
+    this.procesando.set(false);
   }
 }

@@ -12,6 +12,8 @@ import { Icon } from "@/shared/ui/icon/icon";
       type="button"
       class="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
       [attr.aria-label]="label()"
+      [attr.aria-expanded]="expanded()"
+      [attr.aria-controls]="controls()"
       [disabled]="disabled()"
     >
       <app-icon [name]="icon()" [size]="18" />
@@ -22,4 +24,6 @@ export class IconButton {
   readonly icon = input.required<IconName>();
   readonly label = input.required<string>();
   readonly disabled = input(false, { transform: booleanAttribute });
+  readonly expanded = input<boolean | null>(null);
+  readonly controls = input<string | null>(null);
 }

@@ -2,7 +2,6 @@ import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
-import { RolDemo } from "@/features/casos/enums/rol-demo.enum";
 import { TipoEvidencia } from "@/features/casos/enums/tipo-evidencia.enum";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { Prioridad } from "@/shared/enums/prioridad.enum";
@@ -12,6 +11,11 @@ import type { TabOption } from "@/shared/ui/tabs/tabs";
 export const FILTRO_TODOS = "todos";
 export const SIN_DATO = "—";
 export const SIN_AREA = "Sin área";
+export const SIN_CATEGORIA_API = "sin-categoria";
+export const HORAS_POR_DIA = 24;
+export const TAMANO_PAGINA = 20;
+export const LIMITE_BANDEJA = 100;
+export const MAX_RESOLUCION = 4000;
 
 export const CATEGORIA_LABEL: Record<CategoriaCaso, string> = {
   [CategoriaCaso.DENUNCIA_CORRUPCION]: "Denuncia por corrupción",
@@ -27,20 +31,6 @@ export const AREA_POR_CATEGORIA: Record<CategoriaCaso, string | null> = {
   [CategoriaCaso.OTRO]: null,
 };
 
-export const CATEGORIA_DE_AREA: Partial<Record<RolDemo, CategoriaCaso>> = {
-  [RolDemo.AREA_RECLAMO]: CategoriaCaso.RECLAMO,
-  [RolDemo.AREA_QUEJA]: CategoriaCaso.QUEJA,
-  [RolDemo.AREA_DENUNCIA_CORRUPCION]: CategoriaCaso.DENUNCIA_CORRUPCION,
-};
-
-export const ROL_LABEL: Record<RolDemo, string> = {
-  [RolDemo.ADMINISTRADOR]: "Administrador",
-  [RolDemo.GESTOR]: "Gestor",
-  [RolDemo.AREA_RECLAMO]: "Área de reclamos",
-  [RolDemo.AREA_QUEJA]: "Área de quejas",
-  [RolDemo.AREA_DENUNCIA_CORRUPCION]: "Área de denuncias por corrupción",
-};
-
 export const ACCION_LABEL: Record<AccionCaso, string> = {
   [AccionCaso.CONFIRMAR]: "Confirmar categoría",
   [AccionCaso.CORREGIR]: "Corregir categoría",
@@ -53,6 +43,7 @@ export const TIPO_EVIDENCIA_LABEL: Record<TipoEvidencia, string> = {
   [TipoEvidencia.IMAGEN]: "Imagen",
   [TipoEvidencia.DOCUMENTO]: "Documento",
   [TipoEvidencia.AUDIO]: "Audio",
+  [TipoEvidencia.VIDEO]: "Video",
 };
 
 export const ESTADO_BADGE: Record<EstadoCaso, { readonly label: string; readonly tone: BadgeTone }> = {
@@ -75,22 +66,20 @@ export const TABS_OPCIONES: readonly TabOption[] = [
   { value: FiltroTab.RECLAMOS, label: "Reclamos" },
   { value: FiltroTab.QUEJAS, label: "Quejas" },
   { value: FiltroTab.CORRUPCION, label: "Corrupción" },
-  { value: FiltroTab.CRITICOS, label: "Críticos" },
+  { value: FiltroTab.OTRO, label: "Otro" },
+  { value: FiltroTab.SIN_CATEGORIA, label: "Sin categoría" },
 ];
 
-export const PRIORIDAD_OPCIONES: readonly SelectOption[] = [
-  { value: FILTRO_TODOS, label: "Toda prioridad" },
-  { value: Prioridad.ALTA, label: PRIORIDAD_CASO_BADGE[Prioridad.ALTA].label },
-  { value: Prioridad.MEDIA, label: PRIORIDAD_CASO_BADGE[Prioridad.MEDIA].label },
-  { value: Prioridad.BAJA, label: PRIORIDAD_CASO_BADGE[Prioridad.BAJA].label },
-];
+export const CATEGORIA_POR_TAB: Record<FiltroTab, string | undefined> = {
+  [FiltroTab.TODOS]: undefined,
+  [FiltroTab.RECLAMOS]: CategoriaCaso.RECLAMO,
+  [FiltroTab.QUEJAS]: CategoriaCaso.QUEJA,
+  [FiltroTab.CORRUPCION]: CategoriaCaso.DENUNCIA_CORRUPCION,
+  [FiltroTab.OTRO]: CategoriaCaso.OTRO,
+  [FiltroTab.SIN_CATEGORIA]: SIN_CATEGORIA_API,
+};
 
 export const ESTADO_OPCIONES: readonly SelectOption[] = [
   { value: FILTRO_TODOS, label: "Todo estado" },
   ...Object.values(EstadoCaso).map((estado) => ({ value: estado, label: ESTADO_BADGE[estado].label })),
 ];
-
-export const ROL_OPCIONES: readonly SelectOption[] = Object.values(RolDemo).map((rol) => ({
-  value: rol,
-  label: ROL_LABEL[rol],
-}));

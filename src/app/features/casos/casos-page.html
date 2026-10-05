@@ -1,40 +1,69 @@
 <div class="space-y-6">
-  <header class="flex flex-wrap items-end justify-between gap-3">
-    <div>
-      <p class="text-sm font-medium text-gray-600">Operación</p>
-      <h1 class="text-3xl font-bold text-gray-900">Casos</h1>
-    </div>
-    <app-badge [tone]="BadgeTone.PRIMARY">Datos de demostración</app-badge>
+  <header>
+    <p class="text-sm font-medium text-gray-600">Operación</p>
+    <h1 class="text-3xl font-bold text-gray-900">Casos</h1>
   </header>
-
-  <app-rol-demo-selector />
 
   <section aria-label="Filtros" class="flex flex-col gap-3 md:flex-row md:items-center">
     <app-search-input
       class="md:max-w-sm md:flex-1"
       label="Buscar caso"
-      placeholder="Buscar caso..."
-      [(value)]="texto"
+      placeholder="Buscar por código o relato..."
+      [value]="lista.texto()"
+      (valueChange)="lista.escribirTexto($event)"
     />
-    <app-select-field label="Filtrar por prioridad" [options]="prioridadOpciones" [(value)]="prioridad" />
-    <app-select-field label="Filtrar por estado" [options]="estadoOpciones" [(value)]="estado" />
+    <app-select-field
+      label="Filtrar por estado"
+      [options]="estadoOpciones"
+      [value]="lista.estado()"
+      (valueChange)="lista.cambiarEstado($event)"
+    />
   </section>
 
-  <app-tabs label="Tipo de caso" [options]="tabsOpciones" [(value)]="tab" />
+  <app-tabs label="Tipo de caso" [options]="tabsOpciones" [value]="lista.tab()" (valueChange)="cambiarTab($event)" />
 
   <app-card>
     <div class="mb-4 flex items-center justify-between gap-3">
       <h2 class="text-base font-bold text-gray-900">Listado</h2>
-      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ casos().length }} casos</p>
+      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ lista.total() }} casos</p>
     </div>
 
-    @if (casos().length > 0) {
-      <app-casos-tabla [casos]="casos()" (revisar)="seleccionado.set($event)" />
-    } @else {
+    @if (lista.error(); as mensaje) {
+      <div class="mb-4 space-y-3">
+        <app-alert [tone]="BadgeTone.DANGER">{{ mensaje }}</app-alert>
+        <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="lista.reintentar()">
+          Reintentar
+        </app-button>
+      </div>
+    }
+
+    @if (lista.casos().length > 0) {
+      <div [attr.aria-busy]="lista.estadoCarga() === CargaEstado.CARGANDO">
+        <app-casos-tabla
+          ordenable
+          [casos]="lista.casos()"
+          [orden]="lista.orden()"
+          [direccion]="lista.direccion()"
+          (ordenar)="lista.ordenarPor($event)"
+          (revisar)="seleccionado.set($event)"
+        />
+      </div>
+      <app-paginador
+        class="mt-4"
+        [pagina]="lista.pagina()"
+        [total]="lista.total()"
+        [tamano]="lista.tamano"
+        (paginaChange)="lista.irAPagina($event)"
+      />
+    } @else if (lista.estadoCarga() === CargaEstado.INICIAL || lista.estadoCarga() === CargaEstado.CARGANDO) {
+      <p class="py-10 text-center text-sm font-medium text-gray-700" aria-live="polite">Cargando casos…</p>
+    } @else if (lista.vacio()) {
       <div class="flex flex-col items-center gap-3 py-10 text-center">
-        <p class="text-sm font-medium text-gray-700">No hay casos con estos filtros.</p>
-        @if (hayFiltros()) {
-          <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="limpiar()">
+        <p class="text-sm font-medium text-gray-700">
+          {{ lista.hayFiltros() ? "No hay casos con estos filtros." : "No hay casos." }}
+        </p>
+        @if (lista.hayFiltros()) {
+          <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="lista.limpiar()">
             Limpiar filtros
           </app-button>
         }
@@ -43,4 +72,4 @@
   </app-card>
 </div>
 
-<app-caso-revision [(codigo)]="seleccionado" />
+<app-caso-revision [codigo]="seleccionado()" (codigoChange)="alCambiarSeleccion($event)" />

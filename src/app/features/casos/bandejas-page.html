@@ -1,22 +1,33 @@
 <div class="space-y-6">
-  <header class="flex flex-wrap items-end justify-between gap-3">
-    <div>
-      <p class="text-sm font-medium text-gray-600">Operación</p>
-      <h1 class="text-3xl font-bold text-gray-900">Mis bandejas</h1>
-    </div>
-    <app-badge [tone]="BadgeTone.PRIMARY">Datos de demostración</app-badge>
+  <header>
+    <p class="text-sm font-medium text-gray-600">Operación</p>
+    <h1 class="text-3xl font-bold text-gray-900">Mis bandejas</h1>
   </header>
 
-  <app-rol-demo-selector />
-
-  <app-tabs label="Bandeja" [options]="opciones()" [(value)]="tab" />
+  <app-tabs label="Bandeja" [options]="opciones()" [value]="tab()" (valueChange)="cambiarTab($event)" />
 
   <app-card>
     <div class="mb-1 flex items-center justify-between gap-3">
       <h2 class="text-base font-bold text-gray-900">{{ actual().label }}</h2>
-      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ casos().length }} casos</p>
+      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ casosDeLaBandeja().length }} casos</p>
     </div>
     <p class="mb-4 text-sm text-gray-600">{{ actual().ayuda }}</p>
+
+    @if (store.error(); as mensaje) {
+      <div class="mb-4 space-y-3">
+        <app-alert [tone]="BadgeTone.DANGER">{{ mensaje }}</app-alert>
+        <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="store.recargar()">
+          Reintentar
+        </app-button>
+      </div>
+    }
+
+    @if (store.hayCasosSinMostrar()) {
+      <app-alert class="mb-4" [tone]="BadgeTone.WARNING">
+        {{ store.casosSinMostrar() }} casos más no se ven aquí: cada bandeja trae hasta {{ limite }} casos por estado. Usa
+        Casos para buscarlos todos.
+      </app-alert>
+    }
 
     @if (casos().length > 0) {
       <app-casos-tabla
@@ -24,15 +35,24 @@
         [descripcion]="'Casos de la bandeja ' + actual().label"
         (revisar)="seleccionado.set($event)"
       />
-    } @else {
+      <app-paginador
+        class="mt-4"
+        [pagina]="paginaActual()"
+        [total]="casosDeLaBandeja().length"
+        [tamano]="tamano"
+        (paginaChange)="pagina.set($event)"
+      />
+    } @else if (!hayDatos() && store.estadoCarga() !== CargaEstado.ERROR) {
+      <p class="py-10 text-center text-sm font-medium text-gray-700" aria-live="polite">Cargando bandejas…</p>
+    } @else if (hayDatos()) {
       <p class="py-10 text-center text-sm font-medium text-gray-700">No hay casos en esta bandeja.</p>
     }
   </app-card>
 
   <p class="text-xs text-gray-500">
-    Plazo de atención: {{ plazos.atencionDias }} días desde que llega el caso. Una resolución dura
-    {{ plazos.vigenciaResolucionDias }} días. Pasado el plazo, el caso se archiva solo.
+    El servidor calcula el plazo de atención de cada caso y la vigencia de cada resolución. Pasado el plazo, el caso
+    se archiva cuando corre el archivado automático.
   </p>
 </div>
 
-<app-caso-revision [(codigo)]="seleccionado" />
+<app-caso-revision [codigo]="seleccionado()" (codigoChange)="seleccionado.set($event)" />

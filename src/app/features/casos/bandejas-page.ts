@@ -1,14 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
-import { PLAZOS_TOKEN } from "@/core/config/plazos.config";
-import { CasosStore } from "@/features/casos/casos.store";
+import { BandejasStore } from "@/features/casos/bandejas.store";
 import { CasoRevision } from "@/features/casos/components/caso-revision";
 import { CasosTabla } from "@/features/casos/components/casos-tabla";
-import { RolDemoSelector } from "@/features/casos/components/rol-demo-selector";
+import { LIMITE_BANDEJA, TAMANO_PAGINA } from "@/features/casos/constants/casos-constants";
 import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
-import { filtrarBandeja } from "@/features/casos/utils/filtrar-bandeja";
+import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { BadgeTone } from "@/shared/enums/badge.enum";
-import { Badge } from "@/shared/ui/badge/badge";
+import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
+import { Alert } from "@/shared/ui/alert/alert";
+import { Button } from "@/shared/ui/button/button";
 import { Card } from "@/shared/ui/card/card";
+import { Paginador } from "@/shared/ui/paginador/paginador";
 import { Tabs, type TabOption } from "@/shared/ui/tabs/tabs";
 
 const BANDEJAS: readonly { readonly value: BandejaTab; readonly label: string; readonly ayuda: string }[] = [
@@ -16,35 +18,52 @@ const BANDEJAS: readonly { readonly value: BandejaTab; readonly label: string; r
   { value: BandejaTab.REVISION_IA, label: "En revisión IA", ayuda: "Clasificados por la IA que ninguna persona revisó." },
   { value: BandejaTab.POR_DERIVAR, label: "Por derivar", ayuda: "Categoría ya revisada, pendientes de enviar al área." },
   { value: BandejaTab.EN_GESTION, label: "En gestión", ayuda: "Derivados o que el área está atendiendo." },
-  { value: BandejaTab.POR_VENCER, label: "Por vencer", ayuda: "Abiertos que están por cumplir el plazo de atención." },
-  { value: BandejaTab.RESUELTOS, label: "Resueltos", ayuda: "Con resolución vigente; se archivan solos." },
+  { value: BandejaTab.POR_VENCER, label: "Por vencer", ayuda: "Abiertos que están por cumplir el plazo de atención o que ya lo cumplieron." },
+  { value: BandejaTab.RESUELTOS, label: "Resueltos", ayuda: "Con resolución vigente; se archivan cuando cumplen su vigencia." },
   { value: BandejaTab.ARCHIVADOS, label: "Archivados", ayuda: "Resueltos que cumplieron su vigencia y los que vencieron sin atenderse." },
 ];
 
 @Component({
   selector: "app-bandejas-page",
-  imports: [Badge, Card, CasoRevision, CasosTabla, RolDemoSelector, Tabs],
+  imports: [Alert, Button, Card, CasoRevision, CasosTabla, Paginador, Tabs],
+  providers: [BandejasStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./bandejas-page.html",
 })
 export class BandejasPage {
-  private readonly store = inject(CasosStore);
+  protected readonly store = inject(BandejasStore);
 
-  protected readonly plazos = inject(PLAZOS_TOKEN);
   protected readonly BadgeTone = BadgeTone;
+  protected readonly ButtonSize = ButtonSize;
+  protected readonly ButtonTone = ButtonTone;
+  protected readonly ButtonVariant = ButtonVariant;
+  protected readonly CargaEstado = CargaEstado;
+  protected readonly limite = LIMITE_BANDEJA;
+  protected readonly tamano = TAMANO_PAGINA;
   protected readonly tab = signal<string>(BandejaTab.PARA_ACTUAR);
+  protected readonly pagina = signal(1);
   protected readonly seleccionado = signal<string | null>(null);
+
+  protected readonly hayDatos = computed(() => Object.keys(this.store.porEstado()).length > 0);
 
   protected readonly opciones = computed<readonly TabOption[]>(() =>
     BANDEJAS.map((bandeja) => ({
       value: bandeja.value,
-      label: `${bandeja.label} (${filtrarBandeja(this.store.casos(), bandeja.value, this.store.rol(), this.plazos).length})`,
+      label: this.hayDatos() ? `${bandeja.label} (${this.store.cantidad(bandeja.value)})` : bandeja.label,
     })),
   );
 
   protected readonly actual = computed(() => BANDEJAS.find((bandeja) => bandeja.value === this.tab()) ?? BANDEJAS[0]);
+  protected readonly casosDeLaBandeja = computed(() => this.store.casosDe(this.tab() as BandejaTab));
+  protected readonly totalPaginas = computed(() => Math.max(Math.ceil(this.casosDeLaBandeja().length / this.tamano), 1));
+  protected readonly paginaActual = computed(() => Math.min(Math.max(this.pagina(), 1), this.totalPaginas()));
+  protected readonly casos = computed(() => {
+    const desde = (this.paginaActual() - 1) * this.tamano;
+    return this.casosDeLaBandeja().slice(desde, desde + this.tamano);
+  });
 
-  protected readonly casos = computed(() =>
-    filtrarBandeja(this.store.casos(), this.tab() as BandejaTab, this.store.rol(), this.plazos),
-  );
+  protected cambiarTab(valor: string): void {
+    this.tab.set(valor);
+    this.pagina.set(1);
+  }
 }

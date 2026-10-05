@@ -1,3 +1,5 @@
+import { provideHttpClient } from "@angular/common/http";
+import { provideHttpClientTesting } from "@angular/common/http/testing";
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
@@ -11,7 +13,12 @@ describe("AppShell", () => {
     const cerrar = vi.fn(async () => undefined);
     TestBed.configureTestingModule({
       imports: [AppShell],
-      providers: [provideRouter([]), { provide: SessionStore, useValue: { sesion: signal(sesion), cerrar } }],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: SessionStore, useValue: { sesion: signal(sesion), cerrar } },
+      ],
     });
     const navigate = vi.spyOn(TestBed.inject(Router), "navigateByUrl").mockResolvedValue(true);
     const fixture = TestBed.createComponent(AppShell);
@@ -67,6 +74,14 @@ describe("AppShell", () => {
     expect(fecha?.textContent?.trim()).toBe("");
     expect(fecha?.getAttribute("title")).toContain(String(new Date().getFullYear()));
     expect(fecha?.getAttribute("aria-label")).toBe(fecha?.getAttribute("title"));
+  });
+
+  it("la barra superior trae la campana de avisos en lugar del botón deshabilitado", async () => {
+    const { element } = await setup(ana);
+    const campana = element.querySelector<HTMLButtonElement>("app-topbar button[aria-controls]");
+    expect(campana?.getAttribute("aria-label")).toContain("Avisos");
+    expect(campana?.disabled).toBe(false);
+    expect(element.textContent).not.toContain("próximamente");
   });
 
   it("el saludo usa solo el primer nombre", async () => {
