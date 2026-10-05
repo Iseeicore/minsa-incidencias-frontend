@@ -1,0 +1,70 @@
+<aside class="flex h-full flex-col rounded-2xl bg-white" aria-label="Navegación principal">
+  <div class="flex h-16 items-center px-5">
+    @if (compact()) {
+      <span class="text-lg font-bold text-primary-700">M</span>
+    } @else {
+      <span class="text-xl font-bold text-primary-700">MINSA</span>
+      <span class="ml-2 text-xs text-gray-500">Gestión</span>
+    }
+  </div>
+
+  <nav class="flex-1 space-y-1 overflow-y-auto px-3">
+    @for (seccion of secciones(); track seccion.id) {
+      <app-sidebar-group [titulo]="seccion.label" [compact]="compact()">
+        <ul class="space-y-1">
+          @for (entrada of seccion.entries; track entrada.id) {
+            <li>
+              @if (entrada.path; as ruta) {
+                <a
+                  #enlace="routerLinkActive"
+                  routerLinkActive
+                  [routerLink]="ruta"
+                  [class]="enlace.isActive ? activeClasses : idleClasses"
+                  [attr.aria-label]="compact() ? entrada.label : null"
+                  [attr.title]="compact() ? entrada.label : null"
+                >
+                  <app-icon [name]="entrada.icon" />
+                  @if (!compact()) {
+                    <span class="truncate">{{ entrada.label }}</span>
+                  }
+                </a>
+              } @else {
+                <span
+                  aria-disabled="true"
+                  [class]="disabledClasses"
+                  [attr.title]="entrada.label + ' (próximamente)'"
+                >
+                  <app-icon [name]="entrada.icon" />
+                  @if (!compact()) {
+                    <span class="truncate">{{ entrada.label }}</span>
+                  }
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      </app-sidebar-group>
+    }
+  </nav>
+
+  <div class="flex items-center gap-3 border-t border-gray-100 p-3">
+    <span
+      class="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-semibold text-primary-700"
+      aria-hidden="true"
+    >
+      {{ iniciales() }}
+    </span>
+    @if (!compact()) {
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-medium text-gray-900">{{ nombre() }}</p>
+        <p class="truncate text-xs text-gray-500">{{ correo() }}</p>
+      </div>
+      <app-icon-button [icon]="IconName.LOGOUT" label="Cerrar sesión" (click)="cerrar.emit()" />
+    }
+  </div>
+  @if (compact()) {
+    <div class="flex justify-center pb-3">
+      <app-icon-button [icon]="IconName.LOGOUT" label="Cerrar sesión" (click)="cerrar.emit()" />
+    </div>
+  }
+</aside>

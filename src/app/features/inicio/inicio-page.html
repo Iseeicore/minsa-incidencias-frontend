@@ -1,26 +1,69 @@
-<main class="mx-auto max-w-3xl space-y-6 p-6">
-  <header class="flex items-center justify-between gap-4">
+<div class="space-y-6">
+  <header class="flex flex-wrap items-end justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-semibold">Panel de gestión</h1>
-      @if (sesion(); as actual) {
-        <p class="text-gray-600">{{ actual.nombreCompleto }} · {{ actual.correo }}</p>
-      }
+      <p class="text-sm text-gray-600">Resumen operativo</p>
+      <h1 class="text-3xl font-semibold text-gray-900">Dashboard</h1>
     </div>
-    <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cerrarSesion()">Cerrar sesión</app-button>
+    <app-badge [tone]="BadgeTone.PRIMARY">Datos de demostración</app-badge>
   </header>
 
-  <section class="space-y-2">
-    <h2 class="text-lg font-medium">Tus módulos</h2>
-    @if (modulos().length > 0) {
-      <ul class="flex flex-wrap gap-2">
-        @for (modulo of modulos(); track modulo) {
-          <li class="rounded-md bg-primary-50 px-3 py-1.5 text-sm text-primary-700">{{ modulo }}</li>
-        }
-      </ul>
-    } @else {
-      <p class="text-gray-600">Tu usuario todavía no tiene módulos asignados.</p>
+  <section aria-label="Indicadores principales" class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    @for (kpi of kpis; track kpi.id) {
+      <app-stat-card [label]="kpi.label" [value]="kpi.value" [delta]="kpi.delta" [tone]="kpi.tone" />
     }
   </section>
 
-  <p class="text-gray-600">Las pantallas de cada módulo llegan en la siguiente fase.</p>
-</main>
+  <section class="grid gap-4 lg:grid-cols-3">
+    <app-card class="lg:col-span-2" titulo="Evolución de casos">
+      <div class="mb-4 flex justify-end">
+        <app-tabs label="Periodo" [options]="periodoOpciones" [(value)]="periodo" />
+      </div>
+      <app-bar-chart [data]="evolucion()" description="Casos recibidos por periodo" />
+    </app-card>
+
+    <app-card titulo="Distribución por categoría">
+      <ul class="space-y-4">
+        @for (categoria of categorias; track categoria.label) {
+          <li>
+            <div class="mb-1.5 flex items-center justify-between text-sm">
+              <span class="text-gray-700">{{ categoria.label }}</span>
+              <span class="font-medium text-gray-900">{{ categoria.casos }}</span>
+            </div>
+            <app-progress-bar [value]="categoria.porcentaje" [label]="categoria.label" />
+          </li>
+        }
+      </ul>
+    </app-card>
+  </section>
+
+  <app-card titulo="Casos que requieren atención">
+    <app-casos-atencion-tabla [casos]="casosAtencion" />
+  </app-card>
+
+  <section class="grid gap-4 lg:grid-cols-2">
+    <app-card titulo="Derivaciones">
+      <ul class="divide-y divide-gray-100">
+        @for (fila of derivaciones; track fila.label) {
+          <li class="flex items-center justify-between py-2.5 text-sm">
+            <span class="text-gray-700">{{ fila.label }}</span>
+            <span class="font-medium text-gray-900">{{ fila.valor }}</span>
+          </li>
+        }
+      </ul>
+    </app-card>
+
+    <app-card titulo="Alertas">
+      <ul class="divide-y divide-gray-100">
+        @for (alerta of alertas; track alerta.id) {
+          <li class="flex items-center justify-between gap-3 py-2.5">
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-gray-900">{{ alerta.titulo }}</p>
+              <p class="truncate text-xs text-gray-500">{{ alerta.detalle }}</p>
+            </div>
+            <app-badge [tone]="alerta.tone">{{ alerta.etiqueta }}</app-badge>
+          </li>
+        }
+      </ul>
+    </app-card>
+  </section>
+</div>

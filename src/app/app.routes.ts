@@ -9,9 +9,15 @@ export const routes: Routes = [
     loadComponent: () => import("@/features/auth/login/login-page").then((module) => module.LoginPage),
   },
   {
-    path: ROUTE_PATH.INICIO,
+    path: "",
     canActivate: [authGuard],
-    loadComponent: () => import("@/features/inicio/inicio-page").then((module) => module.InicioPage),
+    loadComponent: () => import("@/shared/layouts/app-shell/app-shell").then((module) => module.AppShell),
+    children: [
+      {
+        path: ROUTE_PATH.INICIO,
+        loadComponent: () => import("@/features/inicio/inicio-page").then((module) => module.InicioPage),
+      },
+    ],
   },
   { path: "**", redirectTo: ROUTE_PATH.LOGIN },
 ];

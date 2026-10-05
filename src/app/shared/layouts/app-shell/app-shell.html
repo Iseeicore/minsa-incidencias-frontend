@@ -1,0 +1,15 @@
+<div class="flex min-h-dvh bg-gray-100">
+  <app-sidebar
+    [secciones]="secciones()"
+    [nombre]="nombre()"
+    [correo]="correo()"
+    [compact]="compact()"
+    (cerrar)="cerrarSesion()"
+  />
+  <div class="flex min-w-0 flex-1 flex-col">
+    <app-topbar [nombre]="nombre()" [compact]="compact()" (alternar)="alternarMenu()" />
+    <main class="flex-1 px-6 pb-8">
+      <router-outlet />
+    </main>
+  </div>
+</div>

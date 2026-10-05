@@ -1,29 +1,38 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/core";
-import { Router } from "@angular/router";
-import { SessionStore } from "@/core/auth/session.store";
-import { ROUTE } from "@/shared/constants/routes";
-import { ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
-import { Button } from "@/shared/ui/button/button";
-import { MODULO_LABELS } from "./constants/modulo-labels";
+import { ChangeDetectionStrategy, Component, computed, signal } from "@angular/core";
+import { BadgeTone } from "@/shared/enums/badge.enum";
+import { Badge } from "@/shared/ui/badge/badge";
+import { BarChart } from "@/shared/ui/bar-chart/bar-chart";
+import { Card } from "@/shared/ui/card/card";
+import { ProgressBar } from "@/shared/ui/progress-bar/progress-bar";
+import { StatCard } from "@/shared/ui/stat-card/stat-card";
+import { Tabs } from "@/shared/ui/tabs/tabs";
+import { CasosAtencionTabla } from "./components/casos-atencion-tabla";
+import { PERIODO_OPCIONES } from "./constants/periodo-opciones";
+import {
+  ALERTAS_DEMO,
+  CASOS_ATENCION_DEMO,
+  CATEGORIAS_DEMO,
+  DERIVACIONES_DEMO,
+  EVOLUCION_DEMO,
+  KPIS_DEMO,
+} from "./data/dashboard.demo";
+import { Periodo } from "./enums/periodo.enum";
 
 @Component({
   selector: "app-inicio-page",
-  imports: [Button],
+  imports: [Badge, BarChart, Card, CasosAtencionTabla, ProgressBar, StatCard, Tabs],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./inicio-page.html",
 })
 export class InicioPage {
-  private readonly store = inject(SessionStore);
-  private readonly router = inject(Router);
+  protected readonly BadgeTone = BadgeTone;
+  protected readonly kpis = KPIS_DEMO;
+  protected readonly categorias = CATEGORIAS_DEMO;
+  protected readonly casosAtencion = CASOS_ATENCION_DEMO;
+  protected readonly derivaciones = DERIVACIONES_DEMO;
+  protected readonly alertas = ALERTAS_DEMO;
+  protected readonly periodoOpciones = PERIODO_OPCIONES;
 
-  protected readonly ButtonTone = ButtonTone;
-  protected readonly ButtonVariant = ButtonVariant;
-
-  protected readonly sesion = this.store.sesion;
-  protected readonly modulos = computed(() => (this.sesion()?.modulos ?? []).map((codigo) => MODULO_LABELS[codigo]));
-
-  protected async cerrarSesion(): Promise<void> {
-    await this.store.cerrar();
-    await this.router.navigateByUrl(ROUTE.LOGIN);
-  }
+  protected readonly periodo = signal<string>(Periodo.SIETE_DIAS);
+  protected readonly evolucion = computed(() => EVOLUCION_DEMO[this.periodo() as Periodo]);
 }

@@ -7,6 +7,14 @@
   --color-primary-600: oklch(0.6104 0.1723 249.9);
   --color-primary-700: oklch(0.4719 0.1345 250.39);
 
+  --spacing-sidebar: 15.5rem;
+  --spacing-sidebar-collapsed: 5.5rem;
+
+  --color-success-50: oklch(0.9751 0.0192 155);
+  --color-success-600: oklch(0.5469 0.1432 155);
+  --color-warning-50: oklch(0.9751 0.0344 85);
+  --color-warning-600: oklch(0.5869 0.1259 70);
+
   --color-danger-50: oklch(0.9694 0.0152 12.42);
   --color-danger-200: oklch(0.8933 0.0535 11.01);
   --color-danger-500: oklch(0.6644 0.1909 15.38);
