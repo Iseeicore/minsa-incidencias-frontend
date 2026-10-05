@@ -1,6 +1,7 @@
 export const CategoriaCaso = {
-  RECLAMO: "reclamo",
+  DENUNCIA_CORRUPCION: "denuncia-corrupcion",
   QUEJA: "queja",
-  CORRUPCION: "corrupcion",
+  RECLAMO: "reclamo",
+  OTRO: "otro",
 } as const;
 export type CategoriaCaso = (typeof CategoriaCaso)[keyof typeof CategoriaCaso];

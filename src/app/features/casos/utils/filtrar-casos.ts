@@ -8,12 +8,12 @@ const COINCIDE_TAB: Record<FiltroTab, (caso: Caso) => boolean> = {
   [FiltroTab.TODOS]: () => true,
   [FiltroTab.RECLAMOS]: (caso) => caso.categoria === CategoriaCaso.RECLAMO,
   [FiltroTab.QUEJAS]: (caso) => caso.categoria === CategoriaCaso.QUEJA,
-  [FiltroTab.CORRUPCION]: (caso) => caso.categoria === CategoriaCaso.CORRUPCION,
+  [FiltroTab.CORRUPCION]: (caso) => caso.categoria === CategoriaCaso.DENUNCIA_CORRUPCION,
   [FiltroTab.CRITICOS]: (caso) => caso.prioridad === Prioridad.ALTA,
 };
 
 /** Quita tildes y mayúsculas para que "corrupcion" encuentre "Corrupción". */
-function normalizar(texto: string): string {
+export function normalizar(texto: string): string {
   return texto
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")

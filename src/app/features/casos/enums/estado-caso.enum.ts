@@ -1,8 +1,9 @@
 export const EstadoCaso = {
-  NUEVO: "nuevo",
-  EN_ATENCION: "en-atencion",
+  REGISTRADO: "registrado",
+  CLASIFICADO: "clasificado",
   DERIVADO: "derivado",
-  VENCIDO: "vencido",
-  CERRADO: "cerrado",
+  EN_GESTION: "en-gestion",
+  RESUELTO: "resuelto",
+  ARCHIVADO: "archivado",
 } as const;
 export type EstadoCaso = (typeof EstadoCaso)[keyof typeof EstadoCaso];

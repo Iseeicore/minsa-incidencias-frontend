@@ -1,0 +1,90 @@
+<div class="space-y-6">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <p class="text-sm font-medium text-gray-600">Operación</p>
+      <h1 class="text-3xl font-bold text-gray-900">Derivaciones</h1>
+    </div>
+    <app-badge [tone]="BadgeTone.PRIMARY">Datos de demostración</app-badge>
+  </header>
+
+  <app-tabs label="Estado de la derivación" [options]="opciones()" [(value)]="tab" />
+
+  <app-card>
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <h2 class="text-base font-bold text-gray-900">{{ titulo() }}</h2>
+      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ derivaciones().length }} derivaciones</p>
+    </div>
+
+    @if (derivaciones().length > 0) {
+      <app-scroll-area [label]="'Derivaciones: ' + titulo()">
+        <table class="w-full whitespace-nowrap text-left text-sm">
+          <thead>
+            <tr>
+              @for (columna of columnas; track columna.key) {
+                <th scope="col" [class]="encabezado">{{ columna.label }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            @for (derivacion of derivaciones(); track derivacion.id) {
+              <tr>
+                <td class="py-3 pr-6 font-medium text-gray-900">{{ derivacion.codigoCaso }}</td>
+                <td class="py-3 pr-6 text-gray-700">{{ derivacion.origen }}</td>
+                <td class="py-3 pr-6 text-gray-900">{{ derivacion.destino }}</td>
+                <td class="py-3 pr-6 text-gray-700">{{ derivacion.regla }}</td>
+                <td class="py-3 pr-6 text-gray-700">{{ derivacion.usuario }}</td>
+                <td class="py-3 pr-6 text-gray-700">{{ derivacion.fecha }}</td>
+                <td class="py-3 pr-6">
+                  <app-badge [tone]="estados[derivacion.estado].tone">{{ estados[derivacion.estado].label }}</app-badge>
+                </td>
+                <td class="py-3">
+                  <app-button
+                    [variant]="ButtonVariant.OUTLINE"
+                    [tone]="ButtonTone.NEUTRAL"
+                    [size]="ButtonSize.SM"
+                    (click)="ver(derivacion)"
+                  >
+                    Ver<span class="sr-only"> trazabilidad de {{ derivacion.codigoCaso }}</span>
+                  </app-button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </app-scroll-area>
+    } @else {
+      <p class="py-10 text-center text-sm font-medium text-gray-700">No hay derivaciones en este estado.</p>
+    }
+  </app-card>
+</div>
+
+<app-drawer
+  titulo="Trazabilidad de la derivación"
+  [subtitulo]="seleccionada()?.codigoCaso"
+  [abierto]="seleccionada() !== null"
+  (abiertoChange)="alCambiarPanel($event)"
+>
+  @if (seleccionada(); as derivacion) {
+    <dl class="mb-6 space-y-2 text-sm">
+      <div class="flex gap-4">
+        <dt class="w-20 shrink-0 font-medium text-gray-500">Estado</dt>
+        <dd>
+          <app-badge [tone]="estados[derivacion.estado].tone">{{ estados[derivacion.estado].label }}</app-badge>
+        </dd>
+      </div>
+      <div class="flex gap-4">
+        <dt class="w-20 shrink-0 font-medium text-gray-500">Origen</dt>
+        <dd class="text-gray-900">{{ derivacion.origen }}</dd>
+      </div>
+      <div class="flex gap-4">
+        <dt class="w-20 shrink-0 font-medium text-gray-500">Destino</dt>
+        <dd class="text-gray-900">{{ derivacion.destino }}</dd>
+      </div>
+      <div class="flex gap-4">
+        <dt class="w-20 shrink-0 font-medium text-gray-500">Regla</dt>
+        <dd class="text-gray-900">{{ derivacion.regla }}</dd>
+      </div>
+    </dl>
+    <app-timeline label="Pasos de la trazabilidad" [items]="derivacion.pasos" />
+  }
+</app-drawer>

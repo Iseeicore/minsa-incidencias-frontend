@@ -24,6 +24,17 @@ export const routes: Routes = [
         canActivate: [moduloGuard(ModuloCodigo.INCIDENCIAS)],
         loadComponent: () => import("@/features/casos/casos-page").then((module) => module.CasosPage),
       },
+      {
+        path: ROUTE_PATH.BANDEJAS,
+        canActivate: [moduloGuard(ModuloCodigo.INCIDENCIAS)],
+        loadComponent: () => import("@/features/casos/bandejas-page").then((module) => module.BandejasPage),
+      },
+      {
+        path: ROUTE_PATH.DERIVACIONES,
+        canActivate: [moduloGuard(ModuloCodigo.INCIDENCIAS)],
+        loadComponent: () =>
+          import("@/features/derivaciones/derivaciones-page").then((module) => module.DerivacionesPage),
+      },
     ],
   },
   { path: "**", redirectTo: ROUTE_PATH.LOGIN },

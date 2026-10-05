@@ -1,7 +1,13 @@
 import { ChangeDetectionStrategy, Component, input } from "@angular/core";
-import { CATEGORIA_LABEL, ESTADO_BADGE, PRIORIDAD_CASO_BADGE } from "@/features/casos/constants/casos-constants";
+import {
+  CATEGORIA_LABEL,
+  ESTADO_BADGE,
+  PRIORIDAD_CASO_BADGE,
+  SIN_DATO,
+} from "@/features/casos/constants/casos-constants";
 import type { Caso } from "@/features/casos/types/caso.types";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
+import { textoVencimiento } from "@/features/casos/utils/texto-vencimiento";
 import { Badge } from "@/shared/ui/badge/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 
@@ -25,7 +31,7 @@ const COLUMNAS = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: "block" },
   template: `
-    <app-scroll-area label="Listado de casos">
+    <app-scroll-area [label]="descripcion()">
       <table class="w-full whitespace-nowrap text-left text-sm">
         <thead>
           <tr>
@@ -38,14 +44,18 @@ const COLUMNAS = [
           @for (caso of casos(); track caso.codigo) {
             <tr>
               <td class="py-3 pr-6 font-medium text-gray-900">{{ caso.codigo }}</td>
-              <td class="py-3 pr-6 text-gray-700">{{ categoria[caso.categoria] }}</td>
+              <td class="py-3 pr-6 text-gray-700">{{ caso.categoria ? categoria[caso.categoria] : sinDato }}</td>
               <td class="py-3 pr-6">
-                <div class="flex items-center gap-1.5">
-                  <app-badge>{{ caso.etiquetas[0] }}</app-badge>
-                  @if (caso.etiquetas.length > 1) {
-                    <span class="text-xs font-medium text-gray-500">+{{ caso.etiquetas.length - 1 }}</span>
-                  }
-                </div>
+                @if (caso.etiquetas.length > 0) {
+                  <div class="flex items-center gap-1.5">
+                    <app-badge>{{ caso.etiquetas[0] }}</app-badge>
+                    @if (caso.etiquetas.length > 1) {
+                      <span class="text-xs font-medium text-gray-500">+{{ caso.etiquetas.length - 1 }}</span>
+                    }
+                  </div>
+                } @else {
+                  <span class="text-gray-500">{{ sinDato }}</span>
+                }
               </td>
               <td class="py-3 pr-6">
                 <app-badge [tone]="prioridad[caso.prioridad].tone">{{ prioridad[caso.prioridad].label }}</app-badge>
@@ -59,9 +69,13 @@ const COLUMNAS = [
                 <app-badge [tone]="estado[caso.estado].tone">{{ estado[caso.estado].label }}</app-badge>
               </td>
               <td class="py-3 pr-6">
-                <app-badge [tone]="tonoConfianza(caso.confianzaIa)">{{ caso.confianzaIa }} %</app-badge>
+                @if (caso.confianzaIa !== null) {
+                  <app-badge [tone]="tonoConfianza(caso.confianzaIa)">{{ caso.confianzaIa }} %</app-badge>
+                } @else {
+                  <span class="text-gray-500">{{ sinDato }}</span>
+                }
               </td>
-              <td class="py-3 text-gray-700">{{ caso.vencimiento }}</td>
+              <td class="py-3 text-gray-700">{{ textoVencimiento(caso.horasParaVencer) }}</td>
             </tr>
           }
         </tbody>
@@ -71,11 +85,14 @@ const COLUMNAS = [
 })
 export class CasosTabla {
   readonly casos = input.required<readonly Caso[]>();
+  readonly descripcion = input("Listado de casos");
 
   protected readonly columnas = COLUMNAS;
   protected readonly encabezado = ENCABEZADO;
+  protected readonly sinDato = SIN_DATO;
   protected readonly categoria = CATEGORIA_LABEL;
   protected readonly prioridad = PRIORIDAD_CASO_BADGE;
   protected readonly estado = ESTADO_BADGE;
   protected readonly tonoConfianza = tonoConfianza;
+  protected readonly textoVencimiento = textoVencimiento;
 }

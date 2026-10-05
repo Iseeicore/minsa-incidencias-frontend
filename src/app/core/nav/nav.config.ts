@@ -10,8 +10,8 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     entries: [
       { id: "dashboard", label: "Dashboard", icon: IconName.DASHBOARD, path: ROUTE.INICIO },
       { id: "casos", label: "Casos", icon: IconName.CASES, path: ROUTE.CASOS, modulo: ModuloCodigo.INCIDENCIAS },
-      { id: "bandejas", label: "Mis bandejas", icon: IconName.INBOX, modulo: ModuloCodigo.INCIDENCIAS },
-      { id: "derivaciones", label: "Derivaciones", icon: IconName.DERIVATIONS, modulo: ModuloCodigo.INCIDENCIAS },
+      { id: "bandejas", label: "Mis bandejas", icon: IconName.INBOX, path: ROUTE.BANDEJAS, modulo: ModuloCodigo.INCIDENCIAS },
+      { id: "derivaciones", label: "Derivaciones", icon: IconName.DERIVATIONS, path: ROUTE.DERIVACIONES, modulo: ModuloCodigo.INCIDENCIAS },
     ],
   },
   {

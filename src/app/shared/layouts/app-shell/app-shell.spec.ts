@@ -33,7 +33,7 @@ describe("AppShell", () => {
   it("solo las entradas con pantalla son enlace y el resto queda deshabilitado", async () => {
     const { element } = await setup(ana);
     const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(["Dashboard", "Casos"]);
+    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas", "Derivaciones"]);
     expect(element.querySelectorAll("nav [aria-disabled='true']").length).toBeGreaterThan(0);
   });
 

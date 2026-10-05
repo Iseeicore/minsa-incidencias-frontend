@@ -5,15 +5,18 @@ import type { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 
 export interface Caso {
   readonly codigo: string;
-  readonly categoria: CategoriaCaso;
+  readonly categoria: CategoriaCaso | null;
   readonly etiquetas: readonly string[];
   readonly prioridad: Prioridad;
   readonly organismo: string;
   readonly area: string;
   readonly responsable: string;
   readonly estado: EstadoCaso;
-  readonly confianzaIa: number;
-  readonly vencimiento: string;
+  readonly confianzaIa: number | null;
+  readonly horasParaVencer: number | null;
+  readonly asignadoAMi: boolean;
+  readonly revisadoPorHumano: boolean;
+  readonly devuelto: boolean;
 }
 
 export interface FiltrosCasos {

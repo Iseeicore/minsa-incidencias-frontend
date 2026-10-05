@@ -20,7 +20,16 @@ describe("filtrarCasos", () => {
     expect(reclamos.every((caso) => caso.categoria === CategoriaCaso.RECLAMO)).toBe(true);
 
     const corrupcion = filtrarCasos(CASOS_DEMO, { ...SIN_FILTROS, tab: FiltroTab.CORRUPCION });
-    expect(corrupcion.every((caso) => caso.categoria === CategoriaCaso.CORRUPCION)).toBe(true);
+    expect(corrupcion.every((caso) => caso.categoria === CategoriaCaso.DENUNCIA_CORRUPCION)).toBe(true);
+  });
+
+  it("un caso sin categoría (registrado) no aparece en ninguna pestaña de categoría", () => {
+    const sinCategoria = CASOS_DEMO.filter((caso) => caso.categoria === null);
+    expect(sinCategoria.length).toBeGreaterThan(0);
+    for (const tab of [FiltroTab.RECLAMOS, FiltroTab.QUEJAS, FiltroTab.CORRUPCION]) {
+      const visibles = filtrarCasos(CASOS_DEMO, { ...SIN_FILTROS, tab });
+      expect(visibles.some((caso) => caso.categoria === null)).toBe(false);
+    }
   });
 
   it("la pestaña Críticos deja los de prioridad alta de cualquier categoría", () => {
@@ -34,13 +43,13 @@ describe("filtrarCasos", () => {
       ...SIN_FILTROS,
       tab: FiltroTab.RECLAMOS,
       prioridad: Prioridad.ALTA,
-      estado: EstadoCaso.VENCIDO,
+      estado: EstadoCaso.EN_GESTION,
     });
     expect(resultado.length).toBeGreaterThan(0);
     expect(
       resultado.every(
         (caso) =>
-          caso.categoria === CategoriaCaso.RECLAMO && caso.prioridad === Prioridad.ALTA && caso.estado === EstadoCaso.VENCIDO,
+          caso.categoria === CategoriaCaso.RECLAMO && caso.prioridad === Prioridad.ALTA && caso.estado === EstadoCaso.EN_GESTION,
       ),
     ).toBe(true);
   });
@@ -49,7 +58,7 @@ describe("filtrarCasos", () => {
     expect(filtrarCasos(CASOS_DEMO, { ...SIN_FILTROS, texto: "003241" })).toHaveLength(1);
     expect(filtrarCasos(CASOS_DEMO, { ...SIN_FILTROS, texto: "LUCIA" }).length).toBeGreaterThan(0);
     expect(filtrarCasos(CASOS_DEMO, { ...SIN_FILTROS, texto: "cobro indebido" }).length).toBeGreaterThan(0);
-    expect(filtrarCasos(CASOS_DEMO, { ...SIN_FILTROS, texto: "atencion al ciudadano" }).length).toBeGreaterThan(0);
+    expect(filtrarCasos(CASOS_DEMO, { ...SIN_FILTROS, texto: "area de reclamos" }).length).toBeGreaterThan(0);
   });
 
   it("un texto que no existe devuelve una lista vacía", () => {

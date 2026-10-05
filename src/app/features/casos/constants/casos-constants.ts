@@ -7,19 +7,22 @@ import type { SelectOption } from "@/shared/ui/select-field/select-field";
 import type { TabOption } from "@/shared/ui/tabs/tabs";
 
 export const FILTRO_TODOS = "todos";
+export const SIN_DATO = "—";
 
 export const CATEGORIA_LABEL: Record<CategoriaCaso, string> = {
-  [CategoriaCaso.RECLAMO]: "Reclamo",
+  [CategoriaCaso.DENUNCIA_CORRUPCION]: "Denuncia por corrupción",
   [CategoriaCaso.QUEJA]: "Queja",
-  [CategoriaCaso.CORRUPCION]: "Corrupción",
+  [CategoriaCaso.RECLAMO]: "Reclamo",
+  [CategoriaCaso.OTRO]: "Otro",
 };
 
 export const ESTADO_BADGE: Record<EstadoCaso, { readonly label: string; readonly tone: BadgeTone }> = {
-  [EstadoCaso.NUEVO]: { label: "Nuevo", tone: BadgeTone.PRIMARY },
-  [EstadoCaso.EN_ATENCION]: { label: "En atención", tone: BadgeTone.WARNING },
-  [EstadoCaso.DERIVADO]: { label: "Derivado", tone: BadgeTone.NEUTRAL },
-  [EstadoCaso.VENCIDO]: { label: "Vencido", tone: BadgeTone.DANGER },
-  [EstadoCaso.CERRADO]: { label: "Cerrado", tone: BadgeTone.SUCCESS },
+  [EstadoCaso.REGISTRADO]: { label: "Registrado", tone: BadgeTone.NEUTRAL },
+  [EstadoCaso.CLASIFICADO]: { label: "Clasificado", tone: BadgeTone.PRIMARY },
+  [EstadoCaso.DERIVADO]: { label: "Derivado", tone: BadgeTone.PRIMARY },
+  [EstadoCaso.EN_GESTION]: { label: "En gestión", tone: BadgeTone.WARNING },
+  [EstadoCaso.RESUELTO]: { label: "Resuelto", tone: BadgeTone.SUCCESS },
+  [EstadoCaso.ARCHIVADO]: { label: "Archivado", tone: BadgeTone.NEUTRAL },
 };
 
 export const PRIORIDAD_CASO_BADGE: Record<Prioridad, { readonly label: string; readonly tone: BadgeTone }> = {
