@@ -1,5 +1,5 @@
 @theme {
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
 
   --color-primary-50: oklch(0.9751 0.0127 244.25);
   --color-primary-100: oklch(0.9474 0.0255 244.42);

@@ -2,7 +2,7 @@
   <header class="flex flex-wrap items-end justify-between gap-3">
     <div>
       <p class="text-sm text-gray-600">Resumen operativo</p>
-      <h1 class="text-3xl font-semibold text-gray-900">Dashboard</h1>
+      <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
     </div>
     <app-badge [tone]="BadgeTone.PRIMARY">Datos de demostración</app-badge>
   </header>
@@ -14,11 +14,17 @@
   </section>
 
   <section class="grid gap-4 lg:grid-cols-3">
-    <app-card class="lg:col-span-2" titulo="Evolución de casos">
-      <div class="mb-4 flex justify-end">
+    <app-card class="lg:col-span-2">
+      <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-base font-bold text-gray-900">Evolución de casos</h2>
         <app-tabs label="Periodo" [options]="periodoOpciones" [(value)]="periodo" />
       </div>
-      <app-bar-chart [data]="evolucion()" description="Casos recibidos por periodo" />
+      <app-bar-chart
+        [data]="evolucion()"
+        description="Casos recibidos por periodo, divididos en atendidos y pendientes"
+        baseLabel="Atendidos"
+        extraLabel="Pendientes"
+      />
     </app-card>
 
     <app-card titulo="Distribución por categoría">

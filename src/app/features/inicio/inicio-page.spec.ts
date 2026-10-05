@@ -28,7 +28,7 @@ describe("InicioPage", () => {
 
   it("cambiar el periodo cambia las barras del gráfico", async () => {
     const { element, fixture } = await setup();
-    const contarBarras = () => element.querySelectorAll("app-bar-chart [role='img'] > div").length;
+    const contarBarras = () => element.querySelectorAll("app-bar-chart [role='img'] [title]").length;
     expect(contarBarras()).toBe(7);
 
     const treintaDias = Array.from(element.querySelectorAll<HTMLButtonElement>("[role='tab']")).find((tab) =>

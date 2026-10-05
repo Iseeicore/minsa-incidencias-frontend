@@ -14,24 +14,24 @@ export const KPIS_DEMO: readonly Kpi[] = [
 
 export const EVOLUCION_DEMO: Record<Periodo, readonly BarDatum[]> = {
   [Periodo.SIETE_DIAS]: [
-    { label: "Lun", value: 38 },
-    { label: "Mar", value: 52 },
-    { label: "Mié", value: 47 },
-    { label: "Jue", value: 61 },
-    { label: "Vie", value: 44 },
-    { label: "Sáb", value: 19 },
-    { label: "Dom", value: 12 },
+    { label: "Lun", base: 24, extra: 14 },
+    { label: "Mar", base: 31, extra: 21 },
+    { label: "Mié", base: 22, extra: 25 },
+    { label: "Jue", base: 40, extra: 21 },
+    { label: "Vie", base: 28, extra: 16 },
+    { label: "Sáb", base: 12, extra: 7 },
+    { label: "Dom", base: 8, extra: 4 },
   ],
   [Periodo.TREINTA_DIAS]: [
-    { label: "S1", value: 248 },
-    { label: "S2", value: 281 },
-    { label: "S3", value: 305 },
-    { label: "S4", value: 264 },
+    { label: "S1", base: 160, extra: 88 },
+    { label: "S2", base: 190, extra: 91 },
+    { label: "S3", base: 210, extra: 95 },
+    { label: "S4", base: 175, extra: 89 },
   ],
   [Periodo.NOVENTA_DIAS]: [
-    { label: "Ene", value: 890 },
-    { label: "Feb", value: 1010 },
-    { label: "Mar", value: 1248 },
+    { label: "Ene", base: 610, extra: 280 },
+    { label: "Feb", base: 700, extra: 310 },
+    { label: "Mar", base: 880, extra: 368 },
   ],
 };
 

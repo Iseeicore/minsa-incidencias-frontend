@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from "@angular/core";
 import { Router, RouterOutlet } from "@angular/router";
 import { SessionStore } from "@/core/auth/session.store";
 import { NAV_SECTIONS } from "@/core/nav/nav.config";
@@ -19,10 +19,18 @@ export class AppShell {
   private readonly store = inject(SessionStore);
   private readonly router = inject(Router);
 
-  protected readonly compact = signal(globalThis.matchMedia?.(NARROW_SCREEN_QUERY).matches ?? false);
+  private readonly narrowScreen = globalThis.matchMedia?.(NARROW_SCREEN_QUERY);
+
+  protected readonly compact = signal(this.narrowScreen?.matches ?? false);
   protected readonly nombre = computed(() => this.store.sesion()?.nombreCompleto ?? "");
   protected readonly correo = computed(() => this.store.sesion()?.correo ?? "");
   protected readonly secciones = computed(() => visibleNav(NAV_SECTIONS, this.store.sesion()?.modulos ?? []));
+
+  constructor() {
+    const alCambiar = (evento: MediaQueryListEvent) => this.compact.set(evento.matches);
+    this.narrowScreen?.addEventListener("change", alCambiar);
+    inject(DestroyRef).onDestroy(() => this.narrowScreen?.removeEventListener("change", alCambiar));
+  }
 
   protected alternarMenu(): void {
     this.compact.update((valor) => !valor);

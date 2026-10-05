@@ -10,8 +10,8 @@ import { Card } from "@/shared/ui/card/card";
   host: { class: "block" },
   template: `
     <app-card>
-      <p class="text-sm text-gray-600">{{ label() }}</p>
-      <p class="mt-2 text-3xl font-semibold text-gray-900">{{ value() }}</p>
+      <p class="text-sm font-medium text-gray-600">{{ label() }}</p>
+      <p class="mt-2 text-3xl font-bold text-gray-900">{{ value() }}</p>
       <app-badge class="mt-3" [tone]="tone()">{{ delta() }}</app-badge>
     </app-card>
   `,

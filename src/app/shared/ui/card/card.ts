@@ -6,7 +6,7 @@ import { ChangeDetectionStrategy, Component, input } from "@angular/core";
   host: { class: "block rounded-2xl bg-white p-5" },
   template: `
     @if (titulo(); as texto) {
-      <h2 class="mb-4 text-sm font-medium text-gray-600">{{ texto }}</h2>
+      <h2 class="mb-4 text-base font-bold text-gray-900">{{ texto }}</h2>
     }
     <ng-content />
   `,
