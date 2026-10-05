@@ -4,6 +4,7 @@ export const ROUTE_PATH = {
   CASOS: "casos",
   BANDEJAS: "bandejas",
   DERIVACIONES: "derivaciones",
+  SIN_ACCESO: "sin-acceso",
 } as const;
 
 export const ROUTE = {
@@ -12,4 +13,5 @@ export const ROUTE = {
   CASOS: `/${ROUTE_PATH.CASOS}`,
   BANDEJAS: `/${ROUTE_PATH.BANDEJAS}`,
   DERIVACIONES: `/${ROUTE_PATH.DERIVACIONES}`,
+  SIN_ACCESO: `/${ROUTE_PATH.SIN_ACCESO}`,
 } as const;

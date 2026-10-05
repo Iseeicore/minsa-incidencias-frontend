@@ -21,7 +21,7 @@ describe("AppShell en pantalla chica", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  const ana: SesionUsuario = { nombreCompleto: "Ana Prueba", correo: "ana@minsa.gob.pe", modulos: ["INCIDENCIAS"] };
+  const ana: SesionUsuario = { nombreCompleto: "Ana Prueba", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"] };
 
   async function setup() {
     TestBed.configureTestingModule({

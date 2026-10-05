@@ -2,7 +2,7 @@
 
 Panel de la plataforma de gestión de incidencias: visor, revisión, entrenamiento de la IA e indicadores, más el portal público de carga de archivos en rutas separadas. Está construido con Angular 22 (sin zonas) y Tailwind CSS 4. Habla con `minsa-incidencias-backend`.
 
-> **Estado:** proyecto base con la vista de login conectada a la **autenticación real del backend** (sesión por cookie, cierre de sesión, rutas protegidas y panel con los módulos del usuario). Todavía no hay pantallas de negocio: llegan en la fase siguiente.
+> **Estado:** proyecto base con la vista de login conectada a la **autenticación real del backend** (sesión por cookie, cierre de sesión, rutas protegidas y menú y pantallas según las vistas del usuario). Todavía no hay pantallas de negocio: llegan en la fase siguiente.
 
 ## Inicio rápido
 
@@ -63,11 +63,11 @@ npm start          # http://localhost:4010 (el backend debe estar en el puerto 3
 El frontend **no guarda nada de la sesión en el navegador** (ni `localStorage` ni `sessionStorage`): la cookie `HttpOnly` la pone y la lee el navegador, y el JavaScript nunca la ve.
 
 - **Login:** `LoginForm` pide **correo** y contraseña y llama a `POST /auth/login`. Los errores del servidor se traducen por código (401 credenciales incorrectas, 429 demasiados intentos, sin red) a mensajes del diccionario `AUTH_ERROR_MESSAGES`.
-- **Quién soy:** `SessionStore` (en memoria, con *signals*) pide `GET /auth/me` y guarda solo el nombre, el correo y los **módulos** que devuelve el backend. No hay id ni roles.
-- **Rutas protegidas:** `authGuard` deja pasar si hay sesión en memoria; si no, la pide al backend; si tampoco hay, redirige a `/login`. Hoy protege `/inicio`.
+- **Quién soy:** `SessionStore` (en memoria, con *signals*) pide `GET /auth/me` y guarda solo el nombre, el correo y las **vistas** (`INICIO`, `CASOS`, `BANDEJAS`, `DERIVACIONES`) que devuelve el backend. No hay id ni roles: el rol decide las vistas en el servidor.
+- **Rutas protegidas:** `authGuard` deja pasar si hay sesión en memoria; si no, la pide al backend; si tampoco hay, redirige a `/login`. `vistaGuard(vista)` protege cada pantalla de operación: sin la vista pedida lleva a la primera que el usuario sí tiene, y si no tiene ninguna, a `/sin-acceso`.
 - **Sesión caducada:** `unauthorizedInterceptor` limpia la sesión y manda al login ante un 401 de cualquier llamada (salvo las propias de `/auth/...`).
-- **Panel (`/inicio`):** muestra el nombre y la lista de módulos del usuario y el botón de cerrar sesión (`POST /auth/logout`, que revoca la sesión en la base).
-- El menú y las pantallas se deciden con los módulos de `/auth/me`, pero **eso solo es presentación**: el backend vuelve a comprobar el módulo en cada petición.
+- **Cierre de sesión:** el botón del encabezado llama a `POST /auth/logout`, que revoca la sesión en la base.
+- El menú y las pantallas se deciden con las vistas de `/auth/me`, pero **eso solo es presentación**: el backend vuelve a comprobar el acceso en cada petición.
 
 ## Entornos y URL del backend
 

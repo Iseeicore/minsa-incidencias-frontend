@@ -26,7 +26,7 @@ export class AppShell {
   protected readonly compact = signal(false);
   protected readonly nombre = computed(() => this.store.sesion()?.nombreCompleto ?? "");
   protected readonly correo = computed(() => this.store.sesion()?.correo ?? "");
-  protected readonly secciones = computed(() => visibleNav(NAV_SECTIONS, this.store.sesion()?.modulos ?? []));
+  protected readonly secciones = computed(() => visibleNav(NAV_SECTIONS, this.store.sesion()?.vistas ?? []));
 
   constructor() {
     const alCambiar = (evento: MediaQueryListEvent) => {

@@ -2,7 +2,7 @@ import { TestBed } from "@angular/core/testing";
 import { AuthService } from "./auth.service";
 import { SessionStore } from "./session.store";
 
-const SESION = { nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", modulos: ["INCIDENCIAS"] as const };
+const SESION = { nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"] as const };
 
 describe("SessionStore", () => {
   function setup(auth: Partial<AuthService>) {
@@ -17,7 +17,7 @@ describe("SessionStore", () => {
   });
 
   it("cargar() guarda la sesión que devuelve el backend y solo en memoria", async () => {
-    const store = setup({ me: async () => ({ ...SESION, modulos: [...SESION.modulos] }) });
+    const store = setup({ me: async () => ({ ...SESION, vistas: [...SESION.vistas] }) });
     expect(await store.cargar()).toBe(true);
     expect(store.autenticado()).toBe(true);
     expect(store.sesion()?.nombreCompleto).toBe("Ana");
@@ -39,7 +39,7 @@ describe("SessionStore", () => {
     const logout = vi.fn(async () => {
       throw new Error("sin red");
     });
-    const store = setup({ me: async () => ({ ...SESION, modulos: [...SESION.modulos] }), logout });
+    const store = setup({ me: async () => ({ ...SESION, vistas: [...SESION.vistas] }), logout });
     await store.cargar();
 
     await expect(store.cerrar()).rejects.toThrow("sin red");

@@ -1,12 +1,12 @@
 import type { IconName } from "@/shared/enums/icon-name.enum";
-import type { ModuloCodigo } from "@/shared/enums/modulo-codigo.enum";
+import type { VistaCodigo } from "@/shared/enums/vista-codigo.enum";
 
 export interface NavEntry {
   readonly id: string;
   readonly label: string;
   readonly icon: IconName;
   readonly path?: string;
-  readonly modulo?: ModuloCodigo;
+  readonly vista?: VistaCodigo;
 }
 
 export interface NavSection {
