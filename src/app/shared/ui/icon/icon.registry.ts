@@ -18,6 +18,7 @@ import {
   LucidePanelLeftClose,
   LucidePanelLeftOpen,
   LucideScale,
+  LucideSearch,
   LucideSend,
   LucideSparkles,
   LucideTag,
@@ -50,4 +51,5 @@ export const ICONS: Record<IconName, LucideIconData> = {
   [IconName.SIDEBAR_OPEN]: LucidePanelLeftOpen.icon,
   [IconName.LOGOUT]: LucideLogOut.icon,
   [IconName.CALENDAR]: LucideCalendarDays.icon,
+  [IconName.SEARCH]: LucideSearch.icon,
 };

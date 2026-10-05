@@ -22,5 +22,6 @@ export const IconName = {
   SIDEBAR_OPEN: "sidebar-open",
   LOGOUT: "logout",
   CALENDAR: "calendar",
+  SEARCH: "search",
 } as const;
 export type IconName = (typeof IconName)[keyof typeof IconName];

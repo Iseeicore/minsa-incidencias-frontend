@@ -30,10 +30,10 @@ describe("AppShell", () => {
     expect(element.textContent).not.toContain("Revisión IA");
   });
 
-  it("las entradas sin pantalla quedan deshabilitadas y solo el Dashboard es enlace", async () => {
+  it("solo las entradas con pantalla son enlace y el resto queda deshabilitado", async () => {
     const { element } = await setup(ana);
     const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(["Dashboard"]);
+    expect(enlaces).toEqual(["Dashboard", "Casos"]);
     expect(element.querySelectorAll("nav [aria-disabled='true']").length).toBeGreaterThan(0);
   });
 

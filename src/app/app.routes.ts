@@ -1,6 +1,8 @@
 import type { Routes } from "@angular/router";
 import { authGuard } from "@/core/auth/auth.guard";
+import { moduloGuard } from "@/core/auth/modulo.guard";
 import { ROUTE_PATH } from "@/shared/constants/routes";
+import { ModuloCodigo } from "@/shared/enums/modulo-codigo.enum";
 
 export const routes: Routes = [
   { path: "", pathMatch: "full", redirectTo: ROUTE_PATH.LOGIN },
@@ -16,6 +18,11 @@ export const routes: Routes = [
       {
         path: ROUTE_PATH.INICIO,
         loadComponent: () => import("@/features/inicio/inicio-page").then((module) => module.InicioPage),
+      },
+      {
+        path: ROUTE_PATH.CASOS,
+        canActivate: [moduloGuard(ModuloCodigo.INCIDENCIAS)],
+        loadComponent: () => import("@/features/casos/casos-page").then((module) => module.CasosPage),
       },
     ],
   },
