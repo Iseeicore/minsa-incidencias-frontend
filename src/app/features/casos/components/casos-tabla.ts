@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject, input, output } from "@angular/core";
+import { PLAZOS_TOKEN } from "@/core/config/plazos.config";
+import { CasosStore } from "@/features/casos/casos.store";
 import {
   CATEGORIA_LABEL,
   ESTADO_BADGE,
@@ -6,9 +8,13 @@ import {
   SIN_DATO,
 } from "@/features/casos/constants/casos-constants";
 import type { Caso } from "@/features/casos/types/caso.types";
+import { accionesPermitidas } from "@/features/casos/utils/acciones-caso";
+import { areaDe } from "@/features/casos/utils/area-de-categoria";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
-import { textoVencimiento } from "@/features/casos/utils/texto-vencimiento";
+import { textoPlazo } from "@/features/casos/utils/texto-plazo";
+import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
 import { Badge } from "@/shared/ui/badge/badge";
+import { Button } from "@/shared/ui/button/button";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 
 const ENCABEZADO = "sticky top-0 z-10 bg-white pb-3 pr-6 text-xs font-medium text-gray-500";
@@ -22,12 +28,13 @@ const COLUMNAS = [
   { key: "responsable", label: "Responsable" },
   { key: "estado", label: "Estado" },
   { key: "confianza", label: "Confianza IA" },
-  { key: "vencimiento", label: "Vencimiento" },
+  { key: "plazo", label: "Plazo" },
+  { key: "acciones", label: "Acciones" },
 ] as const;
 
 @Component({
   selector: "app-casos-tabla",
-  imports: [Badge, ScrollArea],
+  imports: [Badge, Button, ScrollArea],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: "block" },
   template: `
@@ -61,7 +68,7 @@ const COLUMNAS = [
                 <app-badge [tone]="prioridad[caso.prioridad].tone">{{ prioridad[caso.prioridad].label }}</app-badge>
               </td>
               <td class="py-3 pr-6">
-                <p class="text-gray-900">{{ caso.area }}</p>
+                <p class="text-gray-900">{{ areaDe(caso.categoria) }}</p>
                 <p class="text-xs text-gray-500">{{ caso.organismo }}</p>
               </td>
               <td class="py-3 pr-6 text-gray-700">{{ caso.responsable }}</td>
@@ -75,7 +82,23 @@ const COLUMNAS = [
                   <span class="text-gray-500">{{ sinDato }}</span>
                 }
               </td>
-              <td class="py-3 text-gray-700">{{ textoVencimiento(caso.horasParaVencer) }}</td>
+              <td class="py-3 pr-6 text-gray-700">{{ textoPlazo(caso, plazos) }}</td>
+              <td class="py-3">
+                @if (puedeActuar(caso)) {
+                  <app-button [size]="ButtonSize.SM" (click)="revisar.emit(caso.codigo)">
+                    Revisar<span class="sr-only"> el caso {{ caso.codigo }}</span>
+                  </app-button>
+                } @else {
+                  <app-button
+                    [variant]="ButtonVariant.OUTLINE"
+                    [tone]="ButtonTone.NEUTRAL"
+                    [size]="ButtonSize.SM"
+                    (click)="revisar.emit(caso.codigo)"
+                  >
+                    Ver<span class="sr-only"> el caso {{ caso.codigo }}</span>
+                  </app-button>
+                }
+              </td>
             </tr>
           }
         </tbody>
@@ -84,9 +107,16 @@ const COLUMNAS = [
   `,
 })
 export class CasosTabla {
+  private readonly store = inject(CasosStore);
+
   readonly casos = input.required<readonly Caso[]>();
   readonly descripcion = input("Listado de casos");
+  readonly revisar = output<string>();
 
+  protected readonly plazos = inject(PLAZOS_TOKEN);
+  protected readonly ButtonSize = ButtonSize;
+  protected readonly ButtonTone = ButtonTone;
+  protected readonly ButtonVariant = ButtonVariant;
   protected readonly columnas = COLUMNAS;
   protected readonly encabezado = ENCABEZADO;
   protected readonly sinDato = SIN_DATO;
@@ -94,5 +124,10 @@ export class CasosTabla {
   protected readonly prioridad = PRIORIDAD_CASO_BADGE;
   protected readonly estado = ESTADO_BADGE;
   protected readonly tonoConfianza = tonoConfianza;
-  protected readonly textoVencimiento = textoVencimiento;
+  protected readonly textoPlazo = textoPlazo;
+  protected readonly areaDe = areaDe;
+
+  protected puedeActuar(caso: Caso): boolean {
+    return accionesPermitidas(caso, this.store.rol()).length > 0;
+  }
 }

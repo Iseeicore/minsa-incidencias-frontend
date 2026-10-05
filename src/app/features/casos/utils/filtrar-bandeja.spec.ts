@@ -1,63 +1,76 @@
+import { PLAZOS_POR_DEFECTO } from "@/core/config/plazos.config";
 import { CASOS_DEMO } from "@/features/casos/data/casos.demo";
 import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
-import { filtrarBandeja, HORAS_PROXIMO_A_VENCER } from "./filtrar-bandeja";
+import { RolDemo } from "@/features/casos/enums/rol-demo.enum";
+import { aplicarArchivadoAutomatico } from "@/features/casos/utils/plazos-caso";
+import { filtrarBandeja } from "./filtrar-bandeja";
 
-const codigos = (tab: BandejaTab) => filtrarBandeja(CASOS_DEMO, tab).map((caso) => caso.codigo);
+const CASOS = aplicarArchivadoAutomatico(CASOS_DEMO, PLAZOS_POR_DEFECTO);
+const codigos = (tab: BandejaTab, rol: RolDemo = RolDemo.ADMINISTRADOR) =>
+  filtrarBandeja(CASOS, tab, rol, PLAZOS_POR_DEFECTO)
+    .map((caso) => caso.codigo)
+    .sort();
 
 describe("filtrarBandeja", () => {
-  it("Asignados a mí deja solo lo asignado a la persona", () => {
-    const resultado = filtrarBandeja(CASOS_DEMO, BandejaTab.ASIGNADOS);
-    expect(resultado.length).toBeGreaterThan(0);
-    expect(resultado.every((caso) => caso.asignadoAMi)).toBe(true);
-  });
-
-  it("Pendientes son los registrados y los clasificados", () => {
-    const resultado = filtrarBandeja(CASOS_DEMO, BandejaTab.PENDIENTES);
-    expect(resultado.length).toBeGreaterThan(0);
-    expect(resultado.every((caso) => [EstadoCaso.REGISTRADO, EstadoCaso.CLASIFICADO].includes(caso.estado as never))).toBe(true);
-  });
-
-  it("Próximos a vencer son los abiertos que vencen dentro del plazo de aviso", () => {
-    const resultado = filtrarBandeja(CASOS_DEMO, BandejaTab.PROXIMOS);
-    expect(resultado.length).toBeGreaterThan(0);
-    for (const caso of resultado) {
-      expect(caso.horasParaVencer).toBeGreaterThanOrEqual(0);
-      expect(caso.horasParaVencer).toBeLessThanOrEqual(HORAS_PROXIMO_A_VENCER);
-      expect([EstadoCaso.RESUELTO, EstadoCaso.ARCHIVADO]).not.toContain(caso.estado);
-    }
-  });
-
-  it("Vencidos son los abiertos con las horas en negativo", () => {
-    const resultado = filtrarBandeja(CASOS_DEMO, BandejaTab.VENCIDOS);
-    expect(resultado.length).toBeGreaterThan(0);
-    expect(resultado.every((caso) => (caso.horasParaVencer ?? 0) < 0)).toBe(true);
-  });
-
-  it("un caso sin plazo nunca está próximo ni vencido", () => {
-    const sinPlazo = CASOS_DEMO.filter((caso) => caso.horasParaVencer === null).map((caso) => caso.codigo);
-    expect(sinPlazo.length).toBeGreaterThan(0);
-    for (const codigo of sinPlazo) {
-      expect(codigos(BandejaTab.PROXIMOS)).not.toContain(codigo);
-      expect(codigos(BandejaTab.VENCIDOS)).not.toContain(codigo);
-    }
-  });
-
-  it("un caso resuelto o archivado no aparece como próximo ni vencido aunque tenga horas", () => {
-    const abierto = { ...CASOS_DEMO[0], estado: EstadoCaso.RESUELTO, horasParaVencer: -5 };
-    expect(filtrarBandeja([abierto], BandejaTab.VENCIDOS)).toEqual([]);
-    expect(filtrarBandeja([{ ...abierto, horasParaVencer: 5 }], BandejaTab.PROXIMOS)).toEqual([]);
-  });
-
-  it("En revisión IA son los clasificados que ninguna persona ha revisado", () => {
-    const resultado = filtrarBandeja(CASOS_DEMO, BandejaTab.REVISION_IA);
+  it("En revisión IA son los clasificados que ninguna persona revisó", () => {
+    const resultado = filtrarBandeja(CASOS, BandejaTab.REVISION_IA, RolDemo.REVISOR, PLAZOS_POR_DEFECTO);
     expect(resultado.length).toBeGreaterThan(0);
     expect(resultado.every((caso) => caso.estado === EstadoCaso.CLASIFICADO && !caso.revisadoPorHumano)).toBe(true);
   });
 
-  it("Devueltos son los marcados como devueltos", () => {
-    const resultado = filtrarBandeja(CASOS_DEMO, BandejaTab.DEVUELTOS);
+  it("Por derivar son los clasificados cuya categoría ya revisó una persona", () => {
+    expect(codigos(BandejaTab.POR_DERIVAR)).toEqual(["MINSA-2026-002890", "MINSA-2026-002915"]);
+  });
+
+  it("En gestión reúne los derivados y los que el área está atendiendo", () => {
+    const resultado = filtrarBandeja(CASOS, BandejaTab.EN_GESTION, RolDemo.ADMINISTRADOR, PLAZOS_POR_DEFECTO);
     expect(resultado.length).toBeGreaterThan(0);
-    expect(resultado.every((caso) => caso.devuelto)).toBe(true);
+    expect(resultado.every((caso) => [EstadoCaso.DERIVADO, EstadoCaso.EN_GESTION].includes(caso.estado as never))).toBe(true);
+  });
+
+  it("Por vencer son los abiertos que están por cumplir los 3 días desde que llegaron", () => {
+    expect(codigos(BandejaTab.POR_VENCER)).toEqual(["MINSA-2026-002941", "MINSA-2026-003152", "MINSA-2026-003241"]);
+  });
+
+  it("Resueltos son solo las resoluciones vigentes", () => {
+    expect(codigos(BandejaTab.RESUELTOS)).toEqual(["MINSA-2026-003075"]);
+  });
+
+  it("Archivados incluyen lo que venció y lo resuelto que cumplió su vigencia, no solo lo archivado de origen", () => {
+    expect(codigos(BandejaTab.ARCHIVADOS)).toEqual(["MINSA-2026-002850", "MINSA-2026-002988", "MINSA-2026-003033"]);
+  });
+
+  it("un caso vencido ya no aparece como abierto en ninguna bandeja de trabajo", () => {
+    for (const tab of [BandejaTab.EN_GESTION, BandejaTab.POR_VENCER, BandejaTab.PARA_ACTUAR]) {
+      expect(codigos(tab, RolDemo.AREA_RECLAMO)).not.toContain("MINSA-2026-003033");
+    }
+  });
+
+  describe("Para actuar depende del rol", () => {
+    it("el revisor ve lo clasificado sin revisar", () => {
+      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.REVISOR)).toEqual([
+        "MINSA-2026-002930",
+        "MINSA-2026-002960",
+        "MINSA-2026-003012",
+        "MINSA-2026-003230",
+      ]);
+    });
+
+    it("el gestor ve lo revisado que se puede derivar", () => {
+      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.GESTOR)).toEqual(["MINSA-2026-002890", "MINSA-2026-002915"]);
+    });
+
+    it("el área de reclamos ve sus derivados y en gestión", () => {
+      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.AREA_RECLAMO)).toEqual([
+        "MINSA-2026-003098",
+        "MINSA-2026-003177",
+        "MINSA-2026-003241",
+      ]);
+    });
+
+    it("el administrador no tiene casos para actuar", () => {
+      expect(codigos(BandejaTab.PARA_ACTUAR, RolDemo.ADMINISTRADOR)).toEqual([]);
+    });
   });
 });

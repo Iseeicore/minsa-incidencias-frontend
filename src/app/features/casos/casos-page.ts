@@ -1,12 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import { CasosStore } from "@/features/casos/casos.store";
+import { CasoRevision } from "@/features/casos/components/caso-revision";
 import { CasosTabla } from "@/features/casos/components/casos-tabla";
+import { RolDemoSelector } from "@/features/casos/components/rol-demo-selector";
 import {
   ESTADO_OPCIONES,
   FILTRO_TODOS,
   PRIORIDAD_OPCIONES,
   TABS_OPCIONES,
 } from "@/features/casos/constants/casos-constants";
-import { CASOS_DEMO } from "@/features/casos/data/casos.demo";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import { filtrarCasos } from "@/features/casos/utils/filtrar-casos";
 import { BadgeTone } from "@/shared/enums/badge.enum";
@@ -20,11 +22,13 @@ import { Tabs } from "@/shared/ui/tabs/tabs";
 
 @Component({
   selector: "app-casos-page",
-  imports: [Badge, Button, Card, CasosTabla, SearchInput, SelectField, Tabs],
+  imports: [Badge, Button, Card, CasoRevision, CasosTabla, RolDemoSelector, SearchInput, SelectField, Tabs],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./casos-page.html",
 })
 export class CasosPage {
+  private readonly store = inject(CasosStore);
+
   protected readonly BadgeTone = BadgeTone;
   protected readonly ButtonSize = ButtonSize;
   protected readonly ButtonTone = ButtonTone;
@@ -37,9 +41,10 @@ export class CasosPage {
   protected readonly texto = signal("");
   protected readonly prioridad = signal(FILTRO_TODOS);
   protected readonly estado = signal(FILTRO_TODOS);
+  protected readonly seleccionado = signal<string | null>(null);
 
   protected readonly casos = computed(() =>
-    filtrarCasos(CASOS_DEMO, {
+    filtrarCasos(this.store.casos(), {
       tab: this.tab() as FiltroTab,
       texto: this.texto(),
       prioridad: this.prioridad(),

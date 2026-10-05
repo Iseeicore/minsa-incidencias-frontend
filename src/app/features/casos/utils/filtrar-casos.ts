@@ -2,6 +2,7 @@ import { FILTRO_TODOS } from "@/features/casos/constants/casos-constants";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import type { Caso, FiltrosCasos } from "@/features/casos/types/caso.types";
+import { areaDe } from "@/features/casos/utils/area-de-categoria";
 import { Prioridad } from "@/shared/enums/prioridad.enum";
 
 const COINCIDE_TAB: Record<FiltroTab, (caso: Caso) => boolean> = {
@@ -28,7 +29,9 @@ export function filtrarCasos(casos: readonly Caso[], filtros: FiltrosCasos): Cas
     if (filtros.prioridad !== FILTRO_TODOS && caso.prioridad !== filtros.prioridad) return false;
     if (filtros.estado !== FILTRO_TODOS && caso.estado !== filtros.estado) return false;
     if (texto === "") return true;
-    const pajar = normalizar([caso.codigo, caso.area, caso.organismo, caso.responsable, ...caso.etiquetas].join(" "));
+    const pajar = normalizar(
+      [caso.codigo, areaDe(caso.categoria), caso.organismo, caso.responsable, ...caso.etiquetas].join(" "),
+    );
     return pajar.includes(texto);
   });
 }
