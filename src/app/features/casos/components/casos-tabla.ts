@@ -17,7 +17,7 @@ import { Badge } from "@/shared/ui/badge/badge";
 import { Button } from "@/shared/ui/button/button";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 
-const ENCABEZADO = "sticky top-0 z-10 bg-white pb-3 pr-6 text-xs font-medium text-gray-500";
+const ENCABEZADO = "sticky top-0 z-10 bg-white pb-3 pr-4 text-xs font-medium text-gray-500";
 
 const COLUMNAS = [
   { key: "codigo", label: "Código" },
@@ -49,10 +49,10 @@ const COLUMNAS = [
         </thead>
         <tbody class="divide-y divide-gray-100">
           @for (caso of casos(); track caso.codigo) {
-            <tr>
-              <td class="py-3 pr-6 font-medium text-gray-900">{{ caso.codigo }}</td>
-              <td class="py-3 pr-6 text-gray-700">{{ caso.categoria ? categoria[caso.categoria] : sinDato }}</td>
-              <td class="py-3 pr-6">
+            <tr class="transition-colors hover:bg-gray-50">
+              <td class="py-3 pr-4 font-bold text-gray-900">{{ caso.codigo }}</td>
+              <td class="py-3 pr-4 text-gray-700">{{ caso.categoria ? categoria[caso.categoria] : sinDato }}</td>
+              <td class="py-3 pr-4">
                 @if (caso.etiquetas.length > 0) {
                   <div class="flex items-center gap-1.5">
                     <app-badge>{{ caso.etiquetas[0] }}</app-badge>
@@ -64,25 +64,27 @@ const COLUMNAS = [
                   <span class="text-gray-500">{{ sinDato }}</span>
                 }
               </td>
-              <td class="py-3 pr-6">
+              <td class="py-3 pr-4">
                 <app-badge [tone]="prioridad[caso.prioridad].tone">{{ prioridad[caso.prioridad].label }}</app-badge>
               </td>
-              <td class="py-3 pr-6">
+              <td class="py-3 pr-4">
                 <p class="text-gray-900">{{ areaDe(caso.categoria) }}</p>
                 <p class="text-xs text-gray-500">{{ caso.organismo }}</p>
               </td>
-              <td class="py-3 pr-6 text-gray-700">{{ caso.responsable }}</td>
-              <td class="py-3 pr-6">
+              <td class="py-3 pr-4 text-gray-700">{{ caso.responsable }}</td>
+              <td class="py-3 pr-4">
                 <app-badge [tone]="estado[caso.estado].tone">{{ estado[caso.estado].label }}</app-badge>
               </td>
-              <td class="py-3 pr-6">
+              <td class="py-3 pr-4">
                 @if (caso.confianzaIa !== null) {
                   <app-badge [tone]="tonoConfianza(caso.confianzaIa)">{{ caso.confianzaIa }} %</app-badge>
                 } @else {
                   <span class="text-gray-500">{{ sinDato }}</span>
                 }
               </td>
-              <td class="py-3 pr-6 text-gray-700">{{ textoPlazo(caso, plazos) }}</td>
+              <td class="py-3 pr-4">
+                <span [class]="claseDePlazo(caso)">{{ textoPlazo(caso, plazos) }}</span>
+              </td>
               <td class="py-3">
                 @if (puedeActuar(caso)) {
                   <app-button [size]="ButtonSize.SM" (click)="revisar.emit(caso.codigo)">
@@ -126,6 +128,10 @@ export class CasosTabla {
   protected readonly tonoConfianza = tonoConfianza;
   protected readonly textoPlazo = textoPlazo;
   protected readonly areaDe = areaDe;
+
+  protected claseDePlazo(caso: Caso): string {
+    return textoPlazo(caso, this.plazos) === "Vencido" ? "font-bold text-danger-700" : "text-gray-700";
+  }
 
   protected puedeActuar(caso: Caso): boolean {
     return accionesPermitidas(caso, this.store.rol()).length > 0;

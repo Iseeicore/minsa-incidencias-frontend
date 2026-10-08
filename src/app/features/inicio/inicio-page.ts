@@ -3,7 +3,7 @@ import { BadgeTone } from "@/shared/enums/badge.enum";
 import { Badge } from "@/shared/ui/badge/badge";
 import { BarChart } from "@/shared/ui/bar-chart/bar-chart";
 import { Card } from "@/shared/ui/card/card";
-import { ProgressBar } from "@/shared/ui/progress-bar/progress-bar";
+import { HBarList, type HBarDatum } from "@/shared/ui/hbar-list/hbar-list";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 import { StatCard } from "@/shared/ui/stat-card/stat-card";
 import { Tabs } from "@/shared/ui/tabs/tabs";
@@ -21,16 +21,23 @@ import { Periodo } from "./enums/periodo.enum";
 
 @Component({
   selector: "app-inicio-page",
-  imports: [Badge, BarChart, Card, CasosAtencionTabla, ProgressBar, ScrollArea, StatCard, Tabs],
+  imports: [Badge, BarChart, Card, CasosAtencionTabla, HBarList, ScrollArea, StatCard, Tabs],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./inicio-page.html",
 })
 export class InicioPage {
   protected readonly BadgeTone = BadgeTone;
   protected readonly kpis = KPIS_DEMO;
-  protected readonly categorias = CATEGORIAS_DEMO;
+  protected readonly categorias: readonly HBarDatum[] = CATEGORIAS_DEMO.map((categoria) => ({
+    label: categoria.label,
+    valor: categoria.casos,
+    detalle: `${categoria.porcentaje} %`,
+  }));
   protected readonly casosAtencion = CASOS_ATENCION_DEMO;
-  protected readonly derivaciones = DERIVACIONES_DEMO;
+  protected readonly derivaciones: readonly HBarDatum[] = DERIVACIONES_DEMO.map((fila) => ({
+    label: fila.label,
+    valor: fila.valor,
+  }));
   protected readonly alertas = ALERTAS_DEMO;
   protected readonly periodoOpciones = PERIODO_OPCIONES;
 

@@ -32,9 +32,18 @@ describe("InicioPage", () => {
       region.getAttribute("aria-label"),
     );
     expect(nombres).toEqual(
-      expect.arrayContaining(["Distribución por categoría", "Casos que requieren atención", "Derivaciones", "Alertas"]),
+      expect.arrayContaining(["Casos que requieren atención", "Alertas"]),
     );
     expect(element.querySelector("app-bar-chart app-scroll-area")).not.toBeNull();
+  });
+
+  it("la distribución por categoría y las derivaciones se dibujan como barras horizontales", async () => {
+    const { element } = await setup();
+    const listas = Array.from(element.querySelectorAll("app-hbar-list")).map((lista) =>
+      lista.querySelector("ul")?.getAttribute("aria-label"),
+    );
+    expect(listas).toEqual(["Casos por categoría", "Derivaciones por estado"]);
+    expect(element.querySelectorAll("app-hbar-list [role='progressbar']")).toHaveLength(8);
   });
 
   it("las pestañas de periodo se desplazan en lugar de romper el diseño", async () => {

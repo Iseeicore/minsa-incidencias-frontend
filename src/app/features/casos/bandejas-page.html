@@ -4,30 +4,81 @@
       <p class="text-sm font-medium text-gray-600">Operación</p>
       <h1 class="text-3xl font-bold text-gray-900">Mis bandejas</h1>
     </div>
-    <app-badge [tone]="BadgeTone.PRIMARY">Datos de demostración</app-badge>
+    <div class="flex flex-wrap items-center gap-3">
+      <app-rol-demo-selector />
+      <app-badge [tone]="BadgeTone.PRIMARY">Datos de demostración</app-badge>
+    </div>
   </header>
 
-  <app-rol-demo-selector />
+  <div class="space-y-4">
+    <nav aria-label="Bandejas" class="min-w-0 rounded-2xl bg-white p-2">
+      <div role="tablist" aria-label="Bandeja" class="flex gap-1 overflow-x-auto">
+        @for (bandeja of opciones(); track bandeja.value) {
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="bandeja.value === tab()"
+            [attr.data-cantidad]="bandeja.cantidad"
+            class="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-xl px-4 py-2.5 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+            [class]="bandeja.value === tab() ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'"
+            (click)="seleccionar(bandeja.value)"
+          >
+            <span>{{ bandeja.label }}</span>
+            <span
+              class="min-w-7 rounded-full px-2 py-0.5 text-center text-xs font-bold tabular-nums"
+              [class]="
+                bandeja.value === tab()
+                  ? 'bg-white/20 text-white'
+                  : bandeja.value === BandejaTab.POR_VENCER && bandeja.cantidad > 0
+                    ? 'bg-danger-50 text-danger-700'
+                    : 'bg-gray-100 text-gray-700'
+              "
+            >
+              {{ bandeja.cantidad }}
+            </span>
+          </button>
+        }
+      </div>
+    </nav>
 
-  <app-tabs label="Bandeja" [options]="opciones()" [(value)]="tab" />
+    <app-card class="space-y-5">
+      <div>
+        <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+          <h2 class="text-xl font-bold text-gray-900">{{ actual().label }}</h2>
+          <p class="text-sm font-medium text-gray-600">{{ delaBandeja().length }} en la bandeja</p>
+        </div>
+        <p class="mt-1 text-sm text-gray-600">{{ actual().ayuda }}</p>
+      </div>
 
-  <app-card>
-    <div class="mb-1 flex items-center justify-between gap-3">
-      <h2 class="text-base font-bold text-gray-900">{{ actual().label }}</h2>
-      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ casos().length }} casos</p>
-    </div>
-    <p class="mb-4 text-sm text-gray-600">{{ actual().ayuda }}</p>
-
-    @if (casos().length > 0) {
-      <app-casos-tabla
-        [casos]="casos()"
-        [descripcion]="'Casos de la bandeja ' + actual().label"
-        (revisar)="seleccionado.set($event)"
+      <app-casos-filtros
+        [total]="delaBandeja().length"
+        [mostrados]="casos().length"
+        [(texto)]="texto"
+        [(categoria)]="categoria"
+        [(prioridad)]="prioridad"
+        [(estado)]="estado"
       />
-    } @else {
-      <p class="py-10 text-center text-sm font-medium text-gray-700">No hay casos en esta bandeja.</p>
-    }
-  </app-card>
+
+      @if (casos().length > 0) {
+        <app-casos-tabla
+          [casos]="casos()"
+          [descripcion]="'Casos de la bandeja ' + actual().label"
+          (revisar)="seleccionado.set($event)"
+        />
+      } @else {
+        <div class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 py-12 text-center">
+          @if (hayFiltros()) {
+            <p class="text-sm font-medium text-gray-700">Ningún caso de esta bandeja coincide con los filtros.</p>
+            <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="limpiar()">
+              Limpiar filtros
+            </app-button>
+          } @else {
+            <p class="text-sm font-medium text-gray-700">No hay casos en esta bandeja.</p>
+          }
+        </div>
+      }
+    </app-card>
+  </div>
 
   <p class="text-xs text-gray-500">
     Plazo de atención: {{ plazos.atencionDias }} días desde que llega el caso. Una resolución dura

@@ -28,19 +28,7 @@
     </app-card>
 
     <app-card titulo="Distribución por categoría">
-      <app-scroll-area label="Distribución por categoría">
-        <ul class="space-y-4">
-          @for (categoria of categorias; track categoria.label) {
-            <li>
-              <div class="mb-1.5 flex items-center justify-between text-sm">
-                <span class="text-gray-700">{{ categoria.label }}</span>
-                <span class="font-medium text-gray-900">{{ categoria.casos }}</span>
-              </div>
-              <app-progress-bar [value]="categoria.porcentaje" [label]="categoria.label" />
-            </li>
-          }
-        </ul>
-      </app-scroll-area>
+      <app-hbar-list label="Casos por categoría" [data]="categorias" />
     </app-card>
   </section>
 
@@ -50,16 +38,7 @@
 
   <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <app-card titulo="Derivaciones">
-      <app-scroll-area label="Derivaciones">
-        <ul class="divide-y divide-gray-100">
-          @for (fila of derivaciones; track fila.label) {
-            <li class="flex items-center justify-between gap-3 py-2.5 text-sm">
-              <span class="text-gray-700">{{ fila.label }}</span>
-              <span class="font-medium text-gray-900">{{ fila.valor }}</span>
-            </li>
-          }
-        </ul>
-      </app-scroll-area>
+      <app-hbar-list label="Derivaciones por estado" [data]="derivaciones" />
     </app-card>
 
     <app-card titulo="Alertas">

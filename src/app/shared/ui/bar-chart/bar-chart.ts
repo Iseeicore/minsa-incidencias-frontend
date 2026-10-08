@@ -28,7 +28,7 @@ const FORMATO_NUMERO = new Intl.NumberFormat("es-PE");
     </div>
 
     <app-scroll-area [label]="description()">
-    <div class="flex min-w-112 gap-3">
+    <div class="flex min-w-112 gap-3 pt-6">
       <div class="flex h-56 w-10 flex-col justify-between text-right text-xs font-medium text-gray-500" aria-hidden="true">
         @for (marca of escala().ticks; track marca) {
           <span class="leading-none">{{ formato(marca) }}</span>
@@ -46,12 +46,18 @@ const FORMATO_NUMERO = new Intl.NumberFormat("es-PE");
             @for (barra of barras(); track barra.label) {
               <div class="flex h-full min-w-0 flex-1 items-end justify-center">
                 <div
-                  class="flex w-full max-w-12 flex-col-reverse gap-0.5"
+                  class="group relative flex w-full max-w-12 flex-col-reverse gap-0.5 transition-opacity hover:opacity-80"
                   [style.height.%]="barra.alto"
                   [attr.title]="barra.titulo"
                 >
                   <div class="min-h-0 basis-0 rounded-lg bg-gray-900" [style.flex-grow]="barra.base"></div>
                   <div class="min-h-0 basis-0 rounded-lg bg-hatched" [style.flex-grow]="barra.extra"></div>
+                  <span
+                    aria-hidden="true"
+                    class="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold tabular-nums text-gray-900"
+                  >
+                    {{ formato(barra.base + barra.extra) }}
+                  </span>
                 </div>
               </div>
             }
