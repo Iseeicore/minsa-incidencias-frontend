@@ -45,7 +45,7 @@ describe("QrModal", () => {
     expect(generar).not.toHaveBeenCalled();
   });
 
-  it("muestra nombre, RENIPRESS, el texto exacto del mensaje y el número", async () => {
+  it("muestra nombre, RENIPRESS y el texto exacto del mensaje, sin mostrar el número de WhatsApp", async () => {
     const { element } = await setup();
     const dialogo = element.querySelector("[role='dialog']") as HTMLElement;
     expect(dialogo.getAttribute("aria-modal")).toBe("true");
@@ -53,7 +53,8 @@ describe("QrModal", () => {
     expect(texto).toContain("HOSPITAL NACIONAL DOS DE MAYO");
     expect(texto).toContain("RENIPRESS 6206");
     expect(texto).toContain("Hola quiero presentar una incidencia HOSPITAL NACIONAL DOS DE MAYO - CODIGO-IPRESS 6206");
-    expect(texto).toContain("+51 944 023 973");
+    expect(texto).not.toContain("944");
+    expect(texto).not.toContain("Número de WhatsApp");
   });
 
   it("genera el QR del enlace de WhatsApp y lo muestra con el nombre del establecimiento en el alt", async () => {

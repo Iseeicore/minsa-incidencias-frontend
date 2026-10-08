@@ -7,14 +7,14 @@ import { QrImagen } from "@/features/qr/services/qr-imagen";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
 import { IconName } from "@/shared/enums/icon-name.enum";
-import { construirEnlaceWhatsapp, formatearNumeroWhatsapp } from "@/shared/utils/enlace-whatsapp";
+import { construirEnlaceWhatsapp } from "@/shared/utils/enlace-whatsapp";
 import { Alert } from "@/shared/ui/alert/alert";
 import { Button } from "@/shared/ui/button/button";
 import { Icon } from "@/shared/ui/icon/icon";
 
 const FUERA_DE_NOMBRE_DE_ARCHIVO = /[^0-9A-Za-z-]/g;
 
-/** El QR de WhatsApp de un establecimiento, con el mensaje que precarga, el número y la descarga del PNG. */
+/** El QR de WhatsApp de un establecimiento, con el mensaje que precarga y la descarga del PNG. El número solo viaja dentro del enlace del QR; no se muestra. */
 @Component({
   selector: "app-qr-panel",
   imports: [Alert, Button, Icon],
@@ -22,7 +22,7 @@ const FUERA_DE_NOMBRE_DE_ARCHIVO = /[^0-9A-Za-z-]/g;
   host: { class: "block" },
   template: `
     <div class="space-y-5">
-      <dl class="space-y-1 text-sm">
+      <dl class="space-y-1 text-center text-sm">
         <div>
           <dt class="sr-only">Establecimiento</dt>
           <dd class="text-base font-bold text-gray-900">{{ nombre() }}</dd>
@@ -59,10 +59,6 @@ const FUERA_DE_NOMBRE_DE_ARCHIVO = /[^0-9A-Za-z-]/g;
           <dt class="font-medium text-gray-600">Mensaje que se precarga en WhatsApp</dt>
           <dd class="mt-1 break-words font-medium text-gray-900">{{ datos().mensaje }}</dd>
         </div>
-        <div>
-          <dt class="font-medium text-gray-600">Número de WhatsApp</dt>
-          <dd class="mt-1 font-medium text-gray-900">{{ numeroVisible }}</dd>
-        </div>
       </dl>
 
       <app-button [block]="true" [disabled]="imagen() === null" (click)="descargar()">
@@ -89,7 +85,6 @@ export class QrPanel {
   protected readonly IconName = IconName;
   protected readonly lado = LADO_QR_PX;
   protected readonly mensajeError = MENSAJE_QR.GENERAR;
-  protected readonly numeroVisible = formatearNumeroWhatsapp(this.numero);
   protected readonly datos = computed(() => construirEnlaceWhatsapp(this.numero, this.nombre(), this.codigoRenipress()));
   protected readonly imagen = signal<string | null>(null);
   protected readonly estado = signal<CargaEstado>(CargaEstado.INICIAL);

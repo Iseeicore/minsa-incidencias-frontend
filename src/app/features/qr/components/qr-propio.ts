@@ -14,7 +14,7 @@ import { QrPanel } from "./qr-panel";
   imports: [Alert, Button, Card, QrPanel],
   providers: [MiEstablecimientoStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: "block md:max-w-lg" },
+  host: { class: "mx-auto block w-full md:max-w-lg" },
   template: `
     <app-card>
       @if (propio.establecimiento(); as establecimiento) {
