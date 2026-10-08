@@ -2,6 +2,16 @@ import { TestBed } from "@angular/core/testing";
 import { TextareaField } from "./textarea-field";
 
 describe("TextareaField", () => {
+  it("se ve como un campo: borde gris, fondo blanco y anillo de foco", async () => {
+    const fixture = TestBed.createComponent(TextareaField);
+    fixture.componentRef.setInput("label", "Motivo");
+    await fixture.whenStable();
+    const area = (fixture.nativeElement as HTMLElement).querySelector("textarea") as HTMLTextAreaElement;
+    for (const clase of ["border-2", "border-gray-200", "bg-white", "focus:ring-2", "focus:border-primary-500"]) {
+      expect(area.classList.contains(clase), clase).toBe(true);
+    }
+  });
+
   async function setup(maxlength?: number) {
     const fixture = TestBed.createComponent(TextareaField);
     fixture.componentRef.setInput("label", "Resolución");

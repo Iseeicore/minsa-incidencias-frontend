@@ -1,5 +1,6 @@
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { AtajoFecha } from "@/features/casos/enums/atajo-fecha.enum";
+import { JerarquiaAccion } from "@/features/casos/enums/jerarquia-accion.enum";
 import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
@@ -9,6 +10,8 @@ import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion
 import { TipoEvidencia } from "@/features/casos/enums/tipo-evidencia.enum";
 import { TipoArea } from "@/shared/enums/tipo-area.enum";
 import { BadgeTone } from "@/shared/enums/badge.enum";
+import { ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
+import { IconName } from "@/shared/enums/icon-name.enum";
 import { Prioridad } from "@/shared/enums/prioridad.enum";
 import type { SelectOption } from "@/shared/ui/select-field/select-field";
 import type { TabOption } from "@/shared/ui/tabs/tabs";
@@ -46,6 +49,33 @@ export const ACCION_LABEL: Record<AccionCaso, string> = {
   [AccionCaso.RESOLVER]: "Resolver el caso",
   [AccionCaso.ARCHIVAR]: "Archivar el caso",
   [AccionCaso.REABRIR]: "Reabrir el caso",
+};
+
+/** Texto del botón de cada acción en el panel de revisión. */
+export const ETIQUETA_BOTON_ACCION: Record<AccionCaso, string> = {
+  [AccionCaso.CONFIRMAR]: "Confirmar categoría",
+  [AccionCaso.CORREGIR]: "Corregir categoría",
+  [AccionCaso.DERIVAR]: "Derivar a un área",
+  [AccionCaso.TOMAR]: "Tomar en gestión",
+  [AccionCaso.RESOLVER]: "Resolver el caso",
+  [AccionCaso.ARCHIVAR]: "Archivar el caso",
+  [AccionCaso.REABRIR]: "Reabrir el caso",
+};
+
+export const ICONO_ACCION: Record<AccionCaso, IconName> = {
+  [AccionCaso.CONFIRMAR]: IconName.CONFIRM,
+  [AccionCaso.CORREGIR]: IconName.EDIT,
+  [AccionCaso.DERIVAR]: IconName.SEND,
+  [AccionCaso.TOMAR]: IconName.TAKE,
+  [AccionCaso.RESOLVER]: IconName.RESOLVE,
+  [AccionCaso.ARCHIVAR]: IconName.ARCHIVE,
+  [AccionCaso.REABRIR]: IconName.REOPEN,
+};
+
+export const ESTILO_JERARQUIA: Record<JerarquiaAccion, { readonly variant: ButtonVariant; readonly tone: ButtonTone }> = {
+  [JerarquiaAccion.PRINCIPAL]: { variant: ButtonVariant.SOLID, tone: ButtonTone.PRIMARY },
+  [JerarquiaAccion.SECUNDARIA]: { variant: ButtonVariant.OUTLINE, tone: ButtonTone.NEUTRAL },
+  [JerarquiaAccion.DESTRUCTIVA]: { variant: ButtonVariant.OUTLINE, tone: ButtonTone.DANGER },
 };
 
 export const MOTIVO_ARCHIVO_LABEL: Record<MotivoArchivo, string> = {

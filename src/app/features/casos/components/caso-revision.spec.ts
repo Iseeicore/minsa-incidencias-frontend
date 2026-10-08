@@ -19,6 +19,7 @@ import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import { TipoArea } from "@/shared/enums/tipo-area.enum";
 import type { CasoDetalle, RespuestaAccion } from "@/features/casos/types/caso.types";
 import { CasosStore } from "@/features/casos/casos.store";
+import { ETIQUETA_BOTON_ACCION } from "@/features/casos/constants/casos-constants";
 import { CasoRevision } from "./caso-revision";
 
 const esperar = (ms = 10) => new Promise<void>((resolver) => setTimeout(resolver, ms));
@@ -321,6 +322,253 @@ describe("CasoRevision", () => {
     });
   });
 
+  describe("jerarquía de los botones e iconos", () => {
+    const PRINCIPAL = "bg-primary-500";
+    const SECUNDARIA = "border-gray-300";
+    const DESTRUCTIVA = "border-danger-500";
+
+    const estiloDe = (boton: HTMLButtonElement | undefined) => {
+      if (!boton) return "sin botón";
+      if (boton.classList.contains(PRINCIPAL)) return "principal";
+      if (boton.classList.contains(DESTRUCTIVA)) return "destructiva";
+      if (boton.classList.contains(SECUNDARIA)) return "secundaria";
+      return "otro";
+    };
+
+    const CASOS_POR_ESTADO = [
+      {
+        nombre: "clasificado sin revisar",
+        estado: EstadoCaso.CLASIFICADO,
+        revisadoPorHumano: false,
+        acciones: [AccionCaso.CONFIRMAR, AccionCaso.CORREGIR, AccionCaso.DERIVAR, AccionCaso.ARCHIVAR],
+        principal: "Confirmar categoría",
+      },
+      {
+        nombre: "clasificado ya revisado",
+        estado: EstadoCaso.CLASIFICADO,
+        revisadoPorHumano: true,
+        acciones: [AccionCaso.CORREGIR, AccionCaso.DERIVAR, AccionCaso.TOMAR, AccionCaso.ARCHIVAR],
+        principal: "Tomar en gestión",
+      },
+      {
+        nombre: "derivado",
+        estado: EstadoCaso.DERIVADO,
+        revisadoPorHumano: true,
+        acciones: [AccionCaso.TOMAR, AccionCaso.ARCHIVAR],
+        principal: "Tomar en gestión",
+      },
+      {
+        nombre: "en gestión",
+        estado: EstadoCaso.EN_GESTION,
+        revisadoPorHumano: true,
+        acciones: [AccionCaso.RESOLVER, AccionCaso.ARCHIVAR],
+        principal: "Resolver el caso",
+      },
+      {
+        nombre: "archivado",
+        estado: EstadoCaso.ARCHIVADO,
+        revisadoPorHumano: true,
+        acciones: [AccionCaso.REABRIR],
+        principal: "Reabrir el caso",
+      },
+    ];
+
+    it.each(CASOS_POR_ESTADO)("$nombre: solo la acción que toca es la principal, con relleno", async ({ nombre: _nombre, principal, ...caso }) => {
+      const { boton, botones } = await abrir(crearDetalle(caso));
+      expect(estiloDe(boton(principal))).toBe("principal");
+      const deAccion = botones().filter((candidato) => candidato.closest("app-button") !== null);
+      expect(deAccion.filter((candidato) => estiloDe(candidato) === "principal")).toHaveLength(1);
+    });
+
+    it("Corregir y Derivar son secundarias, con borde, y Archivar es destructiva", async () => {
+      const { boton } = await abrir(
+        crearDetalle({
+          estado: EstadoCaso.CLASIFICADO,
+          revisadoPorHumano: false,
+          acciones: [AccionCaso.CONFIRMAR, AccionCaso.CORREGIR, AccionCaso.DERIVAR, AccionCaso.ARCHIVAR],
+        }),
+      );
+      expect(estiloDe(boton("Corregir categoría"))).toBe("secundaria");
+      expect(estiloDe(boton("Derivar a un área"))).toBe("secundaria");
+      expect(estiloDe(boton("Archivar el caso"))).toBe("destructiva");
+    });
+
+    it("con Tomar disponible, Derivar deja de ser la principal", async () => {
+      const { boton } = await abrir(
+        crearDetalle({ estado: EstadoCaso.CLASIFICADO, revisadoPorHumano: true, acciones: [AccionCaso.DERIVAR, AccionCaso.TOMAR] }),
+      );
+      expect(estiloDe(boton("Tomar en gestión"))).toBe("principal");
+      expect(estiloDe(boton("Derivar a un área"))).toBe("secundaria");
+    });
+
+    it("Archivar va en su propio grupo, separado por una línea, después de las demás", async () => {
+      const { boton, botones } = await abrir(
+        crearDetalle({ estado: EstadoCaso.EN_GESTION, revisadoPorHumano: true, acciones: [AccionCaso.RESOLVER, AccionCaso.ARCHIVAR] }),
+      );
+      const archivar = boton("Archivar el caso") as HTMLButtonElement;
+      const resolver = boton("Resolver el caso") as HTMLButtonElement;
+      const grupoDestructivo = archivar.closest("div") as HTMLElement;
+      expect(grupoDestructivo.classList.contains("border-t")).toBe(true);
+      expect(grupoDestructivo.contains(resolver)).toBe(false);
+      expect(botones().indexOf(resolver)).toBeLessThan(botones().indexOf(archivar));
+    });
+
+    it("sin otras acciones, Archivar va solo y sin línea que lo separe de nada", async () => {
+      const { boton } = await abrir(crearDetalle({ estado: EstadoCaso.CLASIFICADO, acciones: [AccionCaso.ARCHIVAR] }));
+      expect((boton("Archivar el caso")?.closest("div") as HTMLElement).classList.contains("border-t")).toBe(false);
+    });
+
+    it("los botones se apilan en móvil y van en fila desde sm", async () => {
+      const { boton } = await abrir(
+        crearDetalle({ estado: EstadoCaso.EN_GESTION, revisadoPorHumano: true, acciones: [AccionCaso.RESOLVER, AccionCaso.ARCHIVAR] }),
+      );
+      for (const texto of ["Resolver el caso", "Archivar el caso"]) {
+        const grupo = boton(texto)?.closest("div") as HTMLElement;
+        expect(grupo.classList.contains("flex-col")).toBe(true);
+        expect(grupo.classList.contains("sm:flex-row")).toBe(true);
+      }
+    });
+
+    it("cada botón de acción lleva su icono a la izquierda y los iconos son distintos", async () => {
+      const todas = Object.values(AccionCaso);
+      const dibujos = new Map<string, string>();
+      for (const accion of todas) {
+        document.body.replaceChildren();
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+          providers: [
+            { provide: IncidenciasApi, useValue: api },
+            { provide: AreasApi, useValue: areas },
+            { provide: SessionStore, useValue: { area } },
+            { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 },
+          ],
+        });
+        const estado =
+          accion === AccionCaso.RESOLVER
+            ? EstadoCaso.EN_GESTION
+            : accion === AccionCaso.REABRIR
+              ? EstadoCaso.ARCHIVADO
+              : accion === AccionCaso.TOMAR
+                ? EstadoCaso.DERIVADO
+                : EstadoCaso.CLASIFICADO;
+        const { boton } = await abrir(crearDetalle({ estado, revisadoPorHumano: true, acciones: [accion] }));
+        const objetivo = boton(ETIQUETA_BOTON_ACCION[accion]) as HTMLButtonElement;
+        expect(objetivo, accion).toBeDefined();
+        const icono = objetivo.querySelector("app-icon svg");
+        expect(icono, accion).not.toBeNull();
+        expect(objetivo.firstElementChild?.tagName).toBe("APP-ICON");
+        dibujos.set(accion, icono?.innerHTML ?? "");
+      }
+      expect(new Set(dibujos.values()).size).toBe(todas.length);
+    });
+
+    it("Cancelar lleva el icono de cerrar en cada paso", async () => {
+      const { element, pulsar } = await abrir(
+        crearDetalle({ estado: EstadoCaso.CLASIFICADO, acciones: [AccionCaso.CORREGIR, AccionCaso.DERIVAR] }),
+      );
+      await pulsar("Corregir categoría");
+      const cancelar = Array.from(element.querySelectorAll<HTMLButtonElement>("[role='dialog'] button")).find((b) =>
+        b.textContent?.includes("Cancelar"),
+      );
+      expect(cancelar?.querySelector("app-icon svg")).not.toBeNull();
+    });
+
+    it("el envío a OTRANS es peligroso y lleva el icono de escudo", async () => {
+      area.set({ codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: TipoArea.ESTABLECIMIENTO });
+      const { boton, pulsar, escribir } = await abrir(crearDetalle({ acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      await escribir("select", "denuncia-corrupcion");
+      await pulsar("Aplicar corrección");
+      const enviar = boton("Confirmar y enviar a OTRANS") as HTMLButtonElement;
+      expect(enviar.classList.contains("bg-danger-500")).toBe(true);
+      expect(enviar.querySelector("app-icon svg")).not.toBeNull();
+    });
+  });
+
+  describe("campos del panel con el estilo del sistema", () => {
+    const conBorde = (campo: Element | null | undefined) => {
+      expect(campo).not.toBeNull();
+      expect(campo?.classList.contains("border-2")).toBe(true);
+      expect(campo?.classList.contains("border-gray-200")).toBe(true);
+      expect(campo?.classList.contains("bg-white")).toBe(true);
+      expect(campo?.classList.contains("focus:ring-2")).toBe(true);
+    };
+
+    it("el selector de categoría tiene etiqueta visible, borde gris, fondo blanco y anillo de foco", async () => {
+      const { element, pulsar } = await abrir(crearDetalle({ acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      const etiqueta = Array.from(element.querySelectorAll("[role='dialog'] app-select-field label span")).find((span) =>
+        span.textContent?.includes("Nueva categoría"),
+      );
+      expect(etiqueta?.classList.contains("sr-only")).toBe(false);
+      conBorde(element.querySelector("[role='dialog'] app-select-field select"));
+    });
+
+    it("la categoría actual aparece primero, marcada como «Actual: …» y elegida al abrir", async () => {
+      const { element, pulsar } = await abrir(crearDetalle({ categoria: CategoriaCaso.OTRO, acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      const select = element.querySelector<HTMLSelectElement>("[role='dialog'] select") as HTMLSelectElement;
+      expect(select.options[0].textContent?.trim()).toBe("Actual: Otro");
+      expect(select.options[0].value).toBe("otro");
+      expect(select.value).toBe("otro");
+      expect(Array.from(select.options).filter((opcion) => opcion.value === "otro")).toHaveLength(1);
+    });
+
+    it("Aplicar corrección sigue deshabilitado con la categoría actual y se habilita al elegir otra", async () => {
+      const { boton, pulsar, escribir } = await abrir(crearDetalle({ categoria: CategoriaCaso.OTRO, acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      expect(boton("Aplicar corrección")?.disabled).toBe(true);
+
+      await escribir("select", "queja");
+      expect(boton("Aplicar corrección")?.disabled).toBe(false);
+
+      await escribir("select", "otro");
+      expect(boton("Aplicar corrección")?.disabled).toBe(true);
+    });
+
+    it("elegir de nuevo la actual no llama al servidor", async () => {
+      const { pulsar, escribir } = await abrir(crearDetalle({ categoria: CategoriaCaso.OTRO, acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      await escribir("select", "otro");
+      await pulsar("Aplicar corrección");
+      expect(api.corregir).not.toHaveBeenCalled();
+    });
+
+    it("sin categoría actual, el selector pide elegir una", async () => {
+      const { element, boton, pulsar } = await abrir(crearDetalle({ categoria: null, acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      const select = element.querySelector<HTMLSelectElement>("[role='dialog'] select") as HTMLSelectElement;
+      expect(select.options[0].textContent?.trim()).toBe("Elige una categoría");
+      expect(boton("Aplicar corrección")?.disabled).toBe(true);
+    });
+
+    it("al corregir una categoría a corrupción no avisa de OTRANS mientras siga la actual", async () => {
+      const { panel, pulsar } = await abrir(crearDetalle({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION, acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      expect(panel()?.textContent).not.toContain("las toma OTRANS");
+    });
+
+    it("el motivo del archivo y la justificación también tienen borde", async () => {
+      const { element, pulsar } = await abrir(crearDetalle({ acciones: [AccionCaso.ARCHIVAR] }));
+      await pulsar("Archivar el caso");
+      conBorde(element.querySelector("[role='dialog'] app-formulario-archivo select"));
+      conBorde(element.querySelector("[role='dialog'] app-formulario-archivo textarea"));
+    });
+
+    it("el resultado y los textos de la resolución tienen borde", async () => {
+      const { element, pulsar } = await abrir(crearDetalle({ estado: EstadoCaso.EN_GESTION, acciones: [AccionCaso.RESOLVER] }));
+      await pulsar("Resolver el caso");
+      conBorde(element.querySelector("[role='dialog'] app-formulario-resolucion select"));
+      element.querySelectorAll("[role='dialog'] app-formulario-resolucion textarea").forEach((area_) => conBorde(area_));
+    });
+
+    it("el motivo de la reapertura tiene borde", async () => {
+      const { element, pulsar } = await abrir(crearDetalle({ estado: EstadoCaso.ARCHIVADO, acciones: [AccionCaso.REABRIR] }));
+      await pulsar("Reabrir el caso");
+      conBorde(element.querySelector("[role='dialog'] app-formulario-reapertura textarea"));
+    });
+  });
+
   describe("confirmar y corregir", () => {
     it("confirmar llama al servidor, muestra el éxito y cierra la revisión", async () => {
       const { panel, pulsar, boton } = await abrir(crearDetalle({ acciones: [AccionCaso.CONFIRMAR, AccionCaso.CORREGIR] }));
@@ -358,11 +606,12 @@ describe("CasoRevision", () => {
       expect(panel()?.textContent).toContain("Corregida a Queja");
     });
 
-    it("la categoría actual no se ofrece para corregir", async () => {
+    it("la categoría actual se ofrece una sola vez, marcada, y las demás se pueden elegir", async () => {
       const { element, pulsar } = await abrir(crearDetalle({ categoria: CategoriaCaso.RECLAMO, acciones: [AccionCaso.CORREGIR] }));
       await pulsar("Corregir categoría");
       const opciones = Array.from(element.querySelectorAll("[role='dialog'] option")).map((opcion) => opcion.getAttribute("value"));
-      expect(opciones).not.toContain("reclamo");
+      expect(opciones.filter((valor) => valor === "reclamo")).toHaveLength(1);
+      expect(opciones[0]).toBe("reclamo");
       expect(opciones).toContain("queja");
     });
 

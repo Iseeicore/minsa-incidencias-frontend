@@ -36,5 +36,13 @@ export const IconName = {
   COPY: "copy",
   CHECK: "check",
   KEY: "key",
+  CONFIRM: "confirm",
+  EDIT: "edit",
+  TAKE: "take",
+  RESOLVE: "resolve",
+  SEND: "send",
+  ARCHIVE: "archive",
+  REOPEN: "reopen",
+  SHIELD_ALERT: "shield-alert",
 } as const;
 export type IconName = (typeof IconName)[keyof typeof IconName];

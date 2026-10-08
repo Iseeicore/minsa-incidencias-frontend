@@ -142,23 +142,23 @@
         } @else if (modo() === ModoPanel.CORREGIR && confirmandoOtrans()) {
           <div class="space-y-3">
             <app-alert [tone]="BadgeTone.WARNING">Este caso pasará a OTRANS y saldrá de tu bandeja. No se puede deshacer.</app-alert>
-            <div class="flex flex-wrap gap-2">
-              <app-button [tone]="ButtonTone.DANGER" [disabled]="procesando()" (click)="aplicarCorreccion()">Confirmar y enviar a OTRANS</app-button>
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="cancelar()">Cancelar</app-button>
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <app-button [tone]="ButtonTone.DANGER" [icon]="IconName.SHIELD_ALERT" [disabled]="procesando()" (click)="aplicarCorreccion()">Confirmar y enviar a OTRANS</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" [disabled]="procesando()" (click)="cancelar()">Cancelar</app-button>
             </div>
           </div>
         } @else if (modo() === ModoPanel.CORREGIR) {
           <div class="space-y-3">
-            <app-select-field label="Nueva categoría" [options]="opcionesCategoria()" [(value)]="nuevaCategoria" />
+            <app-select-field label="Nueva categoría" [etiquetaVisible]="true" [options]="opcionesCategoria()" [(value)]="nuevaCategoria" />
             @if (avisoCorrupcion()) {
               <p class="text-sm text-gray-700">Las denuncias por corrupción las toma <strong>OTRANS</strong>; no se derivan a un establecimiento.</p>
             }
             <app-alert [tone]="BadgeTone.WARNING">
               La categoría se confirma o se corrige una sola vez. Revisa bien antes de aplicar.
             </app-alert>
-            <div class="flex flex-wrap gap-2">
-              <app-button [disabled]="nuevaCategoria() === '' || procesando()" (click)="aplicarCorreccion()">Aplicar corrección</app-button>
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar()">Cancelar</app-button>
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <app-button [icon]="IconName.EDIT" [disabled]="!puedeAplicarCorreccion() || procesando()" (click)="aplicarCorreccion()">Aplicar corrección</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" (click)="cancelar()">Cancelar</app-button>
             </div>
           </div>
         } @else if (modo() === ModoPanel.DERIVAR) {
@@ -172,9 +172,9 @@
             @if (esCorrupcion()) {
               <p class="text-sm text-gray-700">Si no eliges un área, la denuncia se queda en <strong>OTRANS</strong>.</p>
             }
-            <div class="flex flex-wrap gap-2">
-              <app-button [disabled]="(areaElegida() === null && !esCorrupcion()) || procesando()" (click)="aplicarDerivacion()">Derivar el caso</app-button>
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar()">Cancelar</app-button>
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <app-button [icon]="IconName.SEND" [disabled]="(areaElegida() === null && !esCorrupcion()) || procesando()" (click)="aplicarDerivacion()">Derivar el caso</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" (click)="cancelar()">Cancelar</app-button>
             </div>
           </div>
         } @else if (modo() === ModoPanel.RESOLVER) {
@@ -184,27 +184,36 @@
         } @else if (modo() === ModoPanel.REABRIR) {
           <app-formulario-reapertura [procesando]="procesando()" (enviar)="aplicarReapertura($event)" (cancelar)="cancelar()" />
         } @else {
-          <div class="flex flex-wrap gap-2">
-            @if (acciones().includes(AccionCaso.CONFIRMAR)) {
-              <app-button [disabled]="procesando()" (click)="confirmar()">Confirmar categoría</app-button>
+          <div class="space-y-3">
+            @if (botonesDeAvance().length > 0) {
+              <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                @for (boton of botonesDeAvance(); track boton.accion) {
+                  <app-button
+                    [variant]="boton.variant"
+                    [tone]="boton.tone"
+                    [icon]="iconoAccion[boton.accion]"
+                    [disabled]="procesando()"
+                    (click)="iniciar(boton.accion)"
+                  >
+                    {{ etiquetaAccion[boton.accion] }}
+                  </app-button>
+                }
+              </div>
             }
-            @if (acciones().includes(AccionCaso.CORREGIR)) {
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="abrirCorreccion()">Corregir categoría</app-button>
-            }
-            @if (acciones().includes(AccionCaso.DERIVAR)) {
-              <app-button [disabled]="procesando()" (click)="abrirDerivacion()">Derivar a un área</app-button>
-            }
-            @if (acciones().includes(AccionCaso.TOMAR)) {
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="tomar()">Tomar en gestión</app-button>
-            }
-            @if (acciones().includes(AccionCaso.RESOLVER)) {
-              <app-button [disabled]="procesando()" (click)="abrirResolucion()">Resolver el caso</app-button>
-            }
-            @if (acciones().includes(AccionCaso.ARCHIVAR)) {
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="abrirArchivo()">Archivar el caso</app-button>
-            }
-            @if (acciones().includes(AccionCaso.REABRIR)) {
-              <app-button [disabled]="procesando()" (click)="abrirReapertura()">Reabrir el caso</app-button>
+            @if (botonesDestructivos().length > 0) {
+              <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap" [class]="botonesDeAvance().length > 0 ? 'border-t border-gray-200 pt-3' : ''">
+                @for (boton of botonesDestructivos(); track boton.accion) {
+                  <app-button
+                    [variant]="boton.variant"
+                    [tone]="boton.tone"
+                    [icon]="iconoAccion[boton.accion]"
+                    [disabled]="procesando()"
+                    (click)="iniciar(boton.accion)"
+                  >
+                    {{ etiquetaAccion[boton.accion] }}
+                  </app-button>
+                }
+              </div>
             }
           </div>
           @if (acciones().includes(AccionCaso.CONFIRMAR) || acciones().includes(AccionCaso.CORREGIR)) {

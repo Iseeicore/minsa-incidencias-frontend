@@ -1,10 +1,8 @@
 import { booleanAttribute, ChangeDetectionStrategy, Component, computed, input, model } from "@angular/core";
+import { CAMPO_BASE, CAMPO_INVALIDO, CAMPO_VALIDO } from "@/shared/constants/campo-clases";
 import { joinClasses } from "@/shared/utils/join-classes";
 
-const BASE_CLASSES =
-  "w-full resize-y rounded-xl border-2 bg-white p-3 text-sm text-gray-800 transition-colors placeholder:text-gray-500 focus:outline-none";
-const VALID_CLASSES = "border-gray-200 hover:border-gray-300 focus:border-primary-500";
-const INVALID_CLASSES = "border-danger-200 focus:border-danger-500";
+const BASE_CLASSES = `${CAMPO_BASE} resize-y rounded-md p-3 text-sm`;
 
 @Component({
   selector: "app-textarea-field",
@@ -42,7 +40,7 @@ export class TextareaField {
   readonly value = model("");
 
   protected readonly classes = computed(() =>
-    joinClasses(BASE_CLASSES, this.invalid() ? INVALID_CLASSES : VALID_CLASSES),
+    joinClasses(BASE_CLASSES, this.invalid() ? CAMPO_INVALIDO : CAMPO_VALIDO),
   );
 
   protected readonly faltaMinimo = computed(() => {

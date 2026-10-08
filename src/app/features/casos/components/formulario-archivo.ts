@@ -7,6 +7,7 @@ import {
 import type { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
+import { IconName } from "@/shared/enums/icon-name.enum";
 import { Alert } from "@/shared/ui/alert/alert";
 import { Button } from "@/shared/ui/button/button";
 import { SelectField } from "@/shared/ui/select-field/select-field";
@@ -34,18 +35,24 @@ export interface DatosArchivo {
         [maxlength]="maximo"
         [(value)]="detalle"
       />
-      <div class="flex flex-wrap gap-2">
-        <app-button [disabled]="!valido() || procesando()" (click)="confirmando.set(true)">Archivar el caso</app-button>
-        <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar.emit()">Cancelar</app-button>
+      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <app-button [icon]="IconName.ARCHIVE" [disabled]="!valido() || procesando()" (click)="confirmando.set(true)">Archivar el caso</app-button>
+        <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" (click)="cancelar.emit()">Cancelar</app-button>
       </div>
     } @else {
       <app-alert [tone]="BadgeTone.WARNING">
         Al archivar el caso deja de contar para el entrenamiento de la IA y sale de las bandejas activas. Podrás
         reabrirlo después. ¿Confirmas que quieres archivarlo?
       </app-alert>
-      <div class="flex flex-wrap gap-2">
-        <app-button [tone]="ButtonTone.DANGER" [disabled]="procesando()" (click)="archivar()">Sí, archivar el caso</app-button>
-        <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="confirmando.set(false)">
+      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <app-button [tone]="ButtonTone.DANGER" [icon]="IconName.ARCHIVE" [disabled]="procesando()" (click)="archivar()">Sí, archivar el caso</app-button>
+        <app-button
+          [variant]="ButtonVariant.OUTLINE"
+          [tone]="ButtonTone.NEUTRAL"
+          [icon]="IconName.CHEVRON_LEFT"
+          [disabled]="procesando()"
+          (click)="confirmando.set(false)"
+        >
           Volver
         </app-button>
       </div>
@@ -58,6 +65,7 @@ export class FormularioArchivo {
   readonly cancelar = output();
 
   protected readonly BadgeTone = BadgeTone;
+  protected readonly IconName = IconName;
   protected readonly ButtonTone = ButtonTone;
   protected readonly ButtonVariant = ButtonVariant;
   protected readonly minimo = MIN_TEXTO_REVISION;

@@ -4,6 +4,7 @@ import type { ResultadoResolucion } from "@/features/casos/enums/resultado-resol
 import type { DatosResolucion } from "@/features/casos/types/caso.types";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
+import { IconName } from "@/shared/enums/icon-name.enum";
 import { Alert } from "@/shared/ui/alert/alert";
 import { Button } from "@/shared/ui/button/button";
 import { SelectField } from "@/shared/ui/select-field/select-field";
@@ -36,9 +37,9 @@ import { TextareaField } from "@/shared/ui/textarea-field/textarea-field";
     <app-alert [tone]="BadgeTone.WARNING">
       Al registrar la resolución el caso queda resuelto y no se puede deshacer.
     </app-alert>
-    <div class="flex flex-wrap gap-2">
-      <app-button [disabled]="!valido() || procesando()" (click)="registrar()">Registrar resolución</app-button>
-      <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar.emit()">Cancelar</app-button>
+    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <app-button [icon]="IconName.RESOLVE" [disabled]="!valido() || procesando()" (click)="registrar()">Registrar resolución</app-button>
+      <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" (click)="cancelar.emit()">Cancelar</app-button>
     </div>
   `,
 })
@@ -48,6 +49,7 @@ export class FormularioResolucion {
   readonly cancelar = output();
 
   protected readonly BadgeTone = BadgeTone;
+  protected readonly IconName = IconName;
   protected readonly ButtonTone = ButtonTone;
   protected readonly ButtonVariant = ButtonVariant;
   protected readonly minimo = MIN_TEXTO_REVISION;

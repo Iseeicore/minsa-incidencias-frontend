@@ -36,6 +36,13 @@ describe("SelectField", () => {
     expect(element.querySelector("label span")?.textContent).toBe("Elegir");
   });
 
+  it("se ve como un campo: borde gris, fondo blanco y anillo de foco", async () => {
+    const { select } = await setup("a");
+    for (const clase of ["border-2", "border-gray-200", "bg-white", "focus:ring-2", "focus:border-primary-500"]) {
+      expect(select.classList.contains(clase), clase).toBe(true);
+    }
+  });
+
   it("tiene una etiqueta accesible", async () => {
     const { fixture } = await setup("a");
     expect((fixture.nativeElement as HTMLElement).querySelector(".sr-only")?.textContent).toBe("Elegir");

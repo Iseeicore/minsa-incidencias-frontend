@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from "@angular/core";
 import { MAX_REAPERTURA_MOTIVO, MIN_TEXTO_REVISION } from "@/features/casos/constants/casos-constants";
 import { ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
+import { IconName } from "@/shared/enums/icon-name.enum";
 import { Button } from "@/shared/ui/button/button";
 import { TextareaField } from "@/shared/ui/textarea-field/textarea-field";
 
@@ -19,9 +20,9 @@ import { TextareaField } from "@/shared/ui/textarea-field/textarea-field";
       [maxlength]="maximo"
       [(value)]="motivo"
     />
-    <div class="flex flex-wrap gap-2">
-      <app-button [disabled]="!valido() || procesando()" (click)="reabrir()">Confirmar reapertura</app-button>
-      <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar.emit()">Cancelar</app-button>
+    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <app-button [icon]="IconName.REOPEN" [disabled]="!valido() || procesando()" (click)="reabrir()">Confirmar reapertura</app-button>
+      <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" (click)="cancelar.emit()">Cancelar</app-button>
     </div>
   `,
 })
@@ -31,6 +32,7 @@ export class FormularioReapertura {
   readonly cancelar = output();
 
   protected readonly ButtonTone = ButtonTone;
+  protected readonly IconName = IconName;
   protected readonly ButtonVariant = ButtonVariant;
   protected readonly minimo = MIN_TEXTO_REVISION;
   protected readonly maximo = MAX_REAPERTURA_MOTIVO;

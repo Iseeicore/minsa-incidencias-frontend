@@ -9,6 +9,9 @@ import { FormularioResolucion } from "@/features/casos/components/formulario-res
 import {
   CATEGORIA_LABEL,
   ESTADO_BADGE,
+  ESTILO_JERARQUIA,
+  ETIQUETA_BOTON_ACCION,
+  ICONO_ACCION,
   PRIORIDAD_CASO_BADGE,
   SIN_AREA,
   SIN_DATO,
@@ -20,16 +23,19 @@ import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import { JerarquiaAccion } from "@/features/casos/enums/jerarquia-accion.enum";
 import { ModoPanel } from "@/features/casos/enums/modo-panel.enum";
 import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import type { AreaOpcion } from "@/features/casos/types/area.types";
 import type { DatosResolucion, ResultadoAccion } from "@/features/casos/types/caso.types";
 import { categoriasCorregibles, corregirASaleDeLaBandeja, tipoAreaDeDestino } from "@/features/casos/utils/categorias-corregibles";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
+import { jerarquiaDeAcciones } from "@/features/casos/utils/jerarquia-acciones";
 import { textoRenipress } from "@/features/casos/utils/texto-establecimiento";
 import { textoPlazo, textoReapertura } from "@/features/casos/utils/texto-plazo";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
+import { IconName } from "@/shared/enums/icon-name.enum";
 import { Alert } from "@/shared/ui/alert/alert";
 import { Badge } from "@/shared/ui/badge/badge";
 import { Button } from "@/shared/ui/button/button";
@@ -66,6 +72,7 @@ export class CasoRevision {
   protected readonly ButtonSize = ButtonSize;
   protected readonly ButtonTone = ButtonTone;
   protected readonly ButtonVariant = ButtonVariant;
+  protected readonly IconName = IconName;
   protected readonly ModoPanel = ModoPanel;
   protected readonly sinDato = SIN_DATO;
   protected readonly sinArea = SIN_AREA;
@@ -76,6 +83,8 @@ export class CasoRevision {
   protected readonly prioridadBadge = PRIORIDAD_CASO_BADGE;
   protected readonly tipoEvidencia = TIPO_EVIDENCIA_LABEL;
   protected readonly tonoConfianza = tonoConfianza;
+  protected readonly etiquetaAccion = ETIQUETA_BOTON_ACCION;
+  protected readonly iconoAccion = ICONO_ACCION;
 
   protected readonly modo = signal<ModoPanel>(ModoPanel.NINGUNO);
   protected readonly nuevaCategoria = signal("");
@@ -101,6 +110,22 @@ export class CasoRevision {
     return caso.acciones.filter((accion) => accion !== AccionCaso.REABRIR || !sinReapertura);
   });
 
+  /** Principal primero y luego las secundarias; las destructivas van en su propio grupo, separado. */
+  protected readonly botonesDeAvance = computed(() => {
+    const { principal, secundarias } = this.jerarquia();
+    const botones = secundarias.map((accion) => ({ accion, ...ESTILO_JERARQUIA[JerarquiaAccion.SECUNDARIA] }));
+    return principal === null ? botones : [{ accion: principal, ...ESTILO_JERARQUIA[JerarquiaAccion.PRINCIPAL] }, ...botones];
+  });
+
+  protected readonly botonesDestructivos = computed(() =>
+    this.jerarquia().destructivas.map((accion) => ({ accion, ...ESTILO_JERARQUIA[JerarquiaAccion.DESTRUCTIVA] })),
+  );
+
+  private readonly jerarquia = computed(() => {
+    const caso = this.caso();
+    return jerarquiaDeAcciones(caso ?? { estado: EstadoCaso.REGISTRADO, revisadoPorHumano: false }, this.acciones());
+  });
+
   protected readonly plazoTexto = computed(() => {
     const caso = this.caso();
     return caso ? textoPlazo(caso) : "";
@@ -113,15 +138,32 @@ export class CasoRevision {
 
   protected readonly hayEvidenciaSensible = computed(() => this.caso()?.evidencias.some((item) => item.sensible) ?? false);
 
-  protected readonly opcionesCategoria = computed<readonly SelectOption[]>(() => [
-    { value: "", label: "Elige una categoría" },
-    ...categoriasCorregibles()
-      .filter((categoria) => categoria !== this.caso()?.categoria)
-      .map((categoria) => ({ value: categoria, label: CATEGORIA_LABEL[categoria] })),
-  ]);
+  /** La categoría actual va primero y marcada; el resto son las que se pueden elegir. */
+  protected readonly opcionesCategoria = computed<readonly SelectOption[]>(() => {
+    const actual = this.caso()?.categoria ?? null;
+    return [
+      actual === null
+        ? { value: "", label: "Elige una categoría" }
+        : { value: actual, label: `Actual: ${CATEGORIA_LABEL[actual]}` },
+      ...categoriasCorregibles()
+        .filter((categoria) => categoria !== actual)
+        .map((categoria) => ({ value: categoria, label: CATEGORIA_LABEL[categoria] })),
+    ];
+  });
+
+  protected readonly puedeAplicarCorreccion = computed(() => this.nuevaCategoriaDistinta() !== null);
 
   protected readonly saleDeMiBandeja = computed(() => corregirASaleDeLaBandeja(this.area()?.tipo ?? null, this.nuevaCategoria()));
-  protected readonly avisoCorrupcion = computed(() => this.nuevaCategoria() === CategoriaCaso.DENUNCIA_CORRUPCION && !this.saleDeMiBandeja());
+  protected readonly avisoCorrupcion = computed(
+    () => this.nuevaCategoriaDistinta() === CategoriaCaso.DENUNCIA_CORRUPCION && !this.saleDeMiBandeja(),
+  );
+
+  /** La categoría elegida si es otra que la actual; `null` mientras siga la actual o no se haya elegido nada. */
+  private readonly nuevaCategoriaDistinta = computed(() => {
+    const nueva = this.nuevaCategoria();
+    return nueva === "" || nueva === this.caso()?.categoria ? null : nueva;
+  });
+
 
   protected readonly motivoSinAcciones = computed(() => {
     const caso = this.caso();
@@ -176,17 +218,37 @@ export class CasoRevision {
 
   protected abrirCorreccion(): void {
     this.feedback.set(null);
+    this.nuevaCategoria.set(this.caso()?.categoria ?? "");
     this.modo.set(ModoPanel.CORREGIR);
   }
 
   protected aplicarCorreccion(): void {
-    const nueva = this.nuevaCategoria();
+    const nueva = this.nuevaCategoriaDistinta();
     if (!nueva) return;
     if (this.saleDeMiBandeja() && !this.confirmandoOtrans()) {
       this.confirmandoOtrans.set(true);
       return;
     }
     void this.ejecutar((codigo) => this.store.corregir(codigo, nueva as CategoriaCaso));
+  }
+
+  protected iniciar(accion: AccionCaso): void {
+    switch (accion) {
+      case AccionCaso.CONFIRMAR:
+        return this.confirmar();
+      case AccionCaso.CORREGIR:
+        return this.abrirCorreccion();
+      case AccionCaso.DERIVAR:
+        return this.abrirDerivacion();
+      case AccionCaso.TOMAR:
+        return this.tomar();
+      case AccionCaso.RESOLVER:
+        return this.abrirResolucion();
+      case AccionCaso.ARCHIVAR:
+        return this.abrirArchivo();
+      case AccionCaso.REABRIR:
+        return this.abrirReapertura();
+    }
   }
 
   protected abrirResolucion(): void {
