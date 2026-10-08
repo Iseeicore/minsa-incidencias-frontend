@@ -62,10 +62,10 @@ describe("AppShell", () => {
     expect(element.querySelector("nav")?.textContent).not.toContain("Inteligencia IA");
   });
 
-  it("el administrador ve todo el menú: 4 enlaces y las 10 entradas sin pantalla en gris, sin navegación", async () => {
+  it("el administrador ve todo el menú: 5 enlaces y las 10 entradas sin pantalla en gris, sin navegación", async () => {
     const { element } = await setup({ ...ana, roles: ["ADMINISTRADOR"] });
     const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas", "Derivaciones"]);
+    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas", "Derivaciones", "Códigos QR"]);
     const grises = Array.from(element.querySelectorAll("nav [aria-disabled='true']"));
     expect(grises).toHaveLength(10);
     expect(grises.every((gris) => gris.tagName === "SPAN" && !gris.hasAttribute("href"))).toBe(true);

@@ -30,5 +30,7 @@ export const IconName = {
   SEARCH: "search",
   MENU: "menu",
   CLOSE: "close",
+  QR_CODE: "qr-code",
+  DOWNLOAD: "download",
 } as const;
 export type IconName = (typeof IconName)[keyof typeof IconName];

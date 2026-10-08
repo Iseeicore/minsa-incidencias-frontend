@@ -37,6 +37,11 @@ export const routes: Routes = [
           import("@/features/derivaciones/derivaciones-page").then((module) => module.DerivacionesPage),
       },
       {
+        path: ROUTE_PATH.QR,
+        canActivate: [vistaGuard(VistaCodigo.QR)],
+        loadComponent: () => import("@/features/qr/qr-page").then((module) => module.QrPage),
+      },
+      {
         path: ROUTE_PATH.SIN_ACCESO,
         loadComponent: () => import("@/features/sin-acceso/sin-acceso-page").then((module) => module.SinAccesoPage),
       },

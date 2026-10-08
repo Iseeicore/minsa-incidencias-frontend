@@ -8,6 +8,7 @@ services:
         PLAZO_ATENCION_DIAS: ${PLAZO_ATENCION_DIAS:-3}
         PLAZO_VIGENCIA_RESOLUCION_DIAS: ${PLAZO_VIGENCIA_RESOLUCION_DIAS:-3}
         PLAZO_AVISO_HORAS: ${PLAZO_AVISO_HORAS:-24}
+        WHATSAPP_NUMERO: ${WHATSAPP_NUMERO:-51944023973}
     image: minsa-incidencias-frontend:latest
     container_name: minsa-incidencias-frontend
     restart: unless-stopped

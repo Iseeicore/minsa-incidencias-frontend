@@ -15,7 +15,7 @@ import { Button } from "@/shared/ui/button/button";
     @if (cantidad() > 0 || hayAnterior()) {
       <nav [attr.aria-label]="label()" class="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
         <p class="text-sm font-medium text-gray-600" aria-live="polite">
-          Página {{ pagina() }} · {{ cantidad() }} {{ cantidad() === 1 ? "caso" : "casos" }}{{ hayMas() ? " · hay más" : "" }}
+          Página {{ pagina() }} · {{ cantidad() }} {{ cantidad() === 1 ? singular() : plural() }}{{ hayMas() ? " · hay más" : "" }}
         </p>
         <div class="flex items-center gap-2">
           <app-button
@@ -48,6 +48,8 @@ export class PaginadorCursor {
   readonly hayMas = input.required<boolean>();
   readonly cargando = input(false);
   readonly label = input("Paginación");
+  readonly singular = input("caso");
+  readonly plural = input("casos");
   readonly anterior = output();
   readonly siguiente = output();
 

@@ -19,6 +19,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
         vista: VistaCodigo.DERIVACIONES,
         implementada: true,
       },
+      { id: "qr", label: "Códigos QR", icon: IconName.QR_CODE, path: ROUTE.QR, vista: VistaCodigo.QR, implementada: true },
     ],
   },
   {

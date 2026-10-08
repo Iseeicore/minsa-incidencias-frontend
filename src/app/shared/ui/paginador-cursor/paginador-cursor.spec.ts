@@ -27,6 +27,18 @@ describe("PaginadorCursor", () => {
     expect(element.textContent).not.toContain("hay más");
   });
 
+  it("usa el sustantivo que se le indique en singular y en plural", async () => {
+    const { fixture, element } = await setup({ cantidad: 2 });
+    fixture.componentRef.setInput("singular", "establecimiento");
+    fixture.componentRef.setInput("plural", "establecimientos");
+    await fixture.whenStable();
+    expect(element.textContent).toContain("2 establecimientos");
+    fixture.componentRef.setInput("cantidad", 1);
+    await fixture.whenStable();
+    expect(element.textContent).toContain("1 establecimiento");
+    expect(element.textContent).not.toContain("establecimientos");
+  });
+
   it("en la primera página Anterior está deshabilitado y Siguiente pide la que sigue", async () => {
     const { botones, anterior, siguiente } = await setup({ hayMas: true });
     const [botonAnterior, botonSiguiente] = botones();

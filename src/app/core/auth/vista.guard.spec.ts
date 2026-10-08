@@ -29,6 +29,14 @@ describe("vistaGuard", () => {
     expect(destino(setup([VistaCodigo.INICIO, VistaCodigo.DERIVACIONES], VistaCodigo.CASOS)())).toBe(ROUTE.INICIO);
   });
 
+  it("la vista QR deja pasar a quien la tiene", () => {
+    expect(setup([VistaCodigo.INICIO, VistaCodigo.QR], VistaCodigo.QR)()).toBe(true);
+  });
+
+  it("sin la vista QR (gestor, OTRANS) redirige a su primera vista", () => {
+    expect(destino(setup([VistaCodigo.INICIO, VistaCodigo.CASOS], VistaCodigo.QR)())).toBe(ROUTE.INICIO);
+  });
+
   it("sin ninguna vista redirige a la página de sin acceso, sin dar vueltas", () => {
     expect(destino(setup([], VistaCodigo.INICIO)())).toBe(ROUTE.SIN_ACCESO);
   });

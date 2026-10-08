@@ -85,19 +85,31 @@ describe("visibleNav", () => {
 
   describe("menú de los cuatro roles (vistas que manda /auth/me)", () => {
     const TODAS = Object.values(VistaCodigo);
+    const SIN_QR = TODAS.filter((vista) => vista !== VistaCodigo.QR);
+    const SIN_DERIVACIONES_NI_QR = SIN_QR.filter((vista) => vista !== VistaCodigo.DERIVACIONES);
     const SIN_DERIVACIONES = TODAS.filter((vista) => vista !== VistaCodigo.DERIVACIONES);
     const operacion = (vistas: VistaCodigo[]) =>
-      ids(vistas).filter((id) => ["dashboard", "casos", "bandejas", "derivaciones"].includes(id));
+      ids(vistas).filter((id) => ["dashboard", "casos", "bandejas", "derivaciones", "qr"].includes(id));
 
-    it.each([
-      ["ADMINISTRADOR", TODAS],
-      ["GESTOR", TODAS],
-    ])("%s ve Dashboard, Casos, Mis bandejas y Derivaciones", (_rol, vistas) => {
-      expect(operacion(vistas)).toEqual(["dashboard", "casos", "bandejas", "derivaciones"]);
+    it("ADMINISTRADOR ve Dashboard, Casos, Mis bandejas, Derivaciones y Códigos QR", () => {
+      expect(operacion(TODAS)).toEqual(["dashboard", "casos", "bandejas", "derivaciones", "qr"]);
     });
 
-    it.each([["OTRANS"], ["ESTABLECIMIENTO"]])("%s ve Dashboard, Casos y Mis bandejas, sin Derivaciones", (_rol) => {
-      expect(operacion(SIN_DERIVACIONES)).toEqual(["dashboard", "casos", "bandejas"]);
+    it("GESTOR ve Dashboard, Casos, Mis bandejas y Derivaciones, sin Códigos QR", () => {
+      expect(operacion(SIN_QR)).toEqual(["dashboard", "casos", "bandejas", "derivaciones"]);
+    });
+
+    it("OTRANS ve Dashboard, Casos y Mis bandejas, sin Derivaciones ni Códigos QR", () => {
+      expect(operacion(SIN_DERIVACIONES_NI_QR)).toEqual(["dashboard", "casos", "bandejas"]);
+    });
+
+    it("ESTABLECIMIENTO ve Dashboard, Casos, Mis bandejas y Códigos QR, sin Derivaciones", () => {
+      expect(operacion(SIN_DERIVACIONES)).toEqual(["dashboard", "casos", "bandejas", "qr"]);
+    });
+
+    it("la entrada «Códigos QR» está implementada y apunta a /qr", () => {
+      const entrada = NAV_SECTIONS.flatMap((section) => section.entries).find((candidata) => candidata.id === "qr");
+      expect(entrada).toMatchObject({ label: "Códigos QR", path: "/qr", vista: VistaCodigo.QR, implementada: true });
     });
   });
 

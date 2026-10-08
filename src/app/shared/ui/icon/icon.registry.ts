@@ -11,6 +11,7 @@ import {
   LucideCircleAlert,
   LucideCpu,
   LucideDatabase,
+  LucideDownload,
   LucideEye,
   LucideEyeOff,
   LucideFileImage,
@@ -23,6 +24,7 @@ import {
   LucideMenu,
   LucidePanelLeftClose,
   LucidePanelLeftOpen,
+  LucideQrCode,
   LucideScale,
   LucideSearch,
   LucideSend,
@@ -66,4 +68,6 @@ export const ICONS: Record<IconName, LucideIconData> = {
   [IconName.SEARCH]: LucideSearch.icon,
   [IconName.MENU]: LucideMenu.icon,
   [IconName.CLOSE]: LucideX.icon,
+  [IconName.QR_CODE]: LucideQrCode.icon,
+  [IconName.DOWNLOAD]: LucideDownload.icon,
 };
