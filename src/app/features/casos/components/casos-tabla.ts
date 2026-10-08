@@ -1,45 +1,40 @@
-import { ChangeDetectionStrategy, Component, input, output, booleanAttribute } from "@angular/core";
+import { ChangeDetectionStrategy, Component, input, output } from "@angular/core";
 import {
   CATEGORIA_LABEL,
   ESTADO_BADGE,
   PRIORIDAD_CASO_BADGE,
   SIN_AREA,
   SIN_DATO,
+  SIN_ESTABLECIMIENTO,
 } from "@/features/casos/constants/casos-constants";
-import { DireccionOrden, OrdenCaso } from "@/features/casos/enums/orden-caso.enum";
 import type { Caso } from "@/features/casos/types/caso.types";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
+import { textoRenipress } from "@/features/casos/utils/texto-establecimiento";
 import { textoPlazo } from "@/features/casos/utils/texto-plazo";
 import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
 import { Badge } from "@/shared/ui/badge/badge";
 import { Button } from "@/shared/ui/button/button";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
-import { SortHeader } from "@/shared/ui/sort-header/sort-header";
 
 const ENCABEZADO = "sticky top-0 z-10 bg-white pb-3 pr-6 text-xs font-medium text-gray-500";
 
-interface Columna {
-  readonly key: string;
-  readonly label: string;
-  readonly orden?: OrdenCaso;
-}
-
-const COLUMNAS: readonly Columna[] = [
-  { key: "codigo", label: "Código", orden: OrdenCaso.CODIGO },
-  { key: "categoria", label: "Categoría", orden: OrdenCaso.CATEGORIA },
+const COLUMNAS: readonly { readonly key: string; readonly label: string }[] = [
+  { key: "codigo", label: "Código" },
+  { key: "categoria", label: "Categoría" },
   { key: "etiquetas", label: "Etiquetas" },
   { key: "prioridad", label: "Prioridad" },
+  { key: "establecimiento", label: "Establecimiento" },
   { key: "area", label: "Área" },
   { key: "responsable", label: "Responsable" },
-  { key: "estado", label: "Estado", orden: OrdenCaso.ESTADO },
-  { key: "confianza", label: "Confianza IA", orden: OrdenCaso.CONFIANZA },
-  { key: "plazo", label: "Plazo", orden: OrdenCaso.FECHA },
+  { key: "estado", label: "Estado" },
+  { key: "confianza", label: "Confianza IA" },
+  { key: "plazo", label: "Plazo" },
   { key: "acciones", label: "Acciones" },
 ];
 
 @Component({
   selector: "app-casos-tabla",
-  imports: [Badge, Button, ScrollArea, SortHeader],
+  imports: [Badge, Button, ScrollArea],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: "block" },
   template: `
@@ -48,18 +43,7 @@ const COLUMNAS: readonly Columna[] = [
         <thead>
           <tr>
             @for (columna of columnas; track columna.key) {
-              <th scope="col" [class]="encabezado" [attr.aria-sort]="ariaSort(columna)">
-                @if (ordenable() && columna.orden; as columnaOrden) {
-                  <app-sort-header
-                    [label]="columna.label"
-                    [activo]="columnaOrden === orden()"
-                    [direccion]="direccion()"
-                    (ordenar)="ordenar.emit(columnaOrden)"
-                  />
-                } @else {
-                  {{ columna.label }}
-                }
-              </th>
+              <th scope="col" [class]="encabezado">{{ columna.label }}</th>
             }
           </tr>
         </thead>
@@ -88,7 +72,15 @@ const COLUMNAS: readonly Columna[] = [
                 }
               </td>
               <td class="py-3 pr-6">
-                <p class="text-gray-900">{{ caso.area ?? sinArea }}</p>
+                @if (caso.establecimiento; as establecimiento) {
+                  <p class="text-gray-900">{{ establecimiento.nombre }}</p>
+                  <p class="text-xs text-gray-500">{{ renipress(establecimiento) }}</p>
+                } @else {
+                  <span class="text-gray-500">{{ sinEstablecimiento }}</span>
+                }
+              </td>
+              <td class="py-3 pr-6">
+                <p class="text-gray-900">{{ caso.area?.nombre ?? sinArea }}</p>
                 @if (caso.organismo) {
                   <p class="text-xs text-gray-500">{{ caso.organismo }}</p>
                 }
@@ -131,11 +123,7 @@ const COLUMNAS: readonly Columna[] = [
 export class CasosTabla {
   readonly casos = input.required<readonly Caso[]>();
   readonly descripcion = input("Listado de casos");
-  readonly ordenable = input(false, { transform: booleanAttribute });
-  readonly orden = input<OrdenCaso | null>(null);
-  readonly direccion = input<DireccionOrden>(DireccionOrden.ASCENDENTE);
   readonly revisar = output<string>();
-  readonly ordenar = output<OrdenCaso>();
 
   protected readonly ButtonSize = ButtonSize;
   protected readonly ButtonTone = ButtonTone;
@@ -144,15 +132,11 @@ export class CasosTabla {
   protected readonly encabezado = ENCABEZADO;
   protected readonly sinDato = SIN_DATO;
   protected readonly sinArea = SIN_AREA;
+  protected readonly sinEstablecimiento = SIN_ESTABLECIMIENTO;
+  protected readonly renipress = textoRenipress;
   protected readonly categoria = CATEGORIA_LABEL;
   protected readonly prioridad = PRIORIDAD_CASO_BADGE;
   protected readonly estado = ESTADO_BADGE;
   protected readonly tonoConfianza = tonoConfianza;
   protected readonly textoPlazo = textoPlazo;
-
-  protected ariaSort(columna: Columna): string | null {
-    if (!this.ordenable() || !columna.orden) return null;
-    if (columna.orden !== this.orden()) return "none";
-    return this.direccion() === DireccionOrden.ASCENDENTE ? "ascending" : "descending";
-  }
 }

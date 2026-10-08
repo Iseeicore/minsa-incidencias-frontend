@@ -3,6 +3,7 @@ import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import { TipoEvidencia } from "@/features/casos/enums/tipo-evidencia.enum";
+import { TipoArea } from "@/shared/enums/tipo-area.enum";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { Prioridad } from "@/shared/enums/prioridad.enum";
 import type { SelectOption } from "@/shared/ui/select-field/select-field";
@@ -10,10 +11,13 @@ import type { TabOption } from "@/shared/ui/tabs/tabs";
 
 export const FILTRO_TODOS = "todos";
 export const SIN_DATO = "—";
-export const SIN_AREA = "Sin área";
+export const SIN_AREA = "Sin derivar";
+export const SIN_ESTABLECIMIENTO = "Sin establecimiento";
 export const SIN_CATEGORIA_API = "sin-categoria";
 export const HORAS_POR_DIA = 24;
 export const TAMANO_PAGINA = 20;
+export const LIMITE_AREAS = 8;
+export const MINIMO_BUSQUEDA_AREA = 2;
 export const LIMITE_BANDEJA = 100;
 export const MAX_RESOLUCION = 4000;
 
@@ -22,13 +26,6 @@ export const CATEGORIA_LABEL: Record<CategoriaCaso, string> = {
   [CategoriaCaso.QUEJA]: "Queja",
   [CategoriaCaso.RECLAMO]: "Reclamo",
   [CategoriaCaso.OTRO]: "Otro",
-};
-
-export const AREA_POR_CATEGORIA: Record<CategoriaCaso, string | null> = {
-  [CategoriaCaso.DENUNCIA_CORRUPCION]: "Área de denuncias por corrupción",
-  [CategoriaCaso.QUEJA]: "Área de quejas",
-  [CategoriaCaso.RECLAMO]: "Área de reclamos",
-  [CategoriaCaso.OTRO]: null,
 };
 
 export const ACCION_LABEL: Record<AccionCaso, string> = {
@@ -69,6 +66,27 @@ export const TABS_OPCIONES: readonly TabOption[] = [
   { value: FiltroTab.OTRO, label: "Otro" },
   { value: FiltroTab.SIN_CATEGORIA, label: "Sin categoría" },
 ];
+
+const TABS_TODAS: readonly TabOption[] = TABS_OPCIONES;
+const TABS_DE_ESTABLECIMIENTO: readonly TabOption[] = TABS_OPCIONES.filter((tab) =>
+  [FiltroTab.TODOS, FiltroTab.RECLAMOS, FiltroTab.QUEJAS].some((permitida) => permitida === tab.value),
+);
+const TABS_DE_OTRANS: readonly TabOption[] = TABS_OPCIONES.filter((tab) =>
+  [FiltroTab.TODOS, FiltroTab.CORRUPCION].some((permitida) => permitida === tab.value),
+);
+
+/**
+ * Pestañas que tienen sentido según el tipo de área de la persona (sin área: todas). Corrupción solo la ve OTRANS
+ * (y quien no tiene área); el servidor es quien impone el alcance, esto solo evita pestañas que siempre salen vacías.
+ */
+export const TABS_POR_TIPO_AREA: Record<TipoArea, readonly TabOption[]> = {
+  [TipoArea.ESTABLECIMIENTO]: TABS_DE_ESTABLECIMIENTO,
+  [TipoArea.DIRIS]: TABS_DE_ESTABLECIMIENTO,
+  [TipoArea.INSTITUTO]: TABS_DE_ESTABLECIMIENTO,
+  [TipoArea.ORGANISMO]: TABS_DE_ESTABLECIMIENTO,
+  [TipoArea.OTRANS]: TABS_DE_OTRANS,
+};
+export const TABS_SIN_AREA: readonly TabOption[] = TABS_TODAS;
 
 export const CATEGORIA_POR_TAB: Record<FiltroTab, string | undefined> = {
   [FiltroTab.TODOS]: undefined,

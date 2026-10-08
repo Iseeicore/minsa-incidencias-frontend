@@ -1,6 +1,7 @@
 import type { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import type { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import type { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import type { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import type { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import type { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import type { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
@@ -23,6 +24,18 @@ export interface PlazoCaso {
   readonly horasRestantes: number | null;
 }
 
+export interface AreaCaso {
+  readonly codigo: string;
+  readonly nombre: string;
+}
+
+export interface EstablecimientoCaso {
+  readonly codigoRenipress: string;
+  readonly nombre: string;
+  readonly nivelAtencion: NivelAtencion | null;
+  readonly categoria: string | null;
+}
+
 export interface Caso {
   readonly codigo: string;
   readonly categoria: CategoriaCaso | null;
@@ -31,7 +44,8 @@ export interface Caso {
   readonly etiquetas: readonly string[];
   readonly prioridad: Prioridad | null;
   readonly organismo: string | null;
-  readonly area: string | null;
+  readonly area: AreaCaso | null;
+  readonly establecimiento: EstablecimientoCaso | null;
   readonly responsable: string | null;
   readonly estado: EstadoCaso;
   readonly horasDesdeLlegada: number;
@@ -52,9 +66,9 @@ export interface CasoDetalle extends Caso {
 
 export interface ListaCasos {
   readonly casos: readonly Caso[];
-  readonly pagina: number;
-  readonly tamano: number;
-  readonly total: number;
+  /** Cursor para pedir la página que sigue; `null` en la última. */
+  readonly siguiente: string | null;
+  readonly hayMas: boolean;
 }
 
 export interface CasosPorVencer {

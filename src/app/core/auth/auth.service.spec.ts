@@ -42,16 +42,17 @@ describe("AuthService", () => {
     await expect(result).rejects.toMatchObject({ code: AuthErrorCode.NETWORK });
   });
 
-  it("me() pide la sesión con cookies y devuelve nombre, correo y vistas", async () => {
+  it("me() pide la sesión con cookies y devuelve nombre, correo, vistas y área", async () => {
     const { service, http } = setup();
     const result = service.me();
 
     const request = http.expectOne(`${base}/auth/me`);
     expect(request.request.method).toBe("GET");
     expect(request.request.withCredentials).toBe(true);
-    request.flush({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"] });
+    const area = { codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: "ESTABLECIMIENTO" };
+    request.flush({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"], area });
 
-    await expect(result).resolves.toEqual({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"] });
+    await expect(result).resolves.toEqual({ nombreCompleto: "Ana", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"], area });
   });
 
   it("me() sin sesión se rechaza", async () => {

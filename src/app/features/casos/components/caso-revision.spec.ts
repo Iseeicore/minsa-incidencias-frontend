@@ -4,9 +4,14 @@ import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
+import { AreasApi } from "@/features/casos/services/areas.api";
 import { IncidenciaError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
 import { crearDetalle } from "@/features/casos/testing/caso-builder";
+import type { AreaOpcion } from "@/features/casos/types/area.types";
+import { BUSQUEDA_DEBOUNCE_MS } from "@/features/casos/constants/casos-config";
+import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
+import { TipoArea } from "@/shared/enums/tipo-area.enum";
 import type { CasoDetalle, RespuestaAccion } from "@/features/casos/types/caso.types";
 import { CasoRevision } from "./caso-revision";
 
@@ -22,9 +27,26 @@ describe("CasoRevision", () => {
     resolver: vi.fn(),
   };
 
+  const HOSPITAL: AreaOpcion = {
+    id: "10",
+    codigo: "EESS-5946",
+    nombre: "Hospital Hipólito Unanue",
+    tipoArea: TipoArea.ESTABLECIMIENTO,
+    establecimiento: { codigoRenipress: "5946", nivelAtencion: NivelAtencion.III, categoria: "III-1" },
+  };
+  const areas = { listar: vi.fn() };
+
   beforeEach(() => {
     for (const funcion of Object.values(api)) funcion.mockReset();
-    TestBed.configureTestingModule({ providers: [{ provide: IncidenciasApi, useValue: api }] });
+    areas.listar.mockReset();
+    areas.listar.mockResolvedValue({ areas: [HOSPITAL], siguiente: null, hayMas: false });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: IncidenciasApi, useValue: api },
+        { provide: AreasApi, useValue: areas },
+        { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 },
+      ],
+    });
   });
 
   async function abrir(detalle: CasoDetalle | Error, codigo = "MINSA-2026-000001") {
@@ -54,7 +76,15 @@ describe("CasoRevision", () => {
       campo.dispatchEvent(new Event(campo.tagName === "SELECT" ? "change" : "input"));
       await fixture.whenStable();
     };
-    return { fixture, element, panel, boton, botones, pulsar, escribir };
+    const elegirArea = async (texto: string) => {
+      await escribir("app-area-selector input", texto);
+      await esperar();
+      await fixture.whenStable();
+      const opcion = element.querySelector("app-area-selector [role='option']") as HTMLElement;
+      opcion.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+      await fixture.whenStable();
+    };
+    return { fixture, element, panel, boton, botones, pulsar, escribir, elegirArea };
   }
 
   function respuesta(parcial: Partial<CasoDetalle> | null, mensaje: string): RespuestaAccion {
@@ -103,7 +133,8 @@ describe("CasoRevision", () => {
     expect(texto).toContain("Pedí cita con cardiología");
     expect(texto).toContain("Luis A. · DNI ••••1907");
     expect(texto).toContain("Vence en 2 días");
-    expect(texto).toContain("Área de reclamos");
+    expect(texto).toMatch(/Establecimiento\s*Hospital Dos de Mayo\s*RENIPRESS 6206 · Nivel III · Cat\. III-1/);
+    expect(texto).toMatch(/Área destino\s*Hospital Dos de Mayo/);
     expect(texto).toContain("Pruebas");
     expect(texto).toContain("La IA propone");
     expect(texto).toContain("58 % de confianza");
@@ -117,6 +148,13 @@ describe("CasoRevision", () => {
     const texto = panel()?.textContent ?? "";
     expect(texto).toMatch(/Prioridad\s*—/);
     expect(texto).toMatch(/Organismo\s*—/);
+  });
+
+  it("un caso sin derivar y sin establecimiento lo dice", async () => {
+    const { panel } = await abrir(crearDetalle({ area: null, establecimiento: null }));
+    const texto = panel()?.textContent ?? "";
+    expect(texto).toMatch(/Establecimiento\s*Sin establecimiento/);
+    expect(texto).toMatch(/Área destino\s*Sin derivar/);
   });
 
   it("un caso sin archivos lo dice", async () => {
@@ -141,14 +179,39 @@ describe("CasoRevision", () => {
       expect(boton("Resolver")).toBeUndefined();
     });
 
-    it("derivar muestra el área de destino y lo hace", async () => {
-      const { panel, boton, pulsar } = await abrir(crearDetalle({ acciones: [AccionCaso.DERIVAR] }));
-      expect(boton("Derivar al Área de reclamos")).toBeDefined();
-      api.derivar.mockResolvedValue(respuesta({ estado: EstadoCaso.DERIVADO, acciones: [] }, "Caso derivado al Área de reclamos."));
-      await pulsar("Derivar al Área de reclamos");
-      expect(api.derivar).toHaveBeenCalledWith("MINSA-2026-000001");
+    it("derivar abre un selector de área con búsqueda y exige elegir antes de derivar", async () => {
+      const { panel, boton, pulsar, elegirArea, element } = await abrir(crearDetalle({ acciones: [AccionCaso.DERIVAR] }));
+      expect(element.querySelector("app-area-selector")).toBeNull();
+      await pulsar("Derivar a un área");
+      expect(element.querySelector("app-area-selector")).not.toBeNull();
+      expect(boton("Derivar el caso")?.disabled).toBe(true);
+
+      await elegirArea("hipolito");
+      expect(areas.listar).toHaveBeenCalledWith({ q: "hipolito", limite: 8 });
+      expect(boton("Derivar el caso")?.disabled).toBe(false);
+
+      api.derivar.mockResolvedValue(respuesta({ estado: EstadoCaso.DERIVADO, acciones: [] }, "Caso derivado a Hospital Hipólito Unanue."));
+      await pulsar("Derivar el caso");
+      expect(api.derivar).toHaveBeenCalledWith("MINSA-2026-000001", "EESS-5946");
       expect(panel()?.querySelector("[role='status']")?.textContent).toContain("Caso derivado");
       expect(panel()?.textContent).toContain("Derivado");
+    });
+
+    it("cancelar la derivación no llama al servidor", async () => {
+      const { pulsar, boton } = await abrir(crearDetalle({ acciones: [AccionCaso.DERIVAR] }));
+      await pulsar("Derivar a un área");
+      await pulsar("Cancelar");
+      expect(boton("Derivar a un área")).toBeDefined();
+      expect(api.derivar).not.toHaveBeenCalled();
+    });
+
+    it("en una denuncia de corrupción no se ofrece derivar ni elegir área: la toma OTRANS", async () => {
+      const { boton, element } = await abrir(
+        crearDetalle({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION, acciones: [AccionCaso.DERIVAR, AccionCaso.TOMAR] }),
+      );
+      expect(boton("Derivar")).toBeUndefined();
+      expect(boton("Tomar en gestión")).toBeDefined();
+      expect(element.querySelector("app-area-selector")).toBeNull();
     });
 
     it("tomar y resolver aparecen cuando el servidor los permite", async () => {
@@ -194,16 +257,18 @@ describe("CasoRevision", () => {
       expect(panel()?.querySelector("[role='status']")?.textContent).toContain("Categoría confirmada");
       expect(panel()?.textContent).toContain("Confirmada por una persona");
       expect(boton("Confirmar categoría")).toBeUndefined();
-      expect(boton("Derivar al Área de reclamos")).toBeDefined();
+      expect(boton("Derivar a un área")).toBeDefined();
     });
 
-    it("corregir pide la nueva categoría, muestra el área a la que irá y exige elegir", async () => {
+    it("corregir pide la nueva categoría y exige elegir; si es corrupción avisa que la toma OTRANS", async () => {
       const { panel, pulsar, boton, escribir } = await abrir(crearDetalle({ acciones: [AccionCaso.CONFIRMAR, AccionCaso.CORREGIR] }));
       await pulsar("Corregir categoría");
       expect(boton("Aplicar corrección")?.disabled).toBe(true);
 
+      await escribir("select", "denuncia-corrupcion");
+      expect(panel()?.textContent).toContain("las toma OTRANS");
       await escribir("select", "queja");
-      expect(panel()?.textContent).toContain("Área de quejas");
+      expect(panel()?.textContent).not.toContain("las toma OTRANS");
       expect(boton("Aplicar corrección")?.disabled).toBe(false);
 
       api.corregir.mockResolvedValue(
@@ -279,11 +344,22 @@ describe("CasoRevision", () => {
 
   describe("errores del servidor al actuar", () => {
     it("un 403 se muestra como alerta y el panel sigue abierto con sus acciones", async () => {
-      const { panel, pulsar, boton } = await abrir(crearDetalle({ acciones: [AccionCaso.DERIVAR] }));
+      const { panel, pulsar, boton, elegirArea } = await abrir(crearDetalle({ acciones: [AccionCaso.DERIVAR] }));
+      await pulsar("Derivar a un área");
+      await elegirArea("hipolito");
       api.derivar.mockRejectedValue(new IncidenciaError(403, "FORBIDDEN"));
-      await pulsar("Derivar al Área de reclamos");
+      await pulsar("Derivar el caso");
       expect(panel()?.querySelector("[role='alert']")?.textContent).toContain("No tienes permiso");
-      expect(boton("Derivar al Área de reclamos")).toBeDefined();
+      expect(boton("Derivar el caso")).toBeDefined();
+    });
+
+    it("un 422 al derivar explica que el área elegida no puede recibir el caso", async () => {
+      const { panel, pulsar, elegirArea } = await abrir(crearDetalle({ acciones: [AccionCaso.DERIVAR] }));
+      await pulsar("Derivar a un área");
+      await elegirArea("hipolito");
+      api.derivar.mockRejectedValue(new IncidenciaError(422, "UNPROCESSABLE"));
+      await pulsar("Derivar el caso");
+      expect(panel()?.querySelector("[role='alert']")?.textContent).toContain("no puede recibir el caso");
     });
 
     it("un 409 explica que otra persona pudo actuar antes", async () => {

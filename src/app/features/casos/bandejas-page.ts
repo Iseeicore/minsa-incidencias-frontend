@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import { SessionStore } from "@/core/auth/session.store";
 import { BandejasStore } from "@/features/casos/bandejas.store";
 import { CasoRevision } from "@/features/casos/components/caso-revision";
 import { CasosTabla } from "@/features/casos/components/casos-tabla";
@@ -32,6 +33,7 @@ const BANDEJAS: readonly { readonly value: BandejaTab; readonly label: string; r
 })
 export class BandejasPage {
   protected readonly store = inject(BandejasStore);
+  protected readonly area = inject(SessionStore).area;
 
   protected readonly BadgeTone = BadgeTone;
   protected readonly ButtonSize = ButtonSize;

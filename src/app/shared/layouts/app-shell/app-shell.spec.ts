@@ -32,6 +32,7 @@ describe("AppShell", () => {
     nombreCompleto: "Ana Prueba",
     correo: "ana@minsa.gob.pe",
     vistas: ["INICIO", "CASOS", "BANDEJAS", "DERIVACIONES"],
+    area: null,
   };
 
   it("muestra el nombre y solo el menú de las vistas del usuario", async () => {

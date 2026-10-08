@@ -48,7 +48,8 @@ export function mensajeDeError(error: unknown, accion?: AccionCaso): string {
     case HttpStatus.CONFLICT:
       return MENSAJE_ERROR.CONFLICTO;
     case HttpStatus.UNPROCESSABLE:
-      return accion === AccionCaso.CORREGIR ? MENSAJE_ERROR.CATEGORIA_IGUAL : MENSAJE_ERROR.DATOS_NO_VALIDOS;
+      if (accion === AccionCaso.CORREGIR) return MENSAJE_ERROR.CATEGORIA_IGUAL;
+      return accion === AccionCaso.DERIVAR ? MENSAJE_ERROR.AREA_DESTINO_INVALIDA : MENSAJE_ERROR.DATOS_NO_VALIDOS;
     case HttpStatus.TOO_MANY_REQUESTS:
       return MENSAJE_ERROR.DEMASIADAS_PETICIONES;
     default:

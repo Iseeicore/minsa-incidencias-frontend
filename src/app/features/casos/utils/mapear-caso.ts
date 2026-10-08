@@ -1,14 +1,17 @@
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
 import { TipoEvidencia } from "@/features/casos/enums/tipo-evidencia.enum";
 import { RespuestaInvalidaError } from "@/features/casos/services/incidencia-error";
-import type { Caso, CasoDetalle, EvidenciaCaso, PlazoCaso } from "@/features/casos/types/caso.types";
+import type { AreaCaso, Caso, CasoDetalle, EstablecimientoCaso, EvidenciaCaso, PlazoCaso } from "@/features/casos/types/caso.types";
 import type {
+  AreaDto,
   CasoDetalleDto,
   CasoResumenDto,
+  EstablecimientoDto,
   EvidenciaDto,
   PlazoDto,
 } from "@/features/casos/types/incidencias-api.types";
@@ -34,6 +37,20 @@ function mapearPlazo(dto: PlazoDto): PlazoCaso {
   };
 }
 
+function mapearArea(dto: AreaDto | null): AreaCaso | null {
+  return dto === null ? null : { codigo: dto.codigo, nombre: dto.nombre };
+}
+
+function mapearEstablecimiento(dto: EstablecimientoDto | null): EstablecimientoCaso | null {
+  if (dto === null) return null;
+  return {
+    codigoRenipress: dto.codigoRenipress,
+    nombre: dto.nombre,
+    nivelAtencion: opcional(NivelAtencion, dto.nivelAtencion ?? null, "establecimiento.nivelAtencion"),
+    categoria: dto.categoria ?? null,
+  };
+}
+
 function mapearAcciones(acciones: readonly string[]): AccionCaso[] {
   const conocidas = Object.values(AccionCaso) as string[];
   return acciones.filter((accion): accion is AccionCaso => conocidas.includes(accion));
@@ -54,7 +71,8 @@ export function mapearResumen(dto: CasoResumenDto): Caso {
     etiquetas: dto.etiquetas,
     prioridad: opcional(Prioridad, dto.prioridad, "prioridad"),
     organismo: dto.organismo,
-    area: dto.area,
+    area: mapearArea(dto.area),
+    establecimiento: mapearEstablecimiento(dto.establecimiento),
     responsable: dto.responsable,
     estado: valorDe(EstadoCaso, dto.estado, "estado"),
     horasDesdeLlegada: dto.horasDesdeLlegada,

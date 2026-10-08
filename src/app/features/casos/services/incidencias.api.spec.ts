@@ -5,7 +5,7 @@ import { environment } from "@env/environment";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
-import { DireccionOrden, OrdenCaso } from "@/features/casos/enums/orden-caso.enum";
+import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import { crearDetalleDto, crearResumenDto } from "@/features/casos/testing/caso-builder";
 import { IncidenciaError, RespuestaInvalidaError } from "./incidencia-error";
 import { IncidenciasApi } from "./incidencias.api";
@@ -22,51 +22,49 @@ describe("IncidenciasApi", () => {
     it("pide la lista con cookies y solo manda los filtros que tienen valor", async () => {
       const { api, http } = setup();
       const resultado = api.listar({
-        pagina: 2,
-        tamano: 20,
+        limite: 20,
+        cursor: "abc_DEF-1",
         estado: "clasificado",
         categoria: "reclamo",
         texto: "demora",
-        orden: OrdenCaso.CONFIANZA,
-        direccion: DireccionOrden.DESCENDENTE,
+        establecimiento: "6206",
       });
       const peticion = http.expectOne((req) => req.url === BASE);
       expect(peticion.request.method).toBe("GET");
       expect(peticion.request.withCredentials).toBe(true);
-      expect(peticion.request.params.get("pagina")).toBe("2");
-      expect(peticion.request.params.get("tamano")).toBe("20");
+      expect(peticion.request.params.get("limite")).toBe("20");
+      expect(peticion.request.params.get("cursor")).toBe("abc_DEF-1");
       expect(peticion.request.params.get("estado")).toBe("clasificado");
       expect(peticion.request.params.get("categoria")).toBe("reclamo");
       expect(peticion.request.params.get("texto")).toBe("demora");
-      expect(peticion.request.params.get("orden")).toBe("confianza");
-      expect(peticion.request.params.get("direccion")).toBe("desc");
-      peticion.flush({ casos: [], pagina: 2, tamano: 20, total: 0 });
+      expect(peticion.request.params.get("establecimiento")).toBe("6206");
+      expect(peticion.request.params.has("pagina")).toBe(false);
+      peticion.flush({ items: [], siguiente: null, hayMas: false });
       await resultado;
     });
 
     it("no manda los parámetros vacíos", async () => {
       const { api, http } = setup();
-      const resultado = api.listar({ pagina: 1, texto: "", estado: undefined });
+      const resultado = api.listar({ limite: 20, texto: "", estado: undefined, cursor: undefined });
       const peticion = http.expectOne((req) => req.url === BASE);
       expect(peticion.request.params.has("texto")).toBe(false);
       expect(peticion.request.params.has("estado")).toBe(false);
-      peticion.flush({ casos: [], pagina: 1, tamano: 20, total: 0 });
+      expect(peticion.request.params.has("cursor")).toBe(false);
+      peticion.flush({ items: [], siguiente: null, hayMas: false });
       await resultado;
     });
 
-    it("devuelve los casos ya traducidos al tipo del frontend, con la página y el total", async () => {
+    it("devuelve los casos ya traducidos al tipo del frontend, con el cursor de la página siguiente", async () => {
       const { api, http } = setup();
       const resultado = api.listar({});
       http.expectOne((req) => req.url === BASE).flush({
-        casos: [crearResumenDto({ codigo: "MINSA-2026-000007", estado: "derivado", categoria: "queja", acciones: ["tomar"] })],
-        pagina: 1,
-        tamano: 20,
-        total: 41,
+        items: [crearResumenDto({ codigo: "MINSA-2026-000007", estado: "derivado", categoria: "queja", acciones: ["tomar"] })],
+        siguiente: "cursor-2",
+        hayMas: true,
       });
       const lista = await resultado;
-      expect(lista.total).toBe(41);
-      expect(lista.pagina).toBe(1);
-      expect(lista.tamano).toBe(20);
+      expect(lista.siguiente).toBe("cursor-2");
+      expect(lista.hayMas).toBe(true);
       expect(lista.casos[0].codigo).toBe("MINSA-2026-000007");
       expect(lista.casos[0].estado).toBe(EstadoCaso.DERIVADO);
       expect(lista.casos[0].categoria).toBe(CategoriaCaso.QUEJA);
@@ -77,10 +75,48 @@ describe("IncidenciasApi", () => {
       const { api, http } = setup();
       const resultado = api.listar({});
       http.expectOne((req) => req.url === BASE).flush({
-        casos: [crearResumenDto({ estado: "inventado" })],
-        pagina: 1,
-        tamano: 20,
-        total: 1,
+        items: [crearResumenDto({ estado: "inventado" })],
+        siguiente: null,
+        hayMas: false,
+      });
+      await expect(resultado).rejects.toBeInstanceOf(RespuestaInvalidaError);
+    });
+
+    it("traduce el área destino y el establecimiento con su nivel y categoría", async () => {
+      const { api, http } = setup();
+      const resultado = api.listar({});
+      http.expectOne((req) => req.url === BASE).flush({
+        items: [
+          crearResumenDto({
+            area: { codigo: "EESS-5946", nombre: "Hospital Hipólito Unanue" },
+            establecimiento: { codigoRenipress: "5946", nombre: "Hospital Hipólito Unanue", nivelAtencion: "III", categoria: "III-1" },
+          }),
+          crearResumenDto({ area: null, establecimiento: { codigoRenipress: "5614", nombre: "C.S. Bayóvar" } }),
+          crearResumenDto({ area: null, establecimiento: null }),
+        ],
+        siguiente: null,
+        hayMas: false,
+      });
+      const { casos } = await resultado;
+      expect(casos[0].area).toEqual({ codigo: "EESS-5946", nombre: "Hospital Hipólito Unanue" });
+      expect(casos[0].establecimiento).toEqual({
+        codigoRenipress: "5946",
+        nombre: "Hospital Hipólito Unanue",
+        nivelAtencion: NivelAtencion.III,
+        categoria: "III-1",
+      });
+      expect(casos[1].establecimiento).toMatchObject({ codigoRenipress: "5614", nivelAtencion: null, categoria: null });
+      expect(casos[2].area).toBeNull();
+      expect(casos[2].establecimiento).toBeNull();
+    });
+
+    it("un nivel de atención inventado se rechaza", async () => {
+      const { api, http } = setup();
+      const resultado = api.listar({});
+      http.expectOne((req) => req.url === BASE).flush({
+        items: [crearResumenDto({ establecimiento: { codigoRenipress: "1", nombre: "X", nivelAtencion: "IV", categoria: null } })],
+        siguiente: null,
+        hayMas: false,
       });
       await expect(resultado).rejects.toBeInstanceOf(RespuestaInvalidaError);
     });
@@ -145,7 +181,6 @@ describe("IncidenciasApi", () => {
   describe("acciones", () => {
     it.each([
       ["confirmar", (api: IncidenciasApi) => api.confirmar("MINSA-2026-000001")],
-      ["derivar", (api: IncidenciasApi) => api.derivar("MINSA-2026-000001")],
       ["tomar", (api: IncidenciasApi) => api.tomar("MINSA-2026-000001")],
     ])("%s hace un POST con cuerpo vacío y cookies", async (nombre, llamar) => {
       const { api, http } = setup();
@@ -156,6 +191,17 @@ describe("IncidenciasApi", () => {
       expect(peticion.request.withCredentials).toBe(true);
       peticion.flush({ mensaje: "Hecho", caso: crearDetalleDto() });
       await expect(resultado).resolves.toMatchObject({ mensaje: "Hecho" });
+    });
+
+    it("derivar manda el código del área de destino", async () => {
+      const { api, http } = setup();
+      const resultado = api.derivar("MINSA-2026-000001", "EESS-6206");
+      const peticion = http.expectOne(`${BASE}/MINSA-2026-000001/derivar`);
+      expect(peticion.request.method).toBe("POST");
+      expect(peticion.request.body).toEqual({ areaDestino: "EESS-6206" });
+      expect(peticion.request.withCredentials).toBe(true);
+      peticion.flush({ mensaje: "Derivado", caso: crearDetalleDto({ estado: "derivado" }) });
+      await expect(resultado).resolves.toMatchObject({ mensaje: "Derivado" });
     });
 
     it("corregir manda la categoría nueva", async () => {

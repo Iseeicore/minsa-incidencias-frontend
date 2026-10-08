@@ -1,10 +1,21 @@
-import type { DireccionOrden, OrdenCaso } from "@/features/casos/enums/orden-caso.enum";
-
 export interface PlazoDto {
   readonly tipo: string | null;
   readonly estado: string | null;
   readonly venceEn: string | null;
   readonly horasRestantes: number | null;
+}
+
+export interface AreaDto {
+  readonly codigo: string;
+  readonly nombre: string;
+}
+
+export interface EstablecimientoDto {
+  readonly codigoRenipress: string;
+  readonly nombre: string;
+  /** El listado real aún no los trae; el contrato los prevé. */
+  readonly nivelAtencion?: string | null;
+  readonly categoria?: string | null;
 }
 
 export interface CasoResumenDto {
@@ -15,7 +26,8 @@ export interface CasoResumenDto {
   readonly etiquetas: readonly string[];
   readonly prioridad: string | null;
   readonly organismo: string | null;
-  readonly area: string | null;
+  readonly area: AreaDto | null;
+  readonly establecimiento: EstablecimientoDto | null;
   readonly responsable: string | null;
   readonly estado: string;
   readonly horasDesdeLlegada: number;
@@ -50,10 +62,9 @@ export interface CasoDetalleDto extends CasoResumenDto {
 }
 
 export interface ListaCasosDto {
-  readonly casos: readonly CasoResumenDto[];
-  readonly pagina: number;
-  readonly tamano: number;
-  readonly total: number;
+  readonly items: readonly CasoResumenDto[];
+  readonly siguiente: string | null;
+  readonly hayMas: boolean;
 }
 
 export interface PorVencerDto {
@@ -69,11 +80,11 @@ export interface ResultadoAccionDto {
 }
 
 export interface ConsultaCasos {
-  readonly pagina?: number;
-  readonly tamano?: number;
+  readonly limite?: number;
+  readonly cursor?: string;
   readonly estado?: string;
   readonly categoria?: string;
   readonly texto?: string;
-  readonly orden?: OrdenCaso;
-  readonly direccion?: DireccionOrden;
+  /** Código RENIPRESS; filtro para quien ve varios establecimientos. */
+  readonly establecimiento?: string;
 }

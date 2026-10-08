@@ -2,6 +2,9 @@
   <header>
     <p class="text-sm font-medium text-gray-600">Operación</p>
     <h1 class="text-3xl font-bold text-gray-900">Casos</h1>
+    @if (area(); as miArea) {
+      <p class="mt-1 text-sm text-gray-600">Área: {{ miArea.nombre }}</p>
+    }
   </header>
 
   <section aria-label="Filtros" class="flex flex-col gap-3 md:flex-row md:items-center">
@@ -20,12 +23,23 @@
     />
   </section>
 
-  <app-tabs label="Tipo de caso" [options]="tabsOpciones" [value]="lista.tab()" (valueChange)="cambiarTab($event)" />
+  @if (veTodasLasAreas()) {
+    <section aria-label="Establecimiento" class="md:max-w-md">
+      <app-area-selector
+        label="Filtrar por establecimiento"
+        placeholder="Busca un establecimiento..."
+        [seleccionada]="lista.establecimiento()"
+        (seleccionadaChange)="lista.cambiarEstablecimiento($event)"
+      />
+    </section>
+  }
+
+  <app-tabs label="Tipo de caso" [options]="tabsOpciones()" [value]="lista.tab()" (valueChange)="cambiarTab($event)" />
 
   <app-card>
     <div class="mb-4 flex items-center justify-between gap-3">
       <h2 class="text-base font-bold text-gray-900">Listado</h2>
-      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ lista.total() }} casos</p>
+      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ lista.casos().length }} {{ lista.casos().length === 1 ? "caso" : "casos" }} en esta página</p>
     </div>
 
     @if (lista.error(); as mensaje) {
@@ -40,20 +54,19 @@
     @if (lista.casos().length > 0) {
       <div [attr.aria-busy]="lista.estadoCarga() === CargaEstado.CARGANDO">
         <app-casos-tabla
-          ordenable
           [casos]="lista.casos()"
-          [orden]="lista.orden()"
-          [direccion]="lista.direccion()"
-          (ordenar)="lista.ordenarPor($event)"
           (revisar)="seleccionado.set($event)"
         />
       </div>
-      <app-paginador
+      <app-paginador-cursor
         class="mt-4"
         [pagina]="lista.pagina()"
-        [total]="lista.total()"
-        [tamano]="lista.tamano"
-        (paginaChange)="lista.irAPagina($event)"
+        [cantidad]="lista.casos().length"
+        [hayAnterior]="lista.hayAnterior()"
+        [hayMas]="lista.hayMas()"
+        [cargando]="lista.estadoCarga() === CargaEstado.CARGANDO"
+        (anterior)="lista.irAAnterior()"
+        (siguiente)="lista.irASiguiente()"
       />
     } @else if (lista.estadoCarga() === CargaEstado.INICIAL || lista.estadoCarga() === CargaEstado.CARGANDO) {
       <p class="py-10 text-center text-sm font-medium text-gray-700" aria-live="polite">Cargando casos…</p>

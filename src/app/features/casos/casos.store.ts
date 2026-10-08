@@ -67,8 +67,8 @@ export class CasosStore {
     return this.ejecutar(AccionCaso.CORREGIR, () => this.api.corregir(codigo, categoria));
   }
 
-  derivar(codigo: string): Promise<ResultadoAccion> {
-    return this.ejecutar(AccionCaso.DERIVAR, () => this.api.derivar(codigo));
+  derivar(codigo: string, areaDestino: string): Promise<ResultadoAccion> {
+    return this.ejecutar(AccionCaso.DERIVAR, () => this.api.derivar(codigo, areaDestino));
   }
 
   tomar(codigo: string): Promise<ResultadoAccion> {

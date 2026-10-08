@@ -5,42 +5,36 @@ import { MENSAJE_CARGA } from "@/features/casos/constants/casos-messages";
 import type { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
-import { DireccionOrden, OrdenCaso } from "@/features/casos/enums/orden-caso.enum";
 import { mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
 import type { Caso } from "@/features/casos/types/caso.types";
 import { casosDeBandeja, type CasosPorEstado } from "@/features/casos/utils/bandeja-de-casos";
 
-const ESTADOS_DE_BANDEJA: readonly { readonly estado: EstadoCaso; readonly direccion: DireccionOrden }[] = [
-  { estado: EstadoCaso.CLASIFICADO, direccion: DireccionOrden.ASCENDENTE },
-  { estado: EstadoCaso.DERIVADO, direccion: DireccionOrden.ASCENDENTE },
-  { estado: EstadoCaso.EN_GESTION, direccion: DireccionOrden.ASCENDENTE },
-  { estado: EstadoCaso.RESUELTO, direccion: DireccionOrden.DESCENDENTE },
-  { estado: EstadoCaso.ARCHIVADO, direccion: DireccionOrden.DESCENDENTE },
+const ESTADOS_DE_BANDEJA: readonly EstadoCaso[] = [
+  EstadoCaso.CLASIFICADO,
+  EstadoCaso.DERIVADO,
+  EstadoCaso.EN_GESTION,
+  EstadoCaso.RESUELTO,
+  EstadoCaso.ARCHIVADO,
 ];
 
 /**
- * Bandejas del usuario: trae hasta 100 casos de cada estado (los abiertos, los más antiguos primero; los
- * cerrados, los más recientes) y los reparte en pestañas con las acciones y los plazos que calculó el servidor.
- * Se provee en la página.
+ * Bandejas del usuario: trae la primera página (hasta 100 casos, los más recientes primero: el servidor no deja
+ * elegir el orden) de cada estado y los reparte en pestañas con las acciones y los plazos que calculó el servidor.
+ * El alcance (área y categorías) lo impone el servidor. Se provee en la página.
  */
 @Injectable()
 export class BandejasStore {
   private readonly api = inject(IncidenciasApi);
-  private readonly totales = signal<Partial<Record<EstadoCaso, number>>>({});
+  private readonly estadosConMas = signal<readonly EstadoCaso[]>([]);
   private peticion = 0;
 
   readonly porEstado = signal<CasosPorEstado>({});
   readonly estadoCarga = signal<CargaEstado>(CargaEstado.INICIAL);
   readonly error = signal<string | null>(null);
 
-  readonly casosSinMostrar = computed(() =>
-    ESTADOS_DE_BANDEJA.reduce((suma, { estado }) => {
-      const traidos = this.porEstado()[estado]?.length ?? 0;
-      return suma + Math.max((this.totales()[estado] ?? 0) - traidos, 0);
-    }, 0),
-  );
-  readonly hayCasosSinMostrar = computed(() => this.casosSinMostrar() > 0);
+  /** Hay estados con más casos de los que caben en la primera página: esta pantalla no los muestra. */
+  readonly hayCasosSinMostrar = computed(() => this.estadosConMas().length > 0);
 
   constructor() {
     const casos = inject(CasosStore);
@@ -66,19 +60,15 @@ export class BandejasStore {
     this.error.set(null);
     try {
       const listas = await Promise.all(
-        ESTADOS_DE_BANDEJA.map(({ estado, direccion }) =>
-          this.api.listar({ estado, tamano: LIMITE_BANDEJA, orden: OrdenCaso.FECHA, direccion }),
-        ),
+        ESTADOS_DE_BANDEJA.map((estado) => this.api.listar({ estado, limite: LIMITE_BANDEJA })),
       );
       if (token !== this.peticion) return;
       const porEstado: CasosPorEstado = {};
-      const totales: Partial<Record<EstadoCaso, number>> = {};
-      ESTADOS_DE_BANDEJA.forEach(({ estado }, indice) => {
+      ESTADOS_DE_BANDEJA.forEach((estado, indice) => {
         porEstado[estado] = listas[indice].casos;
-        totales[estado] = listas[indice].total;
       });
       this.porEstado.set(porEstado);
-      this.totales.set(totales);
+      this.estadosConMas.set(ESTADOS_DE_BANDEJA.filter((_, indice) => listas[indice].hayMas));
       this.estadoCarga.set(CargaEstado.LISTO);
     } catch (error) {
       if (token !== this.peticion) return;

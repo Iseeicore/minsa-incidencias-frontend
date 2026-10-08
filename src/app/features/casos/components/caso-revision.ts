@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, model, signal, untracked } from "@angular/core";
 import { CasosStore } from "@/features/casos/casos.store";
+import { AreaSelector } from "@/features/casos/components/area-selector";
 import {
   CATEGORIA_LABEL,
   ESTADO_BADGE,
   MAX_RESOLUCION,
   PRIORIDAD_CASO_BADGE,
+  SIN_AREA,
   SIN_DATO,
+  SIN_ESTABLECIMIENTO,
   TIPO_EVIDENCIA_LABEL,
 } from "@/features/casos/constants/casos-constants";
 import { MENSAJE_ERROR } from "@/features/casos/constants/casos-messages";
@@ -14,9 +17,10 @@ import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { ModoPanel } from "@/features/casos/enums/modo-panel.enum";
+import type { AreaOpcion } from "@/features/casos/types/area.types";
 import type { ResultadoAccion } from "@/features/casos/types/caso.types";
-import { areaDe } from "@/features/casos/utils/area-de-categoria";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
+import { textoRenipress } from "@/features/casos/utils/texto-establecimiento";
 import { textoPlazo } from "@/features/casos/utils/texto-plazo";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
@@ -30,7 +34,7 @@ import { Timeline } from "@/shared/ui/timeline/timeline";
 
 @Component({
   selector: "app-caso-revision",
-  imports: [Alert, Badge, Button, Drawer, SelectField, TextareaField, Timeline],
+  imports: [Alert, AreaSelector, Badge, Button, Drawer, SelectField, TextareaField, Timeline],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./caso-revision.html",
 })
@@ -47,6 +51,9 @@ export class CasoRevision {
   protected readonly ModoPanel = ModoPanel;
   protected readonly maxResolucion = MAX_RESOLUCION;
   protected readonly sinDato = SIN_DATO;
+  protected readonly sinArea = SIN_AREA;
+  protected readonly sinEstablecimiento = SIN_ESTABLECIMIENTO;
+  protected readonly renipress = textoRenipress;
   protected readonly categoriaLabel = CATEGORIA_LABEL;
   protected readonly estadoBadge = ESTADO_BADGE;
   protected readonly prioridadBadge = PRIORIDAD_CASO_BADGE;
@@ -55,6 +62,7 @@ export class CasoRevision {
 
   protected readonly modo = signal<ModoPanel>(ModoPanel.NINGUNO);
   protected readonly nuevaCategoria = signal("");
+  protected readonly areaElegida = signal<AreaOpcion | null>(null);
   protected readonly resolucion = signal("");
   protected readonly feedback = signal<ResultadoAccion | null>(null);
   protected readonly evidenciasAbiertas = signal<readonly string[]>([]);
@@ -65,7 +73,12 @@ export class CasoRevision {
   protected readonly cargando = computed(() => this.store.estadoDetalle() === CargaEstado.CARGANDO);
   protected readonly noDisponible = computed(() => this.errorCarga() === MENSAJE_ERROR.NO_DISPONIBLE);
 
-  protected readonly acciones = computed(() => this.caso()?.acciones ?? []);
+  protected readonly esCorrupcion = computed(() => this.caso()?.categoria === CategoriaCaso.DENUNCIA_CORRUPCION);
+
+  /** Una denuncia de corrupción nunca se deriva a un establecimiento: la toma OTRANS. */
+  protected readonly acciones = computed(() =>
+    (this.caso()?.acciones ?? []).filter((accion) => accion !== AccionCaso.DERIVAR || !this.esCorrupcion()),
+  );
 
   protected readonly plazoTexto = computed(() => {
     const caso = this.caso();
@@ -81,15 +94,7 @@ export class CasoRevision {
       .map((categoria) => ({ value: categoria, label: CATEGORIA_LABEL[categoria] })),
   ]);
 
-  protected readonly areaNueva = computed(() => {
-    const nueva = this.nuevaCategoria();
-    return nueva ? areaDe(nueva as CategoriaCaso) : null;
-  });
-
-  protected readonly areaDestino = computed(() => {
-    const caso = this.caso();
-    return caso?.area ?? areaDe(caso?.categoria ?? null);
-  });
+  protected readonly avisoCorrupcion = computed(() => this.nuevaCategoria() === CategoriaCaso.DENUNCIA_CORRUPCION);
 
   protected readonly motivoSinAcciones = computed(() => {
     const caso = this.caso();
@@ -124,8 +129,15 @@ export class CasoRevision {
     void this.ejecutar((codigo) => this.store.confirmar(codigo));
   }
 
-  protected derivar(): void {
-    void this.ejecutar((codigo) => this.store.derivar(codigo));
+  protected abrirDerivacion(): void {
+    this.feedback.set(null);
+    this.modo.set(ModoPanel.DERIVAR);
+  }
+
+  protected aplicarDerivacion(): void {
+    const area = this.areaElegida();
+    if (!area) return;
+    void this.ejecutar((codigo) => this.store.derivar(codigo, area.codigo));
   }
 
   protected tomar(): void {
@@ -155,6 +167,7 @@ export class CasoRevision {
   protected cancelar(): void {
     this.modo.set(ModoPanel.NINGUNO);
     this.nuevaCategoria.set("");
+    this.areaElegida.set(null);
     this.resolucion.set("");
   }
 

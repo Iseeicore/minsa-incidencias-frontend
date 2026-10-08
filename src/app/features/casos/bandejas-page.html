@@ -2,6 +2,9 @@
   <header>
     <p class="text-sm font-medium text-gray-600">Operación</p>
     <h1 class="text-3xl font-bold text-gray-900">Mis bandejas</h1>
+    @if (area(); as miArea) {
+      <p class="mt-1 text-sm text-gray-600">Área: {{ miArea.nombre }}</p>
+    }
   </header>
 
   <app-tabs label="Bandeja" [options]="opciones()" [value]="tab()" (valueChange)="cambiarTab($event)" />
@@ -24,8 +27,8 @@
 
     @if (store.hayCasosSinMostrar()) {
       <app-alert class="mb-4" [tone]="BadgeTone.WARNING">
-        {{ store.casosSinMostrar() }} casos más no se ven aquí: cada bandeja trae hasta {{ limite }} casos por estado. Usa
-        Casos para buscarlos todos.
+        Hay más casos de los que se ven aquí: cada bandeja trae hasta {{ limite }} casos por estado, los más recientes.
+        Usa Casos para recorrerlos todos.
       </app-alert>
     }
 

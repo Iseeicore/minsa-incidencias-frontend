@@ -104,7 +104,7 @@ describe("CasosStore", () => {
   describe("acciones", () => {
     it.each([
       ["confirmar", (store: CasosStore) => store.confirmar("MINSA-2026-000001"), ["MINSA-2026-000001"]],
-      ["derivar", (store: CasosStore) => store.derivar("MINSA-2026-000001"), ["MINSA-2026-000001"]],
+      ["derivar", (store: CasosStore) => store.derivar("MINSA-2026-000001", "EESS-6206"), ["MINSA-2026-000001", "EESS-6206"]],
       ["tomar", (store: CasosStore) => store.tomar("MINSA-2026-000001"), ["MINSA-2026-000001"]],
       [
         "corregir",
@@ -144,7 +144,7 @@ describe("CasosStore", () => {
       await store.abrir("MINSA-2026-000001");
       api.derivar.mockRejectedValue(new IncidenciaError(403, "FORBIDDEN"));
 
-      const resultado = await store.derivar("MINSA-2026-000001");
+      const resultado = await store.derivar("MINSA-2026-000001", "EESS-6206");
 
       expect(resultado.ok).toBe(false);
       expect(resultado.ok === false && resultado.error).toContain("No tienes permiso");

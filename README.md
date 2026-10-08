@@ -63,7 +63,7 @@ npm start          # http://localhost:4010 (el backend debe estar en el puerto 3
 El frontend **no guarda nada de la sesión en el navegador** (ni `localStorage` ni `sessionStorage`): la cookie `HttpOnly` la pone y la lee el navegador, y el JavaScript nunca la ve.
 
 - **Login:** `LoginForm` pide **correo** y contraseña y llama a `POST /auth/login`. Los errores del servidor se traducen por código (401 credenciales incorrectas, 429 demasiados intentos, sin red) a mensajes del diccionario `AUTH_ERROR_MESSAGES`.
-- **Quién soy:** `SessionStore` (en memoria, con *signals*) pide `GET /auth/me` y guarda solo el nombre, el correo y las **vistas** (`INICIO`, `CASOS`, `BANDEJAS`, `DERIVACIONES`) que devuelve el backend. No hay id ni roles: el rol decide las vistas en el servidor.
+- **Quién soy:** `SessionStore` (en memoria, con *signals*) pide `GET /auth/me` y guarda solo el nombre, el correo, el **área** (o `null` para ADMINISTRADOR y GESTOR) y las **vistas** (`INICIO`, `CASOS`, `BANDEJAS`, `DERIVACIONES`) que devuelve el backend. No hay id ni roles: el rol decide las vistas y las acciones, y el área decide qué casos ve (fuera de alcance responde 404).
 - **Rutas protegidas:** `authGuard` deja pasar si hay sesión en memoria; si no, la pide al backend; si tampoco hay, redirige a `/login`. `vistaGuard(vista)` protege cada pantalla de operación: sin la vista pedida lleva a la primera que el usuario sí tiene, y si no tiene ninguna, a `/sin-acceso`.
 - **Sesión caducada:** `unauthorizedInterceptor` limpia la sesión y manda al login ante un 401 de cualquier llamada (salvo las propias de `/auth/...`).
 - **Cierre de sesión:** el botón del encabezado llama a `POST /auth/logout`, que revoca la sesión en la base.
@@ -80,7 +80,8 @@ El frontend **no guarda nada de la sesión en el navegador** (ni `localStorage` 
 - **El rol nunca viaja al navegador.** Cada caso trae su lista de `acciones` permitidas, calculada en el servidor, y el servidor decide qué casos ve cada persona (la unión de lo que ve cada uno de sus roles).
 - **Código del caso:** siempre el `codigo` real (`MINSA-AAAA-NNNNNN`), asignado por la base. El `id` y el `trace_id` no llegan al navegador.
 - **Datos que la base no tiene:** prioridad, organismo y etiquetas llegan vacíos y se muestran como "—"; no se inventan.
-- **Paginación:** 20 por página, con el componente compartido `Paginador`, y orden por columna.
+- **Paginación por cursor:** Casos pide 20 por página (`limite`, `cursor`) y el servidor responde `{ items, siguiente, hayMas }`, sin total ni orden elegible. `PaginadorCursor` ofrece Anterior y Siguiente; los cursores de las páginas ya vistas se guardan en una pila local. Mis bandejas trae hasta 100 casos por estado y los reparte en páginas locales con `Paginador`.
+- **Áreas y establecimientos:** la lista y el detalle muestran el establecimiento (nombre, RENIPRESS, nivel) y el área destino. Derivar elige el área con `AreaSelector` (búsqueda contra `GET /areas`, con espera al teclear) y manda `areaDestino`; no se ofrece en denuncias de corrupción. ADMINISTRADOR y GESTOR pueden filtrar por establecimiento.
 - **Mis bandejas, "Para actuar":** se calcula en el cliente sobre los primeros 100 casos que devuelve el servidor, porque el backend aún no tiene ese filtro. Con más de 100 casos abiertos habría que moverlo al servidor.
 - **Si una corrección deja el caso fuera de lo que el rol ve** (el servidor responde 404), el panel avisa que el caso pasó a otra área y sale de la lista.
 

@@ -8,6 +8,9 @@ export class SessionStore {
 
   readonly sesion = signal<SesionUsuario | null>(null);
   readonly autenticado = computed(() => this.sesion() !== null);
+  readonly area = computed(() => this.sesion()?.area ?? null);
+  /** Sin área (ADMINISTRADOR y GESTOR) la persona ve casos de todos los establecimientos. Solo ordena la pantalla: el servidor decide qué devuelve. */
+  readonly veTodasLasAreas = computed(() => this.sesion() !== null && !this.sesion()?.area);
 
   async cargar(): Promise<boolean> {
     try {

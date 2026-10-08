@@ -2,7 +2,7 @@ import { TestBed } from "@angular/core/testing";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
-import { DireccionOrden, OrdenCaso } from "@/features/casos/enums/orden-caso.enum";
+import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
 import { crearCaso } from "@/features/casos/testing/caso-builder";
@@ -11,20 +11,15 @@ import { Prioridad } from "@/shared/enums/prioridad.enum";
 import { CasosTabla } from "./casos-tabla";
 
 describe("CasosTabla", () => {
-  async function setup(casos: readonly Caso[], opciones: { ordenable?: boolean; orden?: OrdenCaso; direccion?: DireccionOrden } = {}) {
+  async function setup(casos: readonly Caso[]) {
     const fixture = TestBed.createComponent(CasosTabla);
     fixture.componentRef.setInput("casos", casos);
-    fixture.componentRef.setInput("ordenable", opciones.ordenable ?? false);
-    if (opciones.orden) fixture.componentRef.setInput("orden", opciones.orden);
-    if (opciones.direccion) fixture.componentRef.setInput("direccion", opciones.direccion);
     await fixture.whenStable();
     const element = fixture.nativeElement as HTMLElement;
     const revisar = vi.fn();
-    const ordenar = vi.fn();
     fixture.componentInstance.revisar.subscribe(revisar);
-    fixture.componentInstance.ordenar.subscribe(ordenar);
     const celdas = (fila = 0) => Array.from(element.querySelectorAll("tbody tr")[fila]?.querySelectorAll("td") ?? []);
-    return { fixture, element, revisar, ordenar, celdas };
+    return { fixture, element, revisar, celdas };
   }
 
   it("muestra todas las columnas dentro de una región desplazable", async () => {
@@ -34,6 +29,7 @@ describe("CasosTabla", () => {
       "Categoría",
       "Etiquetas",
       "Prioridad",
+      "Establecimiento",
       "Área",
       "Responsable",
       "Estado",
@@ -49,7 +45,7 @@ describe("CasosTabla", () => {
     const fila = celdas();
     expect(fila[2].textContent?.trim()).toBe("—");
     expect(fila[3].textContent?.trim()).toBe("—");
-    expect(fila[5].textContent?.trim()).toBe("—");
+    expect(fila[6].textContent?.trim()).toBe("—");
   });
 
   it("muestra el código, la categoría, el área, el estado, la confianza y el plazo que manda el servidor", async () => {
@@ -57,7 +53,7 @@ describe("CasosTabla", () => {
       crearCaso({
         codigo: "MINSA-2026-000042",
         categoria: CategoriaCaso.QUEJA,
-        area: "Área de quejas",
+        area: { codigo: "EESS-6206", nombre: "Hospital Dos de Mayo" },
         responsable: "Marco Quispe",
         estado: EstadoCaso.EN_GESTION,
         confianzaIa: 88,
@@ -67,17 +63,37 @@ describe("CasosTabla", () => {
     const textos = celdas().map((celda) => celda.textContent?.trim());
     expect(textos[0]).toBe("MINSA-2026-000042");
     expect(textos[1]).toBe("Queja");
-    expect(textos[4]).toBe("Área de quejas");
-    expect(textos[5]).toBe("Marco Quispe");
-    expect(textos[6]).toBe("En gestión");
-    expect(textos[7]).toContain("88");
-    expect(textos[8]).toBe("Vence en 8 h");
+    expect(textos[5]).toBe("Hospital Dos de Mayo");
+    expect(textos[6]).toBe("Marco Quispe");
+    expect(textos[7]).toBe("En gestión");
+    expect(textos[8]).toContain("88");
+    expect(textos[9]).toBe("Vence en 8 h");
   });
 
-  it("un caso sin área muestra Sin área y sin categoría muestra el guion", async () => {
-    const { celdas } = await setup([crearCaso({ categoria: null, area: null })]);
+  it("muestra el establecimiento con su código RENIPRESS, nivel y categoría", async () => {
+    const { celdas } = await setup([
+      crearCaso({
+        establecimiento: { codigoRenipress: "6206", nombre: "Hospital Dos de Mayo", nivelAtencion: NivelAtencion.III, categoria: "III-1" },
+      }),
+    ]);
+    const celda = celdas()[4].textContent ?? "";
+    expect(celda).toContain("Hospital Dos de Mayo");
+    expect(celda).toContain("RENIPRESS 6206 · Nivel III · Cat. III-1");
+  });
+
+  it("sin nivel ni categoría solo muestra el código RENIPRESS", async () => {
+    const { celdas } = await setup([
+      crearCaso({ establecimiento: { codigoRenipress: "5614", nombre: "C.S. Bayóvar", nivelAtencion: null, categoria: null } }),
+    ]);
+    expect(celdas()[4].textContent).toContain("RENIPRESS 5614");
+    expect(celdas()[4].textContent).not.toContain("Nivel");
+  });
+
+  it("un caso sin derivar muestra Sin derivar, sin establecimiento lo dice, y sin categoría muestra el guion", async () => {
+    const { celdas } = await setup([crearCaso({ categoria: null, area: null, establecimiento: null })]);
     expect(celdas()[1].textContent?.trim()).toBe("—");
-    expect(celdas()[4].textContent?.trim()).toBe("Sin área");
+    expect(celdas()[4].textContent?.trim()).toBe("Sin establecimiento");
+    expect(celdas()[5].textContent?.trim()).toBe("Sin derivar");
   });
 
   it("si hubiera prioridad la muestra", async () => {
@@ -98,46 +114,9 @@ describe("CasosTabla", () => {
     expect(revisar).toHaveBeenCalledWith("MINSA-2026-000002");
   });
 
-  it("sin ordenar, los encabezados son texto y no botones", async () => {
+  it("los encabezados son texto: el servidor fija el orden y no se ordena por columna", async () => {
     const { element } = await setup([crearCaso()]);
     expect(element.querySelectorAll("thead button")).toHaveLength(0);
-  });
-
-  it("ordenable: Código, Categoría, Estado, Confianza IA y Plazo son botones; el resto, texto", async () => {
-    const { element } = await setup([crearCaso()], { ordenable: true });
-    const botones = Array.from(element.querySelectorAll("thead button")).map((boton) => boton.textContent?.trim());
-    expect(botones).toEqual(["Código", "Categoría", "Estado", "Confianza IA", "Plazo"]);
-  });
-
-  it("pulsar un encabezado pide ordenar por esa columna", async () => {
-    const { element, ordenar, fixture } = await setup([crearCaso()], { ordenable: true });
-    const estado = Array.from(element.querySelectorAll<HTMLButtonElement>("thead button")).find((boton) =>
-      boton.textContent?.includes("Estado"),
-    ) as HTMLButtonElement;
-    estado.click();
-    await fixture.whenStable();
-    expect(ordenar).toHaveBeenCalledWith(OrdenCaso.ESTADO);
-  });
-
-  it("el plazo se ordena por fecha de llegada", async () => {
-    const { element, ordenar, fixture } = await setup([crearCaso()], { ordenable: true });
-    const plazo = Array.from(element.querySelectorAll<HTMLButtonElement>("thead button")).find((boton) =>
-      boton.textContent?.includes("Plazo"),
-    ) as HTMLButtonElement;
-    plazo.click();
-    await fixture.whenStable();
-    expect(ordenar).toHaveBeenCalledWith(OrdenCaso.FECHA);
-  });
-
-  it("la columna ordenada declara su dirección con aria-sort y las demás ninguna", async () => {
-    const { element } = await setup([crearCaso()], {
-      ordenable: true,
-      orden: OrdenCaso.CODIGO,
-      direccion: DireccionOrden.DESCENDENTE,
-    });
-    const encabezados = Array.from(element.querySelectorAll("thead th"));
-    expect(encabezados[0].getAttribute("aria-sort")).toBe("descending");
-    expect(encabezados[1].getAttribute("aria-sort")).toBe("none");
-    expect(encabezados[2].getAttribute("aria-sort")).toBeNull();
+    expect(element.querySelector("[aria-sort]")).toBeNull();
   });
 });

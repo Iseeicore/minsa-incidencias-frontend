@@ -1,16 +1,19 @@
+import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import { SessionStore } from "@/core/auth/session.store";
 import { CasosStore } from "@/features/casos/casos.store";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { IncidenciaError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
 import { crearCaso, crearDetalle } from "@/features/casos/testing/caso-builder";
+import type { AreaSesion } from "@/core/auth/auth.types";
 import type { Caso, ListaCasos } from "@/features/casos/types/caso.types";
 import type { ConsultaCasos } from "@/features/casos/types/incidencias-api.types";
 import { BandejasPage } from "./bandejas-page";
 
-function lista(casos: readonly Caso[], total = casos.length): ListaCasos {
-  return { casos, pagina: 1, tamano: 100, total };
+function lista(casos: readonly Caso[], hayMas = false): ListaCasos {
+  return { casos, siguiente: hayMas ? "cursor-2" : null, hayMas };
 }
 
 const esperar = (ms = 15) => new Promise<void>((resolver) => setTimeout(resolver, ms));
@@ -35,12 +38,18 @@ function resueltos(cantidad: number): Caso[] {
 }
 
 describe("BandejasPage", () => {
-  async function setup(datos: Record<string, ListaCasos> = datosBase()) {
+  async function setup(datos: Record<string, ListaCasos> = datosBase(), area: AreaSesion | null = null) {
     const api = {
       listar: vi.fn(async (consulta: ConsultaCasos) => datos[consulta.estado ?? ""] ?? lista([])),
       detalle: vi.fn().mockResolvedValue(crearDetalle({ codigo: "MINSA-2026-000001", acciones: [AccionCaso.CONFIRMAR] })),
     };
-    TestBed.configureTestingModule({ imports: [BandejasPage], providers: [{ provide: IncidenciasApi, useValue: api }] });
+    TestBed.configureTestingModule({
+      imports: [BandejasPage],
+      providers: [
+        { provide: IncidenciasApi, useValue: api },
+        { provide: SessionStore, useValue: { area: signal(area) } },
+      ],
+    });
     const fixture = TestBed.createComponent(BandejasPage);
     document.body.appendChild(fixture.nativeElement);
     await fixture.whenStable();
@@ -130,9 +139,19 @@ describe("BandejasPage", () => {
     expect(filas()).toBe(20);
   });
 
+  it("muestra el área de la persona cuando la tiene", async () => {
+    const { element } = await setup(datosBase(), { codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: "ESTABLECIMIENTO" });
+    expect(element.querySelector("header")?.textContent).toContain("Área: Hospital Dos de Mayo");
+  });
+
+  it("sin área (administrador o gestor) no muestra la línea del área", async () => {
+    const { element } = await setup();
+    expect(element.querySelector("header")?.textContent).not.toContain("Área:");
+  });
+
   it("avisa cuando hay más casos de los que se traen", async () => {
-    const { element } = await setup({ ...datosBase(), archivado: lista(datosBase()["archivado"].casos, 250) });
-    expect(element.textContent).toContain("249 casos más no se ven aquí");
+    const { element } = await setup({ ...datosBase(), archivado: lista(datosBase()["archivado"].casos, true) });
+    expect(element.textContent).toContain("Hay más casos de los que se ven aquí");
   });
 
   it("no avisa cuando se trajo todo", async () => {

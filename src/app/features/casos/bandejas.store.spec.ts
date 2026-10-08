@@ -11,8 +11,8 @@ import { crearCaso } from "@/features/casos/testing/caso-builder";
 import type { Caso, ListaCasos } from "@/features/casos/types/caso.types";
 import type { ConsultaCasos } from "@/features/casos/types/incidencias-api.types";
 
-function lista(casos: readonly Caso[], total = casos.length): ListaCasos {
-  return { casos, pagina: 1, tamano: 100, total };
+function lista(casos: readonly Caso[], hayMas = false): ListaCasos {
+  return { casos, siguiente: hayMas ? "cursor-2" : null, hayMas };
 }
 
 const esperar = (ms = 10) => new Promise<void>((resolver) => setTimeout(resolver, ms));
@@ -39,20 +39,14 @@ describe("BandejasStore", () => {
     return { api, store, casos: TestBed.inject(CasosStore) };
   }
 
-  it("al crearse pide los cinco estados con hasta 100 casos: los abiertos, los más antiguos primero, y los cerrados, los más recientes", async () => {
+  it("al crearse pide los cinco estados con hasta 100 casos cada uno, sin pedir orden ni página", async () => {
     const { api } = await setup();
     const consultas = api.listar.mock.calls.map(([consulta]) => consulta);
     expect(consultas).toHaveLength(5);
     expect(consultas.map((consulta) => consulta.estado).sort()).toEqual(
       ["archivado", "clasificado", "derivado", "en-gestion", "resuelto"].sort(),
     );
-    for (const consulta of consultas) expect(consulta.tamano).toBe(100);
-    for (const abierto of ["clasificado", "derivado", "en-gestion"]) {
-      expect(consultas.find((consulta) => consulta.estado === abierto)).toMatchObject({ orden: "fecha", direccion: "asc" });
-    }
-    for (const cerrado of ["resuelto", "archivado"]) {
-      expect(consultas.find((consulta) => consulta.estado === cerrado)).toMatchObject({ orden: "fecha", direccion: "desc" });
-    }
+    for (const consulta of consultas) expect(consulta).toEqual({ estado: consulta.estado, limite: 100 });
   });
 
   it("reparte los casos en las siete bandejas con su cantidad", async () => {
@@ -67,9 +61,8 @@ describe("BandejasStore", () => {
   });
 
   it("avisa cuando hay más casos de los que se traen", async () => {
-    const { store } = await setup({ ...DATOS, archivado: lista(DATOS["archivado"].casos, 250) });
+    const { store } = await setup({ ...DATOS, archivado: lista(DATOS["archivado"].casos, true) });
     expect(store.hayCasosSinMostrar()).toBe(true);
-    expect(store.casosSinMostrar()).toBe(249);
   });
 
   it("no avisa cuando se trajo todo", async () => {

@@ -24,8 +24,19 @@
             <dd class="text-gray-900">{{ c.categoria ? categoriaLabel[c.categoria] : sinDato }}</dd>
           </div>
           <div class="flex gap-4">
-            <dt class="w-28 shrink-0 font-medium text-gray-500">Área</dt>
-            <dd class="text-gray-900">{{ areaDestino() }}</dd>
+            <dt class="w-28 shrink-0 font-medium text-gray-500">Establecimiento</dt>
+            <dd class="text-gray-900">
+              @if (c.establecimiento; as establecimiento) {
+                {{ establecimiento.nombre }}
+                <span class="block text-xs text-gray-500">{{ renipress(establecimiento) }}</span>
+              } @else {
+                {{ sinEstablecimiento }}
+              }
+            </dd>
+          </div>
+          <div class="flex gap-4">
+            <dt class="w-28 shrink-0 font-medium text-gray-500">Área destino</dt>
+            <dd class="text-gray-900">{{ c.area?.nombre ?? sinArea }}</dd>
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Prioridad</dt>
@@ -131,14 +142,22 @@
         } @else if (modo() === ModoPanel.CORREGIR) {
           <div class="space-y-3">
             <app-select-field label="Nueva categoría" [options]="opcionesCategoria()" [(value)]="nuevaCategoria" />
-            @if (areaNueva(); as area) {
-              <p class="text-sm text-gray-700">Con este cambio el caso corresponde a: <strong>{{ area }}</strong>.</p>
+            @if (avisoCorrupcion()) {
+              <p class="text-sm text-gray-700">Las denuncias por corrupción las toma <strong>OTRANS</strong>; no se derivan a un establecimiento.</p>
             }
             <app-alert [tone]="BadgeTone.WARNING">
               La categoría se confirma o se corrige una sola vez. Revisa bien antes de aplicar.
             </app-alert>
             <div class="flex flex-wrap gap-2">
               <app-button [disabled]="nuevaCategoria() === '' || procesando()" (click)="aplicarCorreccion()">Aplicar corrección</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar()">Cancelar</app-button>
+            </div>
+          </div>
+        } @else if (modo() === ModoPanel.DERIVAR) {
+          <div class="space-y-3">
+            <app-area-selector label="Área de destino" placeholder="Busca el establecimiento de destino..." [(seleccionada)]="areaElegida" />
+            <div class="flex flex-wrap gap-2">
+              <app-button [disabled]="areaElegida() === null || procesando()" (click)="aplicarDerivacion()">Derivar el caso</app-button>
               <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar()">Cancelar</app-button>
             </div>
           </div>
@@ -168,7 +187,7 @@
               <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="abrirCorreccion()">Corregir categoría</app-button>
             }
             @if (acciones().includes(AccionCaso.DERIVAR)) {
-              <app-button [disabled]="procesando()" (click)="derivar()">Derivar al {{ areaDestino() }}</app-button>
+              <app-button [disabled]="procesando()" (click)="abrirDerivacion()">Derivar a un área</app-button>
             }
             @if (acciones().includes(AccionCaso.TOMAR)) {
               <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="tomar()">Tomar en gestión</app-button>

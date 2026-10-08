@@ -1,5 +1,6 @@
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
 import type { Caso, CasoDetalle } from "@/features/casos/types/caso.types";
@@ -14,7 +15,8 @@ export function crearCaso(parcial: Partial<Caso> = {}): Caso {
     etiquetas: [],
     prioridad: null,
     organismo: null,
-    area: "Área de reclamos",
+    area: { codigo: "EESS-6206", nombre: "Hospital Dos de Mayo" },
+    establecimiento: { codigoRenipress: "6206", nombre: "Hospital Dos de Mayo", nivelAtencion: NivelAtencion.III, categoria: "III-1" },
     responsable: null,
     estado: EstadoCaso.CLASIFICADO,
     horasDesdeLlegada: 10,
@@ -48,7 +50,8 @@ export function crearResumenDto(parcial: Partial<CasoResumenDto> = {}): CasoResu
     etiquetas: [],
     prioridad: null,
     organismo: null,
-    area: "Área de reclamos",
+    area: { codigo: "EESS-6206", nombre: "Hospital Dos de Mayo" },
+    establecimiento: { codigoRenipress: "6206", nombre: "Hospital Dos de Mayo", nivelAtencion: "III", categoria: "III-1" },
     responsable: null,
     estado: "clasificado",
     horasDesdeLlegada: 10,

@@ -27,7 +27,7 @@ export class IncidenciasApi {
     const dto = await this.pedir(
       this.http.get<ListaCasosDto>(RUTA, { ...OPCIONES, params: buildQueryParams({ ...consulta }) }),
     );
-    return { casos: dto.casos.map(mapearResumen), pagina: dto.pagina, tamano: dto.tamano, total: dto.total };
+    return { casos: dto.items.map(mapearResumen), siguiente: dto.siguiente, hayMas: dto.hayMas };
   }
 
   async detalle(codigo: string): Promise<CasoDetalle> {
@@ -47,8 +47,8 @@ export class IncidenciasApi {
     return this.ejecutar(codigo, AccionCaso.CORREGIR, { categoria });
   }
 
-  derivar(codigo: string): Promise<RespuestaAccion> {
-    return this.ejecutar(codigo, AccionCaso.DERIVAR, {});
+  derivar(codigo: string, areaDestino: string): Promise<RespuestaAccion> {
+    return this.ejecutar(codigo, AccionCaso.DERIVAR, { areaDestino });
   }
 
   tomar(codigo: string): Promise<RespuestaAccion> {

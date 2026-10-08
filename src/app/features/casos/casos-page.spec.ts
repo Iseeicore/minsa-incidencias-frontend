@@ -1,5 +1,11 @@
+import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
+import type { AreaSesion } from "@/core/auth/auth.types";
+import { SessionStore } from "@/core/auth/session.store";
+import { AreasApi } from "@/features/casos/services/areas.api";
+import type { AreaOpcion } from "@/features/casos/types/area.types";
+import { TipoArea } from "@/shared/enums/tipo-area.enum";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { BUSQUEDA_DEBOUNCE_MS } from "@/features/casos/constants/casos-config";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
@@ -15,14 +21,29 @@ const CASOS: readonly Caso[] = [
   crearCaso({ codigo: "MINSA-2026-000003", acciones: [] }),
 ];
 
-function lista(casos: readonly Caso[] = CASOS, total = 45, pagina = 1): ListaCasos {
-  return { casos, pagina, tamano: 20, total };
+function lista(casos: readonly Caso[] = CASOS, hayMas = true): ListaCasos {
+  return { casos, siguiente: hayMas ? "cursor-2" : null, hayMas };
 }
+
+const HOSPITAL: AreaOpcion = {
+  id: "10",
+  codigo: "EESS-6206",
+  nombre: "Hospital Dos de Mayo",
+  tipoArea: TipoArea.ESTABLECIMIENTO,
+  establecimiento: { codigoRenipress: "6206", nivelAtencion: "III", categoria: "III-1" },
+};
+
+function sesion(area: AreaSesion | null) {
+  return { provide: SessionStore, useValue: { area: signal(area), veTodasLasAreas: signal(area === null) } };
+}
+
+const areasApi = { listar: vi.fn().mockResolvedValue({ areas: [HOSPITAL], siguiente: null, hayMas: false }) };
+const proveedoresDeAreas = [{ provide: AreasApi, useValue: areasApi }, { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 }];
 
 const esperar = (ms = 15) => new Promise<void>((resolver) => setTimeout(resolver, ms));
 
 describe("CasosPage", () => {
-  async function setup(respuesta: ListaCasos = lista()) {
+  async function setup(respuesta: ListaCasos = lista(), area: AreaSesion | null = null) {
     const api = {
       listar: vi.fn().mockResolvedValue(respuesta),
       detalle: vi.fn().mockResolvedValue(crearDetalle({ codigo: "MINSA-2026-000001", acciones: [AccionCaso.CONFIRMAR] })),
@@ -32,7 +53,8 @@ describe("CasosPage", () => {
       providers: [
         provideRouter([]),
         { provide: IncidenciasApi, useValue: api },
-        { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 },
+        sesion(area),
+        ...proveedoresDeAreas,
       ],
     });
     const fixture = TestBed.createComponent(CasosPage);
@@ -64,16 +86,18 @@ describe("CasosPage", () => {
     expect(filas()).toBe(3);
   });
 
-  it("el contador y el paginador usan el total del servidor", async () => {
-    const { element } = await setup(lista(CASOS, 45));
-    expect(element.querySelector("[aria-live='polite']")?.textContent).toContain("45 casos");
-    expect(element.querySelector("app-paginador")?.textContent).toContain("1-20 de 45");
+  it("el contador y el paginador de cursor muestran la página y si hay más, sin total", async () => {
+    const { element } = await setup(lista(CASOS, true));
+    expect(element.textContent).toContain("3 casos en esta página");
+    const paginador = element.querySelector("app-paginador-cursor")?.textContent ?? "";
+    expect(paginador).toContain("Página 1 · 3 casos · hay más");
+    expect(element.querySelector("app-paginador")).toBeNull();
   });
 
   it("muestra todas las columnas dentro de una región desplazable", async () => {
     const { element } = await setup();
     const encabezados = Array.from(element.querySelectorAll("thead th")).map((th) => th.textContent?.trim());
-    expect(encabezados).toHaveLength(10);
+    expect(encabezados).toHaveLength(11);
     expect(encabezados[0]).toBe("Código");
     expect(element.querySelector("app-scroll-area[role='region']")).not.toBeNull();
   });
@@ -91,16 +115,16 @@ describe("CasosPage", () => {
     expect(opciones).toContain("Todo estado");
   });
 
-  it("la primera consulta pide 20 casos, lo más antiguo primero", async () => {
+  it("la primera consulta pide 20 casos, sin cursor ni orden", async () => {
     const { ultimaConsulta } = await setup();
-    expect(ultimaConsulta()).toEqual({ pagina: 1, tamano: 20, orden: "fecha", direccion: "asc" });
+    expect(ultimaConsulta()).toEqual({ limite: 20 });
   });
 
   it("cambiar de pestaña pide esa categoría al servidor", async () => {
     const { pestana, asentar, ultimaConsulta } = await setup();
     pestana("Quejas")?.click();
     await asentar();
-    expect(ultimaConsulta()).toMatchObject({ categoria: "queja", pagina: 1 });
+    expect(ultimaConsulta()).toEqual({ categoria: "queja", limite: 20 });
   });
 
   it("filtrar por estado lo pide al servidor", async () => {
@@ -123,7 +147,7 @@ describe("CasosPage", () => {
 
   it("sin resultados lo dice y ofrece limpiar los filtros", async () => {
     const { element, api, pestana, boton, asentar, ultimaConsulta } = await setup();
-    api.listar.mockResolvedValue(lista([], 0));
+    api.listar.mockResolvedValue(lista([], false));
     pestana("Reclamos")?.click();
     await asentar();
     expect(element.textContent).toContain("No hay casos con estos filtros");
@@ -131,11 +155,11 @@ describe("CasosPage", () => {
     api.listar.mockResolvedValue(lista());
     boton("Limpiar filtros")?.click();
     await asentar();
-    expect(ultimaConsulta()).toEqual({ pagina: 1, tamano: 20, orden: "fecha", direccion: "asc" });
+    expect(ultimaConsulta()).toEqual({ limite: 20 });
   });
 
   it("sin filtros y sin casos no ofrece limpiar", async () => {
-    const { element } = await setup(lista([], 0));
+    const { element } = await setup(lista([], false));
     expect(element.textContent).toContain("No hay casos");
     expect(Array.from(element.querySelectorAll("button")).some((boton) => boton.textContent?.includes("Limpiar filtros"))).toBe(false);
   });
@@ -162,7 +186,7 @@ describe("CasosPage", () => {
     };
     TestBed.configureTestingModule({
       imports: [CasosPage],
-      providers: [provideRouter([]), { provide: IncidenciasApi, useValue: api }, { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 }],
+      providers: [provideRouter([]), { provide: IncidenciasApi, useValue: api }, sesion(null), ...proveedoresDeAreas],
     });
     const fixture = TestBed.createComponent(CasosPage);
     await fixture.whenStable();
@@ -173,20 +197,73 @@ describe("CasosPage", () => {
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain("Cargando casos");
   });
 
-  it("el paginador pide la página elegida", async () => {
-    const { element, asentar, ultimaConsulta } = await setup(lista(CASOS, 45));
-    const siguiente = element.querySelector<HTMLButtonElement>("button[aria-label='Página siguiente']") as HTMLButtonElement;
-    siguiente.click();
+  it("Siguiente pide el cursor que mandó el servidor y Anterior vuelve con el cursor guardado", async () => {
+    const { api, element, asentar, ultimaConsulta } = await setup(lista(CASOS, true));
+    const botones = () => Array.from(element.querySelectorAll<HTMLButtonElement>("app-paginador-cursor button"));
+    const anterior = () => botones()[0];
+    const siguiente = () => botones()[1];
+    expect(anterior().disabled).toBe(true);
+
+    api.listar.mockResolvedValueOnce({ casos: CASOS, siguiente: null, hayMas: false });
+    siguiente().click();
     await asentar();
-    expect(ultimaConsulta()).toMatchObject({ pagina: 2 });
+    expect(ultimaConsulta()).toEqual({ limite: 20, cursor: "cursor-2" });
+    expect(element.querySelector("app-paginador-cursor")?.textContent).toContain("Página 2");
+    expect(siguiente().disabled).toBe(true);
+
+    api.listar.mockResolvedValueOnce(lista(CASOS, true));
+    anterior().click();
+    await asentar();
+    expect(ultimaConsulta()).toEqual({ limite: 20 });
+    expect(element.querySelector("app-paginador-cursor")?.textContent).toContain("Página 1");
   });
 
-  it("pulsar un encabezado ordena en el servidor", async () => {
-    const { element, asentar, ultimaConsulta } = await setup();
-    const codigo = element.querySelector<HTMLButtonElement>("thead button[aria-label^='Ordenar por Código']") as HTMLButtonElement;
-    codigo.click();
-    await asentar();
-    expect(ultimaConsulta()).toMatchObject({ orden: "codigo", direccion: "asc" });
+  it("no hay encabezados que ordenen: el servidor fija el orden", async () => {
+    const { element } = await setup();
+    expect(element.querySelector("thead button")).toBeNull();
+  });
+
+  describe("según el área de la persona", () => {
+    const pestanasDe = (element: HTMLElement) =>
+      Array.from(element.querySelectorAll("[role='tab']")).map((tab) => tab.textContent?.trim());
+
+    it("ESTABLECIMIENTO no ve la pestaña de corrupción ni el filtro por establecimiento y ve su área", async () => {
+      const { element } = await setup(lista(), { codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: TipoArea.ESTABLECIMIENTO });
+      expect(pestanasDe(element)).toEqual(["Todos", "Reclamos", "Quejas"]);
+      expect(element.querySelector("app-area-selector")).toBeNull();
+      expect(element.querySelector("header")?.textContent).toContain("Área: Hospital Dos de Mayo");
+    });
+
+    it("OTRANS solo ve Todos y Corrupción", async () => {
+      const { element } = await setup(lista(), { codigo: "OTRANS", nombre: "OTRANS", tipo: TipoArea.OTRANS });
+      expect(pestanasDe(element)).toEqual(["Todos", "Corrupción"]);
+      expect(element.querySelector("app-area-selector")).toBeNull();
+    });
+
+    it("sin área (administrador o gestor) ve todas las pestañas y el filtro por establecimiento", async () => {
+      const { element } = await setup();
+      expect(pestanasDe(element)).toHaveLength(6);
+      expect(element.querySelector("app-area-selector")).not.toBeNull();
+      expect(element.querySelector("header")?.textContent).not.toContain("Área:");
+    });
+
+    it("elegir un establecimiento lo manda como filtro por su código RENIPRESS y vaciar el campo lo quita", async () => {
+      const { element, asentar, ultimaConsulta } = await setup();
+      const campo = element.querySelector<HTMLInputElement>("app-area-selector input") as HTMLInputElement;
+      campo.value = "dos de mayo";
+      campo.dispatchEvent(new Event("input"));
+      await asentar();
+      (element.querySelector("app-area-selector [role='option']") as HTMLElement).dispatchEvent(
+        new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+      );
+      await asentar();
+      expect(ultimaConsulta()).toEqual({ limite: 20, establecimiento: "6206" });
+
+      campo.value = "";
+      campo.dispatchEvent(new Event("input"));
+      await asentar();
+      expect(ultimaConsulta()).toEqual({ limite: 20 });
+    });
   });
 
   it("cada fila tiene un botón: Revisar si el servidor permite actuar y Ver si no", async () => {
@@ -214,7 +291,7 @@ describe("CasosPage", () => {
     };
     TestBed.configureTestingModule({
       imports: [CasosPage],
-      providers: [provideRouter([]), { provide: IncidenciasApi, useValue: api }, { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 }],
+      providers: [provideRouter([]), { provide: IncidenciasApi, useValue: api }, sesion(null), ...proveedoresDeAreas],
     });
     await TestBed.inject(Router).navigateByUrl("/?caso=MINSA-2026-000003");
     const fixture = TestBed.createComponent(CasosPage);
@@ -233,7 +310,7 @@ describe("CasosPage", () => {
     };
     TestBed.configureTestingModule({
       imports: [CasosPage],
-      providers: [provideRouter([]), { provide: IncidenciasApi, useValue: api }, { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 }],
+      providers: [provideRouter([]), { provide: IncidenciasApi, useValue: api }, sesion(null), ...proveedoresDeAreas],
     });
     const router = TestBed.inject(Router);
     await router.navigateByUrl("/?caso=MINSA-2026-000003");
