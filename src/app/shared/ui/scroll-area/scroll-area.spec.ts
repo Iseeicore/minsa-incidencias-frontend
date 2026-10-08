@@ -22,4 +22,9 @@ describe("ScrollArea", () => {
     expect(element.className).not.toContain("max-h-");
     expect(element.className).toContain("max-w-full");
   });
+
+  it("es el bloque contenedor de lo que lleva dentro, para que los sr-only absolutos de las filas no ensanchen la pagina", async () => {
+    const element = await setup();
+    expect(element.classList.contains("relative")).toBe(true);
+  });
 });
