@@ -23,7 +23,7 @@ describe("AppShell en pantalla chica", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  const ana: SesionUsuario = { nombreCompleto: "Ana Prueba", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"], area: null };
+  const ana: SesionUsuario = { nombreCompleto: "Ana Prueba", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"], roles: ["GESTOR"], area: null };
 
   async function setup() {
     TestBed.configureTestingModule({
@@ -32,7 +32,7 @@ describe("AppShell en pantalla chica", () => {
         provideRouter([{ path: "**", children: [] }]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: SessionStore, useValue: { sesion: signal(ana), cerrar: vi.fn() } },
+        { provide: SessionStore, useValue: { sesion: signal(ana), esAdministrador: signal(false), cerrar: vi.fn() } },
       ],
     });
     const fixture = TestBed.createComponent(AppShell);

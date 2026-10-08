@@ -17,7 +17,10 @@ describe("AppShell", () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: SessionStore, useValue: { sesion: signal(sesion), cerrar } },
+        {
+          provide: SessionStore,
+          useValue: { sesion: signal(sesion), esAdministrador: signal(sesion.roles.includes("ADMINISTRADOR")), cerrar },
+        },
       ],
     });
     const navigate = vi.spyOn(TestBed.inject(Router), "navigateByUrl").mockResolvedValue(true);
@@ -32,6 +35,7 @@ describe("AppShell", () => {
     nombreCompleto: "Ana Prueba",
     correo: "ana@minsa.gob.pe",
     vistas: ["INICIO", "CASOS", "BANDEJAS", "DERIVACIONES"],
+    roles: ["GESTOR"],
     area: null,
   };
 
@@ -56,6 +60,17 @@ describe("AppShell", () => {
     expect(element.querySelectorAll("nav [aria-disabled='true']")).toHaveLength(0);
     expect(element.querySelectorAll("nav app-sidebar-group")).toHaveLength(1);
     expect(element.querySelector("nav")?.textContent).not.toContain("Inteligencia IA");
+  });
+
+  it("el administrador ve todo el menú: 4 enlaces y las 10 entradas sin pantalla en gris, sin navegación", async () => {
+    const { element } = await setup({ ...ana, roles: ["ADMINISTRADOR"] });
+    const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
+    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas", "Derivaciones"]);
+    const grises = Array.from(element.querySelectorAll("nav [aria-disabled='true']"));
+    expect(grises).toHaveLength(10);
+    expect(grises.every((gris) => gris.tagName === "SPAN" && !gris.hasAttribute("href"))).toBe(true);
+    expect(grises.map((gris) => gris.textContent?.trim())).toContain("Usuarios");
+    expect(element.querySelectorAll("nav app-sidebar-group")).toHaveLength(4);
   });
 
   it("contraer el menú oculta las etiquetas y deja los iconos", async () => {

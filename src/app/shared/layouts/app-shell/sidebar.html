@@ -19,7 +19,7 @@
         <ul class="space-y-1">
           @for (entrada of seccion.entries; track entrada.id) {
             <li>
-              @if (entrada.path; as ruta) {
+              @if (entrada.implementada && entrada.path; as ruta) {
                 <a
                   #enlace="routerLinkActive"
                   routerLinkActive
@@ -34,6 +34,17 @@
                     <span class="truncate">{{ entrada.label }}</span>
                   }
                 </a>
+              } @else {
+                <span
+                  aria-disabled="true"
+                  [class]="disabledClasses"
+                  [attr.title]="entrada.label + ' (próximamente)'"
+                >
+                  <app-icon [name]="entrada.icon" />
+                  @if (!compact()) {
+                    <span class="truncate">{{ entrada.label }}</span>
+                  }
+                </span>
               }
             </li>
           }

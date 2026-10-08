@@ -50,6 +50,39 @@ describe("visibleNav", () => {
     expect(usadas).toEqual(Object.values(VistaCodigo).sort());
   });
 
+  describe("administrador (superadmin)", () => {
+    const todas = Object.values(VistaCodigo);
+    const total = NAV_SECTIONS.flatMap((section) => section.entries);
+
+    it("ve todas las secciones y las 14 entradas, también con la sesión sin vistas", () => {
+      for (const vistas of [todas, []]) {
+        const secciones = visibleNav(NAV_SECTIONS, vistas, true);
+        expect(secciones.map((section) => section.id)).toEqual(NAV_SECTIONS.map((section) => section.id));
+        expect(secciones.flatMap((section) => section.entries)).toHaveLength(total.length);
+      }
+    });
+
+    it("las entradas sin pantalla siguen marcadas como no implementadas (se dibujan en gris)", () => {
+      const grises = visibleNav(NAV_SECTIONS, todas, true).flatMap((section) => section.entries.filter((entry) => !entry.implementada));
+      expect(grises.map((entry) => entry.id)).toEqual([
+        "revision-ia",
+        "dataset",
+        "modelos",
+        "etiquetas",
+        "competencias",
+        "organismos",
+        "usuarios",
+        "evidencias",
+        "alertas",
+        "auditoria",
+      ]);
+    });
+
+    it("el gestor con las mismas vistas no ve las entradas sin pantalla", () => {
+      expect(visibleNav(NAV_SECTIONS, todas, false).map((section) => section.id)).toEqual(["operacion"]);
+    });
+  });
+
   describe("menú de los cuatro roles (vistas que manda /auth/me)", () => {
     const TODAS = Object.values(VistaCodigo);
     const SIN_DERIVACIONES = TODAS.filter((vista) => vista !== VistaCodigo.DERIVACIONES);

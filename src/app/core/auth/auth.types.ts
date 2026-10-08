@@ -1,3 +1,4 @@
+import type { RolCodigo } from "@/shared/enums/rol-codigo.enum";
 import type { TipoArea } from "@/shared/enums/tipo-area.enum";
 import type { VistaCodigo } from "@/shared/enums/vista-codigo.enum";
 
@@ -16,6 +17,8 @@ export interface SesionUsuario {
   nombreCompleto: string;
   correo: string;
   vistas: VistaCodigo[];
+  /** Códigos de rol de la sesión. Solo distingue al ADMINISTRADOR del GESTOR para el menú: el servidor decide los permisos. */
+  roles: RolCodigo[];
   /** Área a la que pertenece la persona; `null` para ADMINISTRADOR y GESTOR, que no tienen área. */
   area: AreaSesion | null;
 }
