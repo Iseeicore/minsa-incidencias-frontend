@@ -9,6 +9,7 @@ import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
 import { crearDetalleDto, crearResumenDto } from "@/features/casos/testing/caso-builder";
+import { crearConteos, crearConteosDto } from "@/features/casos/testing/conteos-builder";
 import { IncidenciaError, RespuestaInvalidaError } from "./incidencia-error";
 import { IncidenciasApi } from "./incidencias.api";
 
@@ -161,6 +162,47 @@ describe("IncidenciasApi", () => {
       const resultado = api.detalle("MINSA-2026-000001");
       http.expectOne(`${BASE}/MINSA-2026-000001`).error(new ProgressEvent("error"));
       await expect(resultado).rejects.toMatchObject({ estado: 0 });
+    });
+  });
+
+  describe("conteos", () => {
+    it("pide los conteos con los filtros del listado, sin límite ni cursor, y los traduce", async () => {
+      const { api, http } = setup();
+      const resultado = api.conteos({ estado: "clasificado", categoria: "reclamo", texto: "demora", desde: "2026-10-01" });
+      const peticion = http.expectOne((req) => req.url === `${BASE}/conteos`);
+      expect(peticion.request.method).toBe("GET");
+      expect(peticion.request.withCredentials).toBe(true);
+      expect(peticion.request.params.get("estado")).toBe("clasificado");
+      expect(peticion.request.params.get("categoria")).toBe("reclamo");
+      expect(peticion.request.params.get("texto")).toBe("demora");
+      expect(peticion.request.params.get("desde")).toBe("2026-10-01");
+      expect(peticion.request.params.has("limite")).toBe(false);
+      expect(peticion.request.params.has("cursor")).toBe(false);
+      peticion.flush(crearConteosDto());
+      expect(await resultado).toEqual(crearConteos());
+    });
+
+    it("sin filtros no manda parámetros", async () => {
+      const { api, http } = setup();
+      const resultado = api.conteos({});
+      const peticion = http.expectOne((req) => req.url === `${BASE}/conteos`);
+      expect(peticion.request.params.keys()).toEqual([]);
+      peticion.flush(crearConteosDto());
+      await resultado;
+    });
+
+    it("traduce los errores del servidor", async () => {
+      const { api, http } = setup();
+      const resultado = api.conteos({});
+      http.expectOne((req) => req.url === `${BASE}/conteos`).flush({}, { status: 500, statusText: "Error" });
+      await expect(resultado).rejects.toBeInstanceOf(IncidenciaError);
+    });
+
+    it("rechaza una respuesta incompleta", async () => {
+      const { api, http } = setup();
+      const resultado = api.conteos({});
+      http.expectOne((req) => req.url === `${BASE}/conteos`).flush({ todos: { cantidad: 1, conMas: false } });
+      await expect(resultado).rejects.toThrow();
     });
   });
 

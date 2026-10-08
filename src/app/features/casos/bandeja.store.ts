@@ -14,7 +14,8 @@ import { mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
 import type { AreaOpcion } from "@/features/casos/types/area.types";
 import type { Caso } from "@/features/casos/types/caso.types";
-import type { ConsultaCasos } from "@/features/casos/types/incidencias-api.types";
+import type { Conteos } from "@/features/casos/types/conteos.types";
+import type { ConsultaCasos, ConsultaConteos } from "@/features/casos/types/incidencias-api.types";
 import { errorDeRango, rangoDeAtajo } from "@/features/casos/utils/fechas-lima";
 import { normalizarBusqueda } from "@/features/casos/utils/normalizar-busqueda";
 
@@ -36,6 +37,7 @@ export class BandejaStore {
   private readonly desdeAplicada = signal("");
   private readonly hastaAplicada = signal("");
   private peticion = 0;
+  private peticionConteos = 0;
 
   readonly tamano = TAMANO_PAGINA;
   readonly casos = signal<readonly Caso[]>([]);
@@ -57,6 +59,9 @@ export class BandejaStore {
   readonly rangoAplicado = computed(() => ({ desde: this.desdeAplicada(), hasta: this.hastaAplicada() }));
   readonly estadoCarga = signal<CargaEstado>(CargaEstado.INICIAL);
   readonly error = signal<string | null>(null);
+  /** Cantidades del servidor; `null` mientras no llegan o si el conteo falló (la lista no depende de ellas). */
+  readonly conteos = signal<Conteos | null>(null);
+  readonly total = computed(() => this.conteos()?.total ?? null);
 
   /** Número de página que se está viendo (sin total, solo cuántas se recorrieron). */
   readonly pagina = computed(() => this.pila().length + 1);
@@ -90,9 +95,13 @@ export class BandejaStore {
       });
     effect(() => {
       if (casos.cambios() === cambiosIniciales) return;
-      untracked(() => void this.cargar());
+      untracked(() => {
+        void this.cargar();
+        void this.cargarConteos();
+      });
     });
     void this.cargar();
+    void this.cargarConteos();
   }
 
   /** Vuelve a pedir la página actual. */
@@ -101,6 +110,7 @@ export class BandejaStore {
   }
 
   reintentar(): Promise<void> {
+    if (this.conteos() === null) void this.cargarConteos();
     return this.cargar();
   }
 
@@ -205,7 +215,9 @@ export class BandejaStore {
     this.entrada.next("");
   }
 
+  /** Cambiar un filtro o la pestaña cambia las cantidades; cambiar de página no. */
   private desdeElPrincipio(): Promise<void> {
+    void this.cargarConteos();
     return this.cargarPagina(null, []);
   }
 
@@ -233,7 +245,22 @@ export class BandejaStore {
     }
   }
 
+  /** Una respuesta vieja no pisa a una más nueva; si el conteo falla se ocultan los números sin molestar. */
+  private async cargarConteos(): Promise<void> {
+    const token = ++this.peticionConteos;
+    try {
+      const conteos = await this.api.conteos(this.filtros());
+      if (token === this.peticionConteos) this.conteos.set(conteos);
+    } catch {
+      if (token === this.peticionConteos) this.conteos.set(null);
+    }
+  }
+
   private consulta(cursor: string | null): ConsultaCasos {
+    return { limite: this.tamano, ...(cursor !== null && { cursor }), ...this.filtros() };
+  }
+
+  private filtros(): ConsultaConteos {
     const estado = ESTADO_DE_BANDEJA[this.bandeja()];
     const motivoArchivo = this.motivoArchivo();
     const categoria = CATEGORIA_POR_TAB[this.categoria()];
@@ -242,8 +269,6 @@ export class BandejaStore {
     const desde = this.desdeAplicada();
     const hasta = this.hastaAplicada();
     return {
-      limite: this.tamano,
-      ...(cursor !== null && { cursor }),
       ...(estado && { estado }),
       ...(this.verArchivados() && motivoArchivo !== FILTRO_TODOS && { motivoArchivo }),
       ...(categoria && { categoria }),

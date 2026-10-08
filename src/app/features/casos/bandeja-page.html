@@ -9,98 +9,29 @@
 
   <app-aviso-envio />
 
-  <app-tabs label="Estado del caso" [options]="bandejas" [value]="store.bandeja()" (valueChange)="cambiarBandeja($event)" />
+  <app-tabs
+    label="Estado del caso"
+    [variante]="TabsVariante.TARJETA"
+    [options]="bandejas()"
+    [value]="store.bandeja()"
+    (valueChange)="cambiarBandeja($event)"
+  />
 
-  <section aria-label="Filtros" class="min-w-0 space-y-4">
-    <app-tabs
-      label="Categoría"
-      [options]="categoriasOpciones()"
-      [value]="store.categoria()"
-      (valueChange)="cambiarCategoria($event)"
-    />
-
-    <app-search-input
-      class="md:max-w-xl"
-      label="Buscar caso"
-      [placeholder]="placeholderBusqueda"
-      [value]="store.texto()"
-      (valueChange)="store.escribirTexto($event)"
-    />
-
-    <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <app-date-field
-        class="sm:w-48"
-        label="Desde"
-        [invalid]="store.errorFechas() !== null"
-        [value]="store.desde()"
-        (valueChange)="alCambiarDesde($event)"
-      />
-      <app-date-field
-        class="sm:w-48"
-        label="Hasta"
-        [invalid]="store.errorFechas() !== null"
-        [value]="store.hasta()"
-        (valueChange)="alCambiarHasta($event)"
-      />
-      <div class="flex flex-wrap gap-2" role="group" aria-label="Atajos de fecha">
-        @for (atajo of atajos; track atajo.value) {
-          <app-button
-            [variant]="ButtonVariant.OUTLINE"
-            [tone]="ButtonTone.NEUTRAL"
-            [size]="ButtonSize.SM"
-            (click)="store.aplicarAtajo(atajo.value)"
-          >
-            {{ atajo.label }}
-          </app-button>
-        }
-        @if (store.hayFechas()) {
-          <app-button
-            [variant]="ButtonVariant.OUTLINE"
-            [tone]="ButtonTone.NEUTRAL"
-            [size]="ButtonSize.SM"
-            (click)="store.limpiarFechas()"
-          >
-            Limpiar<span class="sr-only"> fechas</span>
-          </app-button>
+  <app-card class="space-y-5">
+    <div>
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+        <h2 class="text-xl font-bold text-gray-900">{{ actual().label }}</h2>
+        @if (totalTexto(); as total) {
+          <p class="text-sm font-medium text-gray-600">{{ total }} en la bandeja</p>
         }
       </div>
+      <p class="mt-1 text-sm text-gray-600">{{ actual().ayuda }}</p>
     </div>
-    @if (store.errorFechas(); as mensaje) {
-      <p class="text-sm font-medium text-danger-600" role="alert">{{ mensaje }}</p>
-    }
 
-    @if (store.verArchivados()) {
-      <app-select-field
-        class="md:max-w-xs"
-        label="Filtrar por motivo del archivo"
-        [options]="motivoOpciones"
-        [value]="store.motivoArchivo()"
-        (valueChange)="store.cambiarMotivoArchivo($event)"
-      />
-    }
-
-    @if (veTodasLasAreas()) {
-      <app-area-selector
-        class="block md:max-w-md"
-        label="Filtrar por establecimiento"
-        placeholder="Busca un establecimiento..."
-        [seleccionada]="store.establecimiento()"
-        (seleccionadaChange)="store.cambiarEstablecimiento($event)"
-      />
-    }
-  </section>
-
-  <app-filtros-activos [filtros]="filtrosAplicados()" (quitar)="quitarFiltro($event)" (limpiar)="store.limpiar()" />
-
-  <app-card>
-    <div class="mb-1 flex items-center justify-between gap-3">
-      <h2 class="text-base font-bold text-gray-900">{{ actual().label }}</h2>
-      <p class="text-sm font-medium text-gray-600" aria-live="polite">{{ store.casos().length }} {{ store.casos().length === 1 ? "caso" : "casos" }} en esta página</p>
-    </div>
-    <p class="mb-4 text-sm text-gray-600">{{ actual().ayuda }}</p>
+    <app-bandeja-filtros />
 
     @if (store.error(); as mensaje) {
-      <div class="mb-4 space-y-3">
+      <div class="space-y-3">
         <app-alert [tone]="BadgeTone.DANGER">{{ mensaje }}</app-alert>
         <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="store.reintentar()">
           Reintentar
@@ -109,7 +40,7 @@
     }
 
     @if (store.casos().length > 0) {
-      <div [attr.aria-busy]="store.estadoCarga() === CargaEstado.CARGANDO">
+      <div class="min-w-0" [attr.aria-busy]="store.estadoCarga() === CargaEstado.CARGANDO">
         <app-casos-tabla
           [casos]="store.casos()"
           [descripcion]="'Casos de la bandeja ' + actual().label"
@@ -117,7 +48,7 @@
         />
       </div>
       <app-paginador-cursor
-        class="mt-4"
+        class="block"
         [pagina]="store.pagina()"
         [cantidad]="store.casos().length"
         [hayAnterior]="store.hayAnterior()"
@@ -129,7 +60,7 @@
     } @else if (store.estadoCarga() === CargaEstado.INICIAL || store.estadoCarga() === CargaEstado.CARGANDO) {
       <p class="py-10 text-center text-sm font-medium text-gray-700" aria-live="polite">Cargando casos…</p>
     } @else if (store.vacio()) {
-      <div class="flex flex-col items-center gap-3 py-10 text-center">
+      <div class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 py-12 text-center">
         <p class="text-sm font-medium text-gray-700">
           {{ store.hayFiltros() ? "No hay casos con estos filtros." : "No hay casos." }}
         </p>
@@ -142,10 +73,7 @@
     }
   </app-card>
 
-  <p class="text-xs text-gray-500">
-    El servidor calcula el plazo de atención de cada caso y la vigencia de cada resolución. Pasado el plazo, el caso
-    se archiva cuando corre el archivado automático.
-  </p>
+  <p class="text-xs text-gray-500">{{ notaPlazos }}</p>
 </div>
 
 <app-caso-revision [codigo]="seleccionado()" (codigoChange)="alCambiarSeleccion($event)" />

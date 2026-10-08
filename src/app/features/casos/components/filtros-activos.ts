@@ -13,18 +13,19 @@ import { ChipQuitable } from "@/shared/ui/chip-quitable/chip-quitable";
   template: `
     @if (filtros().length > 0) {
       <section aria-label="Filtros aplicados" class="flex min-w-0 flex-wrap items-center gap-2">
-        <span class="text-sm font-medium text-gray-600">Filtros aplicados</span>
         @for (filtro of filtros(); track filtro.id) {
           <app-chip-quitable [label]="filtro.label" (quitar)="quitar.emit(filtro.id)" />
         }
-        <app-button
-          [variant]="ButtonVariant.OUTLINE"
-          [tone]="ButtonTone.NEUTRAL"
-          [size]="ButtonSize.SM"
-          (click)="limpiar.emit()"
-        >
-          Limpiar todo
-        </app-button>
+        <span class="ml-auto">
+          <app-button
+            [variant]="ButtonVariant.OUTLINE"
+            [tone]="ButtonTone.NEUTRAL"
+            [size]="ButtonSize.SM"
+            (click)="limpiar.emit()"
+          >
+            Limpiar filtros
+          </app-button>
+        </span>
       </section>
     }
   `,

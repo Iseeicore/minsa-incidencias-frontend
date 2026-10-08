@@ -5,6 +5,7 @@ import { API_BASE_URL } from "@/core/config/api.config";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import type { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import type { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
+import type { Conteos } from "@/features/casos/types/conteos.types";
 import type {
   CasoDetalle,
   CasosPorVencer,
@@ -15,11 +16,14 @@ import type {
 import type {
   CasoDetalleDto,
   ConsultaCasos,
+  ConsultaConteos,
+  ConteosDto,
   EnviadoAOtransDto,
   ListaCasosDto,
   PorVencerDto,
   ResultadoAccionDto,
 } from "@/features/casos/types/incidencias-api.types";
+import { mapearConteos } from "@/features/casos/utils/mapear-conteos";
 import { mapearDetalle, mapearResumen } from "@/features/casos/utils/mapear-caso";
 import { buildQueryParams } from "@/shared/utils/build-query-params";
 import { toIncidenciaError } from "./incidencia-error";
@@ -40,6 +44,14 @@ export class IncidenciasApi {
       this.http.get<ListaCasosDto>(RUTA, { ...OPCIONES, params: buildQueryParams({ ...consulta }) }),
     );
     return { casos: dto.items.map(mapearResumen), siguiente: dto.siguiente, hayMas: dto.hayMas };
+  }
+
+  /** Cantidades por estado y total con los mismos filtros del listado, acotadas por el servidor. */
+  async conteos(consulta: ConsultaConteos): Promise<Conteos> {
+    const dto = await this.pedir(
+      this.http.get<ConteosDto>(`${RUTA}/conteos`, { ...OPCIONES, params: buildQueryParams({ ...consulta }) }),
+    );
+    return mapearConteos(dto);
   }
 
   async detalle(codigo: string): Promise<CasoDetalle> {

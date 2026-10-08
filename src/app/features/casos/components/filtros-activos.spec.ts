@@ -32,7 +32,7 @@ describe("FiltrosActivos", () => {
     const chips = Array.from(element.querySelectorAll("app-chip-quitable")).map((chip) => chip.textContent?.trim());
     expect(chips).toEqual(["Categoría: Quejas", "Búsqueda: «demora»"]);
     expect(element.querySelector("section")?.getAttribute("aria-label")).toBe("Filtros aplicados");
-    expect(element.textContent).toContain("Limpiar todo");
+    expect(element.textContent).toContain("Limpiar filtros");
   });
 
   it("quitar un chip avisa cuál es", async () => {
@@ -41,10 +41,10 @@ describe("FiltrosActivos", () => {
     expect(alQuitar).toHaveBeenCalledWith(FiltroActivoId.CATEGORIA);
   });
 
-  it("Limpiar todo avisa una sola vez", async () => {
+  it("Limpiar filtros avisa una sola vez", async () => {
     const { element, alLimpiar, alQuitar } = await setup(FILTROS);
     const boton = Array.from(element.querySelectorAll<HTMLButtonElement>("button")).find((candidato) =>
-      candidato.textContent?.includes("Limpiar todo"),
+      candidato.textContent?.includes("Limpiar filtros"),
     );
     boton?.click();
     expect(alLimpiar).toHaveBeenCalledTimes(1);

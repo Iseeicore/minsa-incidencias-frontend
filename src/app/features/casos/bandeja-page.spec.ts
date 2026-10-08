@@ -101,7 +101,7 @@ describe("BandejaPage", () => {
 
   it("el contador y el paginador de cursor muestran la página y si hay más, sin total", async () => {
     const { element } = await setup(lista(CASOS, true));
-    expect(element.textContent).toContain("3 casos en esta página");
+    expect(element.textContent).toContain("Mostrando 3 casos");
     expect(element.querySelector("app-paginador-cursor")?.textContent).toContain("Página 1 · 3 casos · hay más");
   });
 
@@ -450,7 +450,7 @@ describe("BandejaPage", () => {
         "Fecha: del 01/10/2026 al 07/10/2026",
         "Búsqueda: «demora»",
       ]);
-      expect(boton("Limpiar todo")).toBeDefined();
+      expect(boton("Limpiar filtros")).toBeDefined();
     });
 
     it("el filtro de establecimiento y el de motivo también aparecen", async () => {
@@ -502,13 +502,13 @@ describe("BandejaPage", () => {
       expect(element.querySelector("section[aria-label='Filtros aplicados']")).toBeNull();
     });
 
-    it("Limpiar todo quita todos los filtros y vuelve a pedir una sola vez desde el principio", async () => {
+    it("Limpiar filtros quita todos los filtros y vuelve a pedir una sola vez desde el principio", async () => {
       const { api, element, pestana, boton, asentar, ultimaConsulta } = await setup();
       pestana("Categoría", "Reclamos")?.click();
       boton("Hoy")?.click();
       await asentar();
       const antes = api.listar.mock.calls.length;
-      boton("Limpiar todo")?.click();
+      boton("Limpiar filtros")?.click();
       await asentar();
       expect(api.listar.mock.calls.length).toBe(antes + 1);
       expect(ultimaConsulta()).toEqual({ limite: 20 });

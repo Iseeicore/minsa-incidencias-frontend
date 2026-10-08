@@ -118,3 +118,17 @@ export interface ConsultaCasos {
   readonly desde?: string;
   readonly hasta?: string;
 }
+
+export interface ConteoDto {
+  readonly cantidad: number;
+  readonly conMas: boolean;
+}
+
+export interface ConteosDto {
+  readonly todos: ConteoDto;
+  readonly total: ConteoDto;
+  readonly porEstado: Readonly<Record<string, ConteoDto>>;
+}
+
+/** Los mismos filtros del listado, sin paginación. */
+export type ConsultaConteos = Omit<ConsultaCasos, "limite" | "cursor">;

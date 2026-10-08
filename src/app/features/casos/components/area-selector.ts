@@ -8,7 +8,10 @@ import { mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { AreasApi } from "@/features/casos/services/areas.api";
 import type { AreaOpcion } from "@/features/casos/types/area.types";
 import { textoRenipress } from "@/features/casos/utils/texto-establecimiento";
+import { CAMPO_BASE, CAMPO_VALIDO } from "@/shared/constants/campo-clases";
 import { TipoArea } from "@/shared/enums/tipo-area.enum";
+
+const CAMPO_CLASES = `${CAMPO_BASE} ${CAMPO_VALIDO} rounded-md px-3 py-2.5 text-sm font-medium`;
 
 let siguienteId = 0;
 
@@ -27,7 +30,7 @@ let siguienteId = 0;
         type="text"
         role="combobox"
         autocomplete="off"
-        class="w-full rounded-full bg-white py-2.5 px-4 text-sm font-medium text-gray-800 placeholder:text-gray-500 focus-visible:outline-2 focus-visible:outline-primary-500"
+        [class]="campoClases"
         [placeholder]="placeholder()"
         [value]="texto()"
         [attr.aria-expanded]="abierta()"
@@ -87,6 +90,7 @@ export class AreaSelector {
   readonly tipo = input<TipoArea>();
   readonly seleccionada = model<AreaOpcion | null>(null);
 
+  protected readonly campoClases = CAMPO_CLASES;
   protected readonly idLista = `area-selector-${this.id}`;
   protected readonly minimo = MINIMO_BUSQUEDA_AREA;
   protected readonly renipress = textoRenipress;
