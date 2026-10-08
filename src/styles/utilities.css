@@ -5,3 +5,23 @@
     var(--color-primary-100) 2px 6px
   );
 }
+
+/* El icono de calendario del sistema (Icon) se dibuja debajo; el del navegador queda invisible sobre él para abrir el selector. */
+@utility campo-fecha {
+  &::-webkit-calendar-picker-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2.75rem;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+/* El botón de limpiar es el del sistema; se oculta el que el navegador agrega a los campos de búsqueda. */
+@utility campo-busqueda {
+  &::-webkit-search-cancel-button {
+    appearance: none;
+  }
+}

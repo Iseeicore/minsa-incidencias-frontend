@@ -12,6 +12,11 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   [ButtonSize.MD]: "px-4 py-3 text-base",
 };
 
+const ICON_SIZES: Record<ButtonSize, number> = {
+  [ButtonSize.SM]: 16,
+  [ButtonSize.MD]: 18,
+};
+
 const VARIANT_TONE_CLASSES: Record<ButtonVariant, Record<ButtonTone, string>> = {
   [ButtonVariant.SOLID]: {
     [ButtonTone.PRIMARY]:
@@ -39,7 +44,9 @@ const VARIANT_TONE_CLASSES: Record<ButtonVariant, Record<ButtonTone, string>> = 
   template: `
     <button [type]="type()" [class]="classes()" [disabled]="disabled() || loading()" [attr.aria-busy]="loading()">
       @if (loading()) {
-        <app-icon [name]="IconName.SPINNER" class="animate-spin" />
+        <app-icon [name]="IconName.SPINNER" class="animate-spin" [size]="iconSize()" />
+      } @else if (icon(); as nombre) {
+        <app-icon [name]="nombre" [size]="iconSize()" />
       }
       <ng-content />
     </button>
@@ -53,8 +60,12 @@ export class Button {
   readonly loading = input(false, { transform: booleanAttribute });
   readonly disabled = input(false, { transform: booleanAttribute });
   readonly block = input(false, { transform: booleanAttribute });
+  /** Icono a la izquierda del texto; del registro `Icon`. */
+  readonly icon = input<IconName | null>(null);
 
   protected readonly IconName = IconName;
+
+  protected readonly iconSize = computed(() => ICON_SIZES[this.size()]);
 
   protected readonly classes = computed(() =>
     joinClasses(

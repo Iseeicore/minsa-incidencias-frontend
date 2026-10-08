@@ -1,157 +1,144 @@
-import { computed, inject, Injectable, InjectionToken, signal } from "@angular/core";
-import { PLAZOS_TOKEN } from "@/core/config/plazos.config";
-import { CATEGORIA_LABEL, ROL_LABEL } from "@/features/casos/constants/casos-constants";
-import { CASOS_DEMO } from "@/features/casos/data/casos.demo";
+import { inject, Injectable, signal } from "@angular/core";
+import {
+  MAX_ARCHIVO_DETALLE,
+  MAX_REAPERTURA_MOTIVO,
+  MAX_RESOLUCION,
+  MIN_TEXTO_REVISION,
+} from "@/features/casos/constants/casos-constants";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
+import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import type { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
-import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
-import { RolDemo } from "@/features/casos/enums/rol-demo.enum";
-import type { Caso, ResultadoAccion } from "@/features/casos/types/caso.types";
-import { accionesPermitidas, visiblePara } from "@/features/casos/utils/acciones-caso";
-import { areaDe, tieneArea } from "@/features/casos/utils/area-de-categoria";
-import { aplicarArchivadoAutomatico } from "@/features/casos/utils/plazos-caso";
-import type { TimelineItem } from "@/shared/ui/timeline/timeline";
+import type { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
+import { IncidenciaError, mensajeDeError } from "@/features/casos/services/incidencia-error";
+import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
+import type { CasoDetalle, DatosResolucion, RespuestaAccion, ResultadoAccion } from "@/features/casos/types/caso.types";
+import { HttpStatus } from "@/shared/enums/http-status.enum";
 
-export const CASOS_INICIALES = new InjectionToken<readonly Caso[]>("CASOS_INICIALES", {
-  providedIn: "root",
-  factory: () => CASOS_DEMO,
-});
+const ESTADOS_QUE_PIDEN_RECARGAR: readonly number[] = [HttpStatus.NOT_FOUND, HttpStatus.CONFLICT];
 
-export const MAX_RESOLUCION = 2000;
-
-const ESTADOS_RESOLUBLES: readonly EstadoCaso[] = [
-  EstadoCaso.REGISTRADO,
-  EstadoCaso.CLASIFICADO,
-  EstadoCaso.DERIVADO,
-  EstadoCaso.EN_GESTION,
-];
-
-const formatoHora = new Intl.DateTimeFormat("es-PE", { hour: "2-digit", minute: "2-digit" });
-
-function exito(mensaje: string): ResultadoAccion {
-  return { ok: true, mensaje };
-}
-
-function fallo(error: string): Extract<ResultadoAccion, { ok: false }> {
+function fallo(error: string): ResultadoAccion {
   return { ok: false, error };
 }
 
+/** Texto de revisión dentro del rango que acepta el servidor (sin contar los espacios de los bordes); `null` si es válido. */
+function errorDeTexto(nombre: string, texto: string, maximo: number): string | null {
+  if (texto.length < MIN_TEXTO_REVISION) return `${nombre} necesita al menos ${MIN_TEXTO_REVISION} caracteres.`;
+  if (texto.length > maximo) return `${nombre} no puede pasar de ${maximo} caracteres.`;
+  return null;
+}
+
 /**
- * Estado de los casos en memoria para la demostración. Aplica las mismas reglas que la base (transiciones
- * permitidas, revisión una sola vez, resolución obligatoria) para poder probar el flujo sin backend.
- * Cuando exista el backend este servicio pasa a llamar a sus endpoints y las reglas las aplica el servidor.
+ * Detalle del caso abierto y acciones sobre él. Las reglas las aplica el servidor (y, detrás, la base): aquí solo
+ * se llama, se muestra el resultado y se avisa con `cambios` a las listas para que se vuelvan a pedir.
  */
 @Injectable({ providedIn: "root" })
 export class CasosStore {
-  private readonly plazos = inject(PLAZOS_TOKEN);
-  private readonly todos = signal<readonly Caso[]>(aplicarArchivadoAutomatico(inject(CASOS_INICIALES), this.plazos));
+  private readonly api = inject(IncidenciasApi);
+  private peticion = 0;
+  private codigoActual: string | null = null;
 
-  readonly rol = signal<RolDemo>(RolDemo.GESTOR);
-  readonly casos = computed(() => this.todos().filter((caso) => visiblePara(caso, this.rol())));
+  readonly detalle = signal<CasoDetalle | null>(null);
+  readonly estadoDetalle = signal<CargaEstado>(CargaEstado.INICIAL);
+  readonly errorDetalle = signal<string | null>(null);
+  readonly cambios = signal(0);
+  /** Aviso de que un caso se envió a OTRANS; sobrevive al cierre del panel hasta que la persona lo descarte. */
+  readonly avisoEnvio = signal<string | null>(null);
 
-  cambiarRol(rol: RolDemo): void {
-    this.rol.set(rol);
+  descartarAvisoEnvio(): void {
+    this.avisoEnvio.set(null);
   }
 
-  confirmar(codigo: string): ResultadoAccion {
-    return this.ejecutar(codigo, AccionCaso.CONFIRMAR, (caso) => {
-      if (caso.estado !== EstadoCaso.CLASIFICADO) return fallo("Solo se puede revisar un caso clasificado.");
-      if (caso.revisadoPorHumano) return fallo("La categoría ya fue revisada: solo se confirma o se corrige una vez.");
-      return {
-        caso: this.conPaso({ ...caso, revisadoPorHumano: true }, "Categoría confirmada", "Una persona revisó la propuesta de la IA."),
-        mensaje: "Categoría confirmada. Se guardó para mejorar la IA.",
-      };
-    });
-  }
-
-  corregir(codigo: string, nueva: CategoriaCaso): ResultadoAccion {
-    return this.ejecutar(codigo, AccionCaso.CORREGIR, (caso) => {
-      if (caso.estado !== EstadoCaso.CLASIFICADO) return fallo("Solo se puede revisar un caso clasificado.");
-      if (caso.revisadoPorHumano) return fallo("La categoría ya fue revisada: solo se confirma o se corrige una vez.");
-      if (nueva === caso.categoria) return fallo("Elige una categoría distinta de la actual; para dejarla igual, confírmala.");
-      const anterior = caso.categoria ? CATEGORIA_LABEL[caso.categoria] : "sin categoría";
-      const corregido: Caso = { ...caso, categoria: nueva, corregida: true, revisadoPorHumano: true };
-      const traslado = visiblePara(corregido, this.rol()) ? "" : ` ${this.avisoDeTraslado(nueva)}`;
-      return {
-        caso: this.conPaso(
-          corregido,
-          "Categoría corregida",
-          `De ${anterior} a ${CATEGORIA_LABEL[nueva]}. El caso corresponde a: ${areaDe(nueva)}.`,
-        ),
-        mensaje: `Categoría corregida a ${CATEGORIA_LABEL[nueva]}. Se guardó para mejorar la IA.${traslado}`,
-      };
-    });
-  }
-
-  derivar(codigo: string): ResultadoAccion {
-    return this.ejecutar(codigo, AccionCaso.DERIVAR, (caso) => {
-      if (caso.estado !== EstadoCaso.CLASIFICADO) return fallo("Transición de estado no permitida.");
-      if (!caso.revisadoPorHumano) return fallo("Primero una persona debe revisar la categoría.");
-      const area = areaDe(caso.categoria);
-      return {
-        caso: this.conPaso({ ...caso, estado: EstadoCaso.DERIVADO }, "Derivado", `Al ${area}.`),
-        mensaje: `Caso derivado al ${area}.`,
-      };
-    });
-  }
-
-  tomar(codigo: string): ResultadoAccion {
-    return this.ejecutar(codigo, AccionCaso.TOMAR, (caso) => {
-      const directo = caso.estado === EstadoCaso.CLASIFICADO && caso.revisadoPorHumano;
-      if (caso.estado !== EstadoCaso.DERIVADO && !directo) return fallo("Transición de estado no permitida.");
-      return {
-        caso: this.conPaso(
-          { ...caso, estado: EstadoCaso.EN_GESTION },
-          "En gestión",
-          directo ? "El área tomó el caso directo, sin derivar." : "El área tomó el caso.",
-        ),
-        mensaje: "El caso quedó en gestión.",
-      };
-    });
-  }
-
-  resolver(codigo: string, resolucion: string): ResultadoAccion {
-    return this.ejecutar(codigo, AccionCaso.RESOLVER, (caso) => {
-      if (!ESTADOS_RESOLUBLES.includes(caso.estado)) return fallo("Transición de estado no permitida.");
-      const texto = resolucion.trim();
-      if (texto === "") return fallo("La resolución no puede estar vacía.");
-      if (texto.length > MAX_RESOLUCION) return fallo(`La resolución no puede pasar de ${MAX_RESOLUCION} caracteres.`);
-      return {
-        caso: this.conPaso(
-          { ...caso, estado: EstadoCaso.RESUELTO, resolucion: texto, horasDesdeResolucion: 0 },
-          "Resuelto",
-          texto,
-        ),
-        mensaje: `Caso resuelto. Se archivará solo a los ${this.plazos.vigenciaResolucionDias} días.`,
-      };
-    });
-  }
-
-  private ejecutar(
-    codigo: string,
-    accion: AccionCaso,
-    aplicar: (caso: Caso) => { caso: Caso; mensaje: string } | Extract<ResultadoAccion, { ok: false }>,
-  ): ResultadoAccion {
-    const caso = this.todos().find((candidato) => candidato.codigo === codigo);
-    if (!caso) return fallo("No se encontró el caso.");
-    if (!accionesPermitidas(caso, this.rol()).includes(accion)) {
-      return fallo("No tienes permiso para esta acción sobre este caso.");
+  async abrir(codigo: string): Promise<void> {
+    const token = ++this.peticion;
+    this.codigoActual = codigo;
+    this.detalle.set(null);
+    this.errorDetalle.set(null);
+    this.estadoDetalle.set(CargaEstado.CARGANDO);
+    try {
+      const detalle = await this.api.detalle(codigo);
+      if (token !== this.peticion) return;
+      this.detalle.set(detalle);
+      this.estadoDetalle.set(CargaEstado.LISTO);
+    } catch (error) {
+      if (token !== this.peticion) return;
+      this.errorDetalle.set(mensajeDeError(error));
+      this.estadoDetalle.set(CargaEstado.ERROR);
     }
-    const resultado = aplicar(caso);
-    if ("error" in resultado) return resultado;
-    this.todos.update((lista) => lista.map((actual) => (actual.codigo === codigo ? resultado.caso : actual)));
-    return exito(resultado.mensaje);
   }
 
-  private avisoDeTraslado(nueva: CategoriaCaso): string {
-    const destino = tieneArea(nueva)
-      ? `al área correspondiente (${areaDe(nueva)})`
-      : "a la bandeja del gestor (la categoría Otro no tiene área)";
-    return `El caso pasó ${destino} y ya no aparece en tu lista.`;
+  reintentar(): Promise<void> {
+    return this.codigoActual === null ? Promise.resolve() : this.abrir(this.codigoActual);
   }
 
-  private conPaso(caso: Caso, titulo: string, detalle: string): Caso {
-    const paso: TimelineItem = { titulo, detalle: `${detalle} (${ROL_LABEL[this.rol()]})`, hora: formatoHora.format(new Date()) };
-    return { ...caso, historial: [...caso.historial, paso] };
+  cerrar(): void {
+    this.peticion++;
+    this.codigoActual = null;
+    this.detalle.set(null);
+    this.errorDetalle.set(null);
+    this.estadoDetalle.set(CargaEstado.INICIAL);
+  }
+
+  confirmar(codigo: string): Promise<ResultadoAccion> {
+    return this.ejecutar(AccionCaso.CONFIRMAR, () => this.api.confirmar(codigo));
+  }
+
+  corregir(codigo: string, categoria: CategoriaCaso): Promise<ResultadoAccion> {
+    return this.ejecutar(AccionCaso.CORREGIR, () => this.api.corregir(codigo, categoria));
+  }
+
+  derivar(codigo: string, areaDestino?: string): Promise<ResultadoAccion> {
+    return this.ejecutar(AccionCaso.DERIVAR, () => this.api.derivar(codigo, areaDestino));
+  }
+
+  tomar(codigo: string): Promise<ResultadoAccion> {
+    return this.ejecutar(AccionCaso.TOMAR, () => this.api.tomar(codigo));
+  }
+
+  async resolver(codigo: string, datos: DatosResolucion): Promise<ResultadoAccion> {
+    const medidasTomadas = datos.medidasTomadas.trim();
+    const fundamento = datos.fundamento.trim();
+    const error =
+      errorDeTexto("Las medidas tomadas", medidasTomadas, MAX_RESOLUCION) ?? errorDeTexto("El fundamento", fundamento, MAX_RESOLUCION);
+    if (error) return fallo(error);
+    return this.ejecutar(AccionCaso.RESOLVER, () =>
+      this.api.resolver(codigo, { medidasTomadas, fundamento, resultado: datos.resultado }),
+    );
+  }
+
+  async archivar(codigo: string, motivo: MotivoArchivo, detalle: string): Promise<ResultadoAccion> {
+    const texto = detalle.trim();
+    const error = errorDeTexto("La justificación", texto, MAX_ARCHIVO_DETALLE);
+    if (error) return fallo(error);
+    return this.ejecutar(AccionCaso.ARCHIVAR, () => this.api.archivar(codigo, motivo, texto));
+  }
+
+  async reabrir(codigo: string, motivo: string): Promise<ResultadoAccion> {
+    const texto = motivo.trim();
+    const error = errorDeTexto("El motivo", texto, MAX_REAPERTURA_MOTIVO);
+    if (error) return fallo(error);
+    return this.ejecutar(AccionCaso.REABRIR, () => this.api.reabrir(codigo, texto));
+  }
+
+  private async ejecutar(accion: AccionCaso, llamada: () => Promise<RespuestaAccion>): Promise<ResultadoAccion> {
+    try {
+      const respuesta = await llamada();
+      this.cambios.update((cantidad) => cantidad + 1);
+      if (respuesta.enviadoAOtrans) {
+        this.peticion++;
+        this.codigoActual = null;
+        this.detalle.set(null);
+        this.estadoDetalle.set(CargaEstado.INICIAL);
+        this.avisoEnvio.set(respuesta.mensaje);
+        return { ok: true, mensaje: respuesta.mensaje, enviadoAOtrans: true };
+      }
+      this.detalle.set(respuesta.caso);
+      this.estadoDetalle.set(CargaEstado.LISTO);
+      return { ok: true, mensaje: respuesta.mensaje };
+    } catch (error) {
+      if (error instanceof IncidenciaError && ESTADOS_QUE_PIDEN_RECARGAR.includes(error.estado)) {
+        this.cambios.update((cantidad) => cantidad + 1);
+      }
+      return fallo(mensajeDeError(error, accion));
+    }
   }
 }

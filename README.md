@@ -63,24 +63,41 @@ npm start          # http://localhost:4010 (el backend debe estar en el puerto 3
 El frontend **no guarda nada de la sesión en el navegador** (ni `localStorage` ni `sessionStorage`): la cookie `HttpOnly` la pone y la lee el navegador, y el JavaScript nunca la ve.
 
 - **Login:** `LoginForm` pide **correo** y contraseña y llama a `POST /auth/login`. Los errores del servidor se traducen por código (401 credenciales incorrectas, 429 demasiados intentos, sin red) a mensajes del diccionario `AUTH_ERROR_MESSAGES`.
-- **Quién soy:** `SessionStore` (en memoria, con *signals*) pide `GET /auth/me` y guarda solo el nombre, el correo y las **vistas** (`INICIO`, `CASOS`, `BANDEJAS`, `DERIVACIONES`) que devuelve el backend. No hay id ni roles: el rol decide las vistas en el servidor.
+- **Quién soy:** `SessionStore` (en memoria, con *signals*) pide `GET /auth/me` y guarda solo el nombre, el correo, el **área** (o `null` para ADMINISTRADOR y GESTOR) y las **vistas** (`INICIO`, `CASOS`, `BANDEJAS`, `DERIVACIONES`, `QR`) que devuelve el backend. No hay id ni roles: el rol decide las vistas y las acciones, y el área decide qué casos ve (fuera de alcance responde 404).
 - **Rutas protegidas:** `authGuard` deja pasar si hay sesión en memoria; si no, la pide al backend; si tampoco hay, redirige a `/login`. `vistaGuard(vista)` protege cada pantalla de operación: sin la vista pedida lleva a la primera que el usuario sí tiene, y si no tiene ninguna, a `/sin-acceso`.
 - **Sesión caducada:** `unauthorizedInterceptor` limpia la sesión y manda al login ante un 401 de cualquier llamada (salvo las propias de `/auth/...`).
 - **Cierre de sesión:** el botón del encabezado llama a `POST /auth/logout`, que revoca la sesión en la base.
 - El menú y las pantallas se deciden con las vistas de `/auth/me`, pero **eso solo es presentación**: el backend vuelve a comprobar el acceso en cada petición.
 
-### Roles de la demostración
+### Qué es real y qué sigue en demostración
 
-Mientras no exista el backend de incidencias, `CasosStore` reproduce las reglas de la base y el selector **Ver como** ofrece cinco roles (el Revisor ya no existe; el Gestor revisa y deriva):
+| Vista | Origen de los datos |
+|---|---|
+| Casos y Mis bandejas | **Backend real** (`IncidenciasApi`: `GET /incidencias`, `GET /incidencias/:codigo`, `GET /incidencias/por-vencer` y los `POST` de confirmar, corregir, derivar, tomar y resolver) |
+| Campana de avisos | **Backend real** (`GET /incidencias/por-vencer`); el contador se vuelve a pedir tras cada acción |
+| Códigos QR | **Backend real** (`GET /areas?tipo=ESTABLECIMIENTO`; no genera nada en el servidor, el QR se dibuja en el navegador) |
+| Dashboard y Derivaciones | **Demostración** (el backend aún no tiene indicadores ni derivaciones); llevan la etiqueta "Datos de demostración" |
 
-| Rol | Ve | Acciones sobre los casos |
-|---|---|---|
-| Administrador | Todos | Ninguna |
-| Gestor (rol por defecto) | Queja, reclamo, otro y sin categoría; **no** corrupción | Confirmar o corregir la categoría (una sola vez) y derivar |
-| Área de denuncias por corrupción | Solo corrupción | Confirmar o corregir, tomar directo desde CLASIFICADO sin derivar, y resolver |
-| Área de quejas y área de reclamos | Solo su categoría | Tomar y resolver lo derivado, y resolver lo que está en gestión |
+- **El rol nunca viaja al navegador.** Cada caso trae su lista de `acciones` permitidas, calculada en el servidor, y el servidor decide qué casos ve cada persona (la unión de lo que ve cada uno de sus roles).
+- **Código del caso:** siempre el `codigo` real (`MINSA-AAAA-NNNNNN`), asignado por la base. El `id` y el `trace_id` no llegan al navegador.
+- **Datos que la base no tiene:** prioridad, organismo y etiquetas llegan vacíos y se muestran como "—"; no se inventan.
+- **Paginación por cursor:** Casos pide 20 por página (`limite`, `cursor`) y el servidor responde `{ items, siguiente, hayMas }`, sin total ni orden elegible. `PaginadorCursor` ofrece Anterior y Siguiente; los cursores de las páginas ya vistas se guardan en una pila local. Mis bandejas trae hasta 100 casos por estado y los reparte en páginas locales con `Paginador`.
+- **Áreas y establecimientos:** la lista y el detalle muestran el establecimiento (nombre, RENIPRESS, nivel) y el área destino. Derivar elige el área con `AreaSelector` (búsqueda contra `GET /areas`, con espera al teclear) y manda `areaDestino`; no se ofrece en denuncias de corrupción. ADMINISTRADOR y GESTOR pueden filtrar por establecimiento.
+- **Mis bandejas, "Para actuar":** se calcula en el cliente sobre los primeros 100 casos que devuelve el servidor, porque el backend aún no tiene ese filtro. Con más de 100 casos abiertos habría que moverlo al servidor.
+- **Si una corrección deja el caso fuera de lo que el rol ve** (el servidor responde 404), el panel avisa que el caso pasó a otra área y sale de la lista.
 
-Si una corrección deja el caso fuera de lo que el rol ve, el panel avisa a qué área pasó y el caso sale de su lista.
+Para probar cada rol con datos reales se crean usuarios sintéticos en una base desechable con el script `crear-usuario-prueba` del backend.
+
+## Códigos QR de WhatsApp (`/qr`)
+
+Vista `QR`: solo ADMINISTRADOR y ESTABLECIMIENTO (GESTOR y OTRANS no la tienen; el backend la entrega en `GET /auth/me`). Menú "Códigos QR".
+
+- **ADMINISTRADOR:** tabla de establecimientos (Establecimiento, RENIPRESS, Nivel, Categoría, Acciones) sobre `GET /areas?tipo=ESTABLECIMIENTO&q=&limite=20&cursor=`, con `PaginadorCursor` y buscador con espera. `q` busca por nombre sin tildes, en cualquier nivel de atención, y también por código RENIPRESS si son solo dígitos. "Generar QR" abre un diálogo (el `Drawer` compartido: foco atrapado, Esc, fondo y botón cierran).
+- **ESTABLECIMIENTO:** sin lista; `GET /areas` devuelve solo su área, de ahí sale su código RENIPRESS, y ve únicamente su QR con el mensaje y la descarga.
+- **El QR** codifica `https://wa.me/<número>?text=<mensaje>` con el mensaje exacto `Hola quiero presentar una incidencia {Nombre del EESS} - CODIGO-IPRESS {codigoRenipress}` (por ejemplo `... HOSPITAL NACIONAL DOS DE MAYO - CODIGO-IPRESS 6206`, con un espacio tras la etiqueta y el código sin ceros a la izquierda). Una sola función pura, `construirEnlaceWhatsapp` (`shared/utils/enlace-whatsapp.ts`), arma el mensaje y codifica el enlace con `encodeURIComponent`; la etiqueta es la constante exportada `ETIQUETA_CODIGO_IPRESS`.
+- **Descarga:** PNG de 1024 × 1024 px, negro sobre blanco, margen de 4 módulos y corrección de errores nivel M, llamado `qr-eess-<codigoRenipress>.png`.
+- **Número de WhatsApp:** `WHATSAPP_NUMERO` (solo dígitos con código de país; por defecto `51944023973`). Como los plazos y la URL, se fija al compilar la imagen: argumento de build `WHATSAPP_NUMERO` en el `Dockerfile` y en `docker-compose.yml` (`WHATSAPP_NUMERO=51987654321 docker compose build`), que lo escribe en `environment.whatsapp.numero`. Un valor vacío o inválido cae al valor por defecto.
+- **Librería:** [`qrcode`](https://github.com/soldair/node-qrcode) 1.5.4 (versión exacta, igual que el resto de dependencias fijadas; tipos con `@types/qrcode` 1.5.6). Es ligera, de uso muy extendido, sin servicios externos (el QR se dibuja en el navegador y ningún dato sale a terceros) y se importa de forma diferida: solo se descarga al abrir un QR. Está declarada en `allowedCommonJsDependencies` de `angular.json` porque es CommonJS.
 
 ## Entornos y URL del backend
 

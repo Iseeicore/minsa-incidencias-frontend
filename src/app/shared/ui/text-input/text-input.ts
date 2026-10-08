@@ -1,10 +1,8 @@
 import { booleanAttribute, computed, Directive, input } from "@angular/core";
+import { CAMPO_BASE, CAMPO_INVALIDO, CAMPO_VALIDO } from "@/shared/constants/campo-clases";
 import { joinClasses } from "@/shared/utils/join-classes";
 
-const BASE_CLASSES =
-  "w-full rounded-md border-2 py-2.5 pl-3 text-gray-800 transition-colors focus:outline-none";
-const VALID_CLASSES = "border-gray-200 hover:border-gray-300 focus:border-primary-500";
-const INVALID_CLASSES = "border-danger-200 focus:border-danger-500";
+const BASE_CLASSES = `${CAMPO_BASE} rounded-md py-2.5 pl-3`;
 const END_PADDING_CLASSES = { default: "pr-3", withIcon: "pr-11" } as const;
 
 @Directive({
@@ -21,7 +19,7 @@ export class TextInput {
   protected readonly classes = computed(() =>
     joinClasses(
       BASE_CLASSES,
-      this.invalid() ? INVALID_CLASSES : VALID_CLASSES,
+      this.invalid() ? CAMPO_INVALIDO : CAMPO_VALIDO,
       this.withEndIcon() ? END_PADDING_CLASSES.withIcon : END_PADDING_CLASSES.default,
     ),
   );

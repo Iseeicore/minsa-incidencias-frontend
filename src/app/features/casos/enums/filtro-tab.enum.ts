@@ -3,6 +3,7 @@ export const FiltroTab = {
   RECLAMOS: "reclamos",
   QUEJAS: "quejas",
   CORRUPCION: "corrupcion",
-  CRITICOS: "criticos",
+  OTRO: "otro",
+  SIN_CATEGORIA: "sin-categoria",
 } as const;
 export type FiltroTab = (typeof FiltroTab)[keyof typeof FiltroTab];

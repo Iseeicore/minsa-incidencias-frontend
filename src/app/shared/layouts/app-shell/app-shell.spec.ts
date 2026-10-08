@@ -1,3 +1,5 @@
+import { provideHttpClient } from "@angular/common/http";
+import { provideHttpClientTesting } from "@angular/common/http/testing";
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter, Router } from "@angular/router";
@@ -11,7 +13,15 @@ describe("AppShell", () => {
     const cerrar = vi.fn(async () => undefined);
     TestBed.configureTestingModule({
       imports: [AppShell],
-      providers: [provideRouter([]), { provide: SessionStore, useValue: { sesion: signal(sesion), cerrar } }],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: SessionStore,
+          useValue: { sesion: signal(sesion), esAdministrador: signal(sesion.roles.includes("ADMINISTRADOR")), cerrar },
+        },
+      ],
     });
     const navigate = vi.spyOn(TestBed.inject(Router), "navigateByUrl").mockResolvedValue(true);
     const fixture = TestBed.createComponent(AppShell);
@@ -24,22 +34,44 @@ describe("AppShell", () => {
   const ana: SesionUsuario = {
     nombreCompleto: "Ana Prueba",
     correo: "ana@minsa.gob.pe",
-    vistas: ["INICIO", "CASOS", "BANDEJAS", "DERIVACIONES"],
+    vistas: ["INICIO", "CASOS"],
+    roles: ["GESTOR"],
+    area: null,
   };
+
+  it("el area de contenido es el bloque contenedor del scroll, para que los sr-only absolutos no estiren la ventana", async () => {
+    const { element } = await setup(ana);
+    const contenido = element.querySelector<HTMLElement>("div.overflow-y-auto");
+    expect(contenido?.classList.contains("relative")).toBe(true);
+    expect(contenido?.classList.contains("overflow-x-hidden")).toBe(true);
+  });
 
   it("muestra el nombre y solo el menú de las vistas del usuario", async () => {
     const { element } = await setup({ ...ana, vistas: ["CASOS"] });
     expect(element.textContent).toContain("Ana Prueba");
-    expect(element.textContent).toContain("Casos");
+    expect(element.textContent).toContain("Bandeja");
     expect(element.textContent).not.toContain("Mis bandejas");
     expect(element.textContent).not.toContain("Derivaciones");
   });
 
-  it("solo las entradas con pantalla son enlace y el resto queda deshabilitado", async () => {
+  it("solo se muestran las entradas con pantalla, sin entradas en gris ni secciones vacías", async () => {
     const { element } = await setup(ana);
     const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas", "Derivaciones"]);
-    expect(element.querySelectorAll("nav [aria-disabled='true']").length).toBeGreaterThan(0);
+    expect(enlaces).toEqual(["Dashboard", "Bandeja"]);
+    expect(element.querySelectorAll("nav [aria-disabled='true']")).toHaveLength(0);
+    expect(element.querySelectorAll("nav app-sidebar-group")).toHaveLength(1);
+    expect(element.querySelector("nav")?.textContent).not.toContain("Inteligencia IA");
+  });
+
+  it("el administrador ve todo el menú: 5 enlaces y las 9 entradas sin pantalla en gris, sin navegación", async () => {
+    const { element } = await setup({ ...ana, roles: ["ADMINISTRADOR"] });
+    const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
+    expect(enlaces).toEqual(["Dashboard", "Bandeja", "Derivaciones", "Códigos QR", "Usuarios"]);
+    const grises = Array.from(element.querySelectorAll("nav [aria-disabled='true']"));
+    expect(grises).toHaveLength(9);
+    expect(grises.every((gris) => gris.tagName === "SPAN" && !gris.hasAttribute("href"))).toBe(true);
+    expect(grises.map((gris) => gris.textContent?.trim())).not.toContain("Usuarios");
+    expect(element.querySelectorAll("nav app-sidebar-group")).toHaveLength(4);
   });
 
   it("contraer el menú oculta las etiquetas y deja los iconos", async () => {
@@ -67,6 +99,14 @@ describe("AppShell", () => {
     expect(fecha?.textContent?.trim()).toBe("");
     expect(fecha?.getAttribute("title")).toContain(String(new Date().getFullYear()));
     expect(fecha?.getAttribute("aria-label")).toBe(fecha?.getAttribute("title"));
+  });
+
+  it("la barra superior trae la campana de avisos en lugar del botón deshabilitado", async () => {
+    const { element } = await setup(ana);
+    const campana = element.querySelector<HTMLButtonElement>("app-topbar button[aria-controls]");
+    expect(campana?.getAttribute("aria-label")).toContain("Avisos");
+    expect(campana?.disabled).toBe(false);
+    expect(element.textContent).not.toContain("próximamente");
   });
 
   it("el saludo usa solo el primer nombre", async () => {

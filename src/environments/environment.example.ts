@@ -8,4 +8,7 @@ export const environment: Environment = {
     vigenciaResolucionDias: 3,
     avisoHoras: 24,
   },
+  whatsapp: {
+    numero: "51944023973",
+  },
 };
