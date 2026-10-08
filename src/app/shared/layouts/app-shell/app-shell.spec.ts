@@ -35,6 +35,12 @@ describe("AppShell", () => {
     area: null,
   };
 
+  it("el area de contenido es el bloque contenedor del scroll, para que los sr-only absolutos no estiren la ventana", async () => {
+    const { element } = await setup(ana);
+    const contenido = element.querySelector<HTMLElement>("div.overflow-y-auto");
+    expect(contenido?.classList.contains("relative")).toBe(true);
+  });
+
   it("muestra el nombre y solo el menú de las vistas del usuario", async () => {
     const { element } = await setup({ ...ana, vistas: ["CASOS"] });
     expect(element.textContent).toContain("Ana Prueba");
