@@ -103,6 +103,8 @@ export interface CasosPorVencer {
 export interface RespuestaAccion {
   readonly mensaje: string;
   readonly caso: CasoDetalle | null;
+  /** El caso pasó a OTRANS y salió de la vista de quien actuó: no hay detalle que recargar. */
+  readonly enviadoAOtrans?: boolean;
 }
 
 export interface FiltrosCasos {
@@ -111,4 +113,6 @@ export interface FiltrosCasos {
   readonly estado: string;
 }
 
-export type ResultadoAccion = { readonly ok: true; readonly mensaje: string } | { readonly ok: false; readonly error: string };
+export type ResultadoAccion =
+  | { readonly ok: true; readonly mensaje: string; readonly enviadoAOtrans?: boolean }
+  | { readonly ok: false; readonly error: string };

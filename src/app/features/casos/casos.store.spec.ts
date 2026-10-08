@@ -158,6 +158,25 @@ describe("CasosStore", () => {
       expect(store.cambios()).toBe(1);
     });
 
+    it("si el caso se envió a OTRANS, cierra el detalle sin recargarlo, deja el aviso y recarga las listas", async () => {
+      const { api, store } = setup();
+      api.detalle.mockResolvedValue(crearDetalle());
+      await store.abrir("MINSA-2026-000001");
+      api.corregir.mockResolvedValue({ mensaje: "El caso MINSA-2026-000001 se envió a OTRANS.", caso: null, enviadoAOtrans: true });
+
+      const resultado = await store.corregir("MINSA-2026-000001", CategoriaCaso.DENUNCIA_CORRUPCION);
+
+      expect(resultado).toEqual({ ok: true, mensaje: "El caso MINSA-2026-000001 se envió a OTRANS.", enviadoAOtrans: true });
+      expect(store.detalle()).toBeNull();
+      expect(store.estadoDetalle()).toBe(CargaEstado.INICIAL);
+      expect(store.avisoEnvio()).toBe("El caso MINSA-2026-000001 se envió a OTRANS.");
+      expect(store.cambios()).toBe(1);
+      expect(api.detalle).toHaveBeenCalledTimes(1);
+
+      store.descartarAvisoEnvio();
+      expect(store.avisoEnvio()).toBeNull();
+    });
+
     it("un 403 devuelve el error sin tocar el detalle ni avisar de cambios", async () => {
       const { api, store } = setup();
       api.detalle.mockResolvedValue(crearDetalle());

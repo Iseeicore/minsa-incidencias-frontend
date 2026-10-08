@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
 import { SessionStore } from "@/core/auth/session.store";
 import { BandejasStore } from "@/features/casos/bandejas.store";
+import { AvisoEnvio } from "@/features/casos/components/aviso-envio";
 import { CasoRevision } from "@/features/casos/components/caso-revision";
 import { CasosTabla } from "@/features/casos/components/casos-tabla";
 import { LIMITE_BANDEJA, OPCIONES_FILTRO_MOTIVO, TAMANO_PAGINA } from "@/features/casos/constants/casos-constants";
@@ -27,7 +28,7 @@ const BANDEJAS: readonly { readonly value: BandejaTab; readonly label: string; r
 
 @Component({
   selector: "app-bandejas-page",
-  imports: [Alert, Button, Card, CasoRevision, CasosTabla, Paginador, SelectField, Tabs],
+  imports: [Alert, AvisoEnvio, Button, Card, CasoRevision, CasosTabla, Paginador, SelectField, Tabs],
   providers: [BandejasStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./bandejas-page.html",

@@ -1,14 +1,14 @@
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { TipoArea } from "@/shared/enums/tipo-area.enum";
 
-/**
- * Categorías a las que puede cambiar un caso quien lo corrige. Un establecimiento no elige corrupción: esas
- * denuncias las toma OTRANS. Sin área (administrador) y en OTRANS se puede elegir cualquiera.
- */
-export function categoriasCorregibles(tipoArea: TipoArea | null): readonly CategoriaCaso[] {
-  const todas = Object.values(CategoriaCaso);
-  if (tipoArea === null || tipoArea === TipoArea.OTRANS) return todas;
-  return todas.filter((categoria) => categoria !== CategoriaCaso.DENUNCIA_CORRUPCION);
+/** Todas las categorías se pueden elegir al corregir; el servidor decide qué pasa con el caso al cambiarla. */
+export function categoriasCorregibles(): readonly CategoriaCaso[] {
+  return Object.values(CategoriaCaso);
+}
+
+/** Quien no es OTRANS ni el administrador (sin área) pierde de vista un caso corregido a corrupción. */
+export function corregirASaleDeLaBandeja(tipoArea: TipoArea | null, categoria: CategoriaCaso | string): boolean {
+  return categoria === CategoriaCaso.DENUNCIA_CORRUPCION && tipoArea !== null && tipoArea !== TipoArea.OTRANS;
 }
 
 /** Una denuncia de corrupción solo se deriva a un área OTRANS; los demás casos, a un establecimiento. */

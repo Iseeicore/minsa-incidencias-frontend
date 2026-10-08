@@ -96,8 +96,13 @@ describe("visibleNav", () => {
       expect(operacion(TODAS)).toEqual(["dashboard", "casos", "bandejas", "derivaciones", "qr", "usuarios"]);
     });
 
-    it("GESTOR ve Dashboard, Casos, Mis bandejas y Derivaciones, sin Códigos QR ni Usuarios", () => {
-      expect(operacion(SIN_QR_NI_USUARIOS)).toEqual(["dashboard", "casos", "bandejas", "derivaciones"]);
+    it("GESTOR ve Dashboard, Casos y Mis bandejas, sin Derivaciones, Códigos QR ni Usuarios", () => {
+      expect(operacion(SIN_DERIVACIONES_QR_NI_USUARIOS)).toEqual(["dashboard", "casos", "bandejas"]);
+    });
+
+    it("la lista fija por rol no existe: Derivaciones aparece solo si la API manda la vista", () => {
+      expect(operacion(SIN_QR_NI_USUARIOS)).toContain("derivaciones");
+      expect(operacion(SIN_DERIVACIONES_QR_NI_USUARIOS)).not.toContain("derivaciones");
     });
 
     it("OTRANS ve Dashboard, Casos y Mis bandejas, sin Derivaciones, Códigos QR ni Usuarios", () => {

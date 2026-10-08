@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { map } from "rxjs";
 import { SessionStore } from "@/core/auth/session.store";
 import { AreaSelector } from "@/features/casos/components/area-selector";
+import { AvisoEnvio } from "@/features/casos/components/aviso-envio";
 import { CasoRevision } from "@/features/casos/components/caso-revision";
 import { CasosTabla } from "@/features/casos/components/casos-tabla";
 import {
@@ -29,7 +30,7 @@ const PARAMETRO_CASO = "caso";
 
 @Component({
   selector: "app-casos-page",
-  imports: [Alert, AreaSelector, Button, Card, CasoRevision, CasosTabla, PaginadorCursor, SearchInput, SelectField, Tabs],
+  imports: [Alert, AreaSelector, AvisoEnvio, Button, Card, CasoRevision, CasosTabla, PaginadorCursor, SearchInput, SelectField, Tabs],
   providers: [ListaCasosStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./casos-page.html",

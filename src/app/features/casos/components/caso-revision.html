@@ -50,7 +50,12 @@
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Plazo</dt>
-            <dd class="text-gray-900">{{ plazoTexto() }}</dd>
+            <dd class="text-gray-900">
+              {{ plazoTexto() }}
+              @if (reaperturaTexto(); as reabierto) {
+                <span class="block text-xs text-gray-500">{{ reabierto }}</span>
+              }
+            </dd>
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Organismo</dt>
@@ -134,6 +139,14 @@
 
         @if (acciones().length === 0) {
           <p class="text-sm text-gray-600">{{ motivoSinAcciones() }}</p>
+        } @else if (modo() === ModoPanel.CORREGIR && confirmandoOtrans()) {
+          <div class="space-y-3">
+            <app-alert [tone]="BadgeTone.WARNING">Este caso pasará a OTRANS y saldrá de tu bandeja. No se puede deshacer.</app-alert>
+            <div class="flex flex-wrap gap-2">
+              <app-button [tone]="ButtonTone.DANGER" [disabled]="procesando()" (click)="aplicarCorreccion()">Confirmar y enviar a OTRANS</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [disabled]="procesando()" (click)="cancelar()">Cancelar</app-button>
+            </div>
+          </div>
         } @else if (modo() === ModoPanel.CORREGIR) {
           <div class="space-y-3">
             <app-select-field label="Nueva categoría" [options]="opcionesCategoria()" [(value)]="nuevaCategoria" />

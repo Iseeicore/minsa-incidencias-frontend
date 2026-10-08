@@ -98,6 +98,12 @@ export interface ResultadoAccionDto {
   readonly caso: CasoDetalleDto | null;
 }
 
+/** Respuesta mínima de corregir a corrupción desde un establecimiento: el caso ya no es visible para quien lo envió. */
+export interface EnviadoAOtransDto {
+  readonly codigo: string;
+  readonly enviadoAOtrans: true;
+}
+
 export interface ConsultaCasos {
   readonly limite?: number;
   readonly cursor?: string;

@@ -304,6 +304,17 @@ describe("IncidenciasApi", () => {
       await expect(resultado).resolves.toEqual({ mensaje: "Pasó al área", caso: null });
     });
 
+    it("corregir a corrupción desde un establecimiento devuelve la respuesta mínima: sin caso y con el aviso a OTRANS", async () => {
+      const { api, http } = setup();
+      const resultado = api.corregir("MINSA-2026-000001", CategoriaCaso.DENUNCIA_CORRUPCION);
+      http.expectOne(`${BASE}/MINSA-2026-000001/corregir`).flush({ codigo: "MINSA-2026-000001", enviadoAOtrans: true });
+      await expect(resultado).resolves.toEqual({
+        mensaje: "El caso MINSA-2026-000001 se envió a OTRANS.",
+        caso: null,
+        enviadoAOtrans: true,
+      });
+    });
+
     it("un 409 de la base se traduce a un error con ese estado", async () => {
       const { api, http } = setup();
       const resultado = api.confirmar("MINSA-2026-000001");

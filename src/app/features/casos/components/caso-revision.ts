@@ -24,10 +24,10 @@ import { ModoPanel } from "@/features/casos/enums/modo-panel.enum";
 import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import type { AreaOpcion } from "@/features/casos/types/area.types";
 import type { DatosResolucion, ResultadoAccion } from "@/features/casos/types/caso.types";
-import { categoriasCorregibles, tipoAreaDeDestino } from "@/features/casos/utils/categorias-corregibles";
+import { categoriasCorregibles, corregirASaleDeLaBandeja, tipoAreaDeDestino } from "@/features/casos/utils/categorias-corregibles";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
 import { textoRenipress } from "@/features/casos/utils/texto-establecimiento";
-import { textoPlazo } from "@/features/casos/utils/texto-plazo";
+import { textoPlazo, textoReapertura } from "@/features/casos/utils/texto-plazo";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
 import { Alert } from "@/shared/ui/alert/alert";
@@ -83,6 +83,7 @@ export class CasoRevision {
   protected readonly feedback = signal<ResultadoAccion | null>(null);
   protected readonly evidenciasAbiertas = signal<readonly string[]>([]);
   protected readonly procesando = signal(false);
+  protected readonly confirmandoOtrans = signal(false);
 
   protected readonly caso = this.store.detalle;
   protected readonly errorCarga = this.store.errorDetalle;
@@ -105,16 +106,22 @@ export class CasoRevision {
     return caso ? textoPlazo(caso) : "";
   });
 
+  protected readonly reaperturaTexto = computed(() => {
+    const caso = this.caso();
+    return caso ? textoReapertura(caso) : null;
+  });
+
   protected readonly hayEvidenciaSensible = computed(() => this.caso()?.evidencias.some((item) => item.sensible) ?? false);
 
   protected readonly opcionesCategoria = computed<readonly SelectOption[]>(() => [
     { value: "", label: "Elige una categoría" },
-    ...categoriasCorregibles(this.area()?.tipo ?? null)
+    ...categoriasCorregibles()
       .filter((categoria) => categoria !== this.caso()?.categoria)
       .map((categoria) => ({ value: categoria, label: CATEGORIA_LABEL[categoria] })),
   ]);
 
-  protected readonly avisoCorrupcion = computed(() => this.nuevaCategoria() === CategoriaCaso.DENUNCIA_CORRUPCION);
+  protected readonly saleDeMiBandeja = computed(() => corregirASaleDeLaBandeja(this.area()?.tipo ?? null, this.nuevaCategoria()));
+  protected readonly avisoCorrupcion = computed(() => this.nuevaCategoria() === CategoriaCaso.DENUNCIA_CORRUPCION && !this.saleDeMiBandeja());
 
   protected readonly motivoSinAcciones = computed(() => {
     const caso = this.caso();
@@ -175,6 +182,10 @@ export class CasoRevision {
   protected aplicarCorreccion(): void {
     const nueva = this.nuevaCategoria();
     if (!nueva) return;
+    if (this.saleDeMiBandeja() && !this.confirmandoOtrans()) {
+      this.confirmandoOtrans.set(true);
+      return;
+    }
     void this.ejecutar((codigo) => this.store.corregir(codigo, nueva as CategoriaCaso));
   }
 
@@ -209,6 +220,7 @@ export class CasoRevision {
     this.modo.set(ModoPanel.NINGUNO);
     this.nuevaCategoria.set("");
     this.areaElegida.set(null);
+    this.confirmandoOtrans.set(false);
   }
 
   protected abrirEvidencia(nombre: string): void {
@@ -226,6 +238,10 @@ export class CasoRevision {
     try {
       const resultado = await accion(codigo);
       if (this.codigo() !== codigo) return;
+      if (resultado.ok && resultado.enviadoAOtrans) {
+        this.codigo.set(null);
+        return;
+      }
       this.feedback.set(resultado);
       if (resultado.ok) this.cancelar();
     } finally {

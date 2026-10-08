@@ -15,6 +15,7 @@ import type {
 import type {
   CasoDetalleDto,
   ConsultaCasos,
+  EnviadoAOtransDto,
   ListaCasosDto,
   PorVencerDto,
   ResultadoAccionDto,
@@ -25,6 +26,10 @@ import { toIncidenciaError } from "./incidencia-error";
 
 const RUTA = `${API_BASE_URL}/incidencias`;
 const OPCIONES = { withCredentials: true } as const;
+
+function esEnvioAOtrans(dto: ResultadoAccionDto | EnviadoAOtransDto): dto is EnviadoAOtransDto {
+  return "enviadoAOtrans" in dto && dto.enviadoAOtrans === true;
+}
 
 @Injectable({ providedIn: "root" })
 export class IncidenciasApi {
@@ -77,8 +82,11 @@ export class IncidenciasApi {
 
   private async ejecutar(codigo: string, accion: AccionCaso, cuerpo: object): Promise<RespuestaAccion> {
     const dto = await this.pedir(
-      this.http.post<ResultadoAccionDto>(`${this.ruta(codigo)}/${accion}`, cuerpo, OPCIONES),
+      this.http.post<ResultadoAccionDto | EnviadoAOtransDto>(`${this.ruta(codigo)}/${accion}`, cuerpo, OPCIONES),
     );
+    if (esEnvioAOtrans(dto)) {
+      return { mensaje: `El caso ${dto.codigo} se envió a OTRANS.`, caso: null, enviadoAOtrans: true };
+    }
     return { mensaje: dto.mensaje, caso: dto.caso === null ? null : mapearDetalle(dto.caso) };
   }
 

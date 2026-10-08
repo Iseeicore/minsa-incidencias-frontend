@@ -1,17 +1,23 @@
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { TipoArea } from "@/shared/enums/tipo-area.enum";
-import { categoriasCorregibles, tipoAreaDeDestino } from "./categorias-corregibles";
+import { categoriasCorregibles, corregirASaleDeLaBandeja, tipoAreaDeDestino } from "./categorias-corregibles";
 
 describe("categoriasCorregibles", () => {
-  it("un establecimiento no puede elegir corrupción", () => {
-    const categorias = categoriasCorregibles(TipoArea.ESTABLECIMIENTO);
-    expect(categorias).not.toContain(CategoriaCaso.DENUNCIA_CORRUPCION);
-    expect(categorias).toEqual([CategoriaCaso.QUEJA, CategoriaCaso.RECLAMO, CategoriaCaso.OTRO]);
+  it("ofrece todas las categorías, también corrupción, para cualquier rol", () => {
+    expect(categoriasCorregibles()).toEqual(Object.values(CategoriaCaso));
+    expect(categoriasCorregibles()).toContain(CategoriaCaso.DENUNCIA_CORRUPCION);
+  });
+});
+
+describe("corregirASaleDeLaBandeja", () => {
+  it("corrupción desde un establecimiento saca el caso de la bandeja", () => {
+    expect(corregirASaleDeLaBandeja(TipoArea.ESTABLECIMIENTO, CategoriaCaso.DENUNCIA_CORRUPCION)).toBe(true);
   });
 
-  it("OTRANS y quien no tiene área (administrador) pueden elegir cualquiera", () => {
-    expect(categoriasCorregibles(TipoArea.OTRANS)).toContain(CategoriaCaso.DENUNCIA_CORRUPCION);
-    expect(categoriasCorregibles(null)).toContain(CategoriaCaso.DENUNCIA_CORRUPCION);
+  it("OTRANS y el administrador (sin área) no pierden el caso, y otras categorías tampoco", () => {
+    expect(corregirASaleDeLaBandeja(TipoArea.OTRANS, CategoriaCaso.DENUNCIA_CORRUPCION)).toBe(false);
+    expect(corregirASaleDeLaBandeja(null, CategoriaCaso.DENUNCIA_CORRUPCION)).toBe(false);
+    expect(corregirASaleDeLaBandeja(TipoArea.ESTABLECIMIENTO, CategoriaCaso.QUEJA)).toBe(false);
   });
 });
 

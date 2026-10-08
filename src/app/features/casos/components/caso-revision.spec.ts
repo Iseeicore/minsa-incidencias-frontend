@@ -18,6 +18,7 @@ import { BUSQUEDA_DEBOUNCE_MS } from "@/features/casos/constants/casos-config";
 import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import { TipoArea } from "@/shared/enums/tipo-area.enum";
 import type { CasoDetalle, RespuestaAccion } from "@/features/casos/types/caso.types";
+import { CasosStore } from "@/features/casos/casos.store";
 import { CasoRevision } from "./caso-revision";
 
 const esperar = (ms = 10) => new Promise<void>((resolver) => setTimeout(resolver, ms));
@@ -254,6 +255,38 @@ describe("CasoRevision", () => {
       );
       expect(boton("Derivar")).toBeUndefined();
       expect(element.querySelector("app-area-selector")).toBeNull();
+    });
+
+    it("el gestor deriva a un establecimiento solo si el servidor le manda la acción derivar", async () => {
+      area.set({ codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: TipoArea.ESTABLECIMIENTO });
+      const conAccion = await abrir(
+        crearDetalle({ categoria: CategoriaCaso.QUEJA, revisadoPorHumano: true, acciones: [AccionCaso.DERIVAR] }),
+      );
+      expect(conAccion.boton("Derivar a un área")).toBeDefined();
+      await conAccion.pulsar("Derivar a un área");
+      await conAccion.elegirArea("hipolito");
+      expect(areas.listar).toHaveBeenCalledWith({ q: "hipolito", limite: 8, tipo: "ESTABLECIMIENTO" });
+    });
+
+    it("sin la acción derivar el gestor no ve el botón aunque el caso esté revisado", async () => {
+      area.set({ codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: TipoArea.ESTABLECIMIENTO });
+      const { boton } = await abrir(crearDetalle({ categoria: CategoriaCaso.QUEJA, revisadoPorHumano: true, acciones: [] }));
+      expect(boton("Derivar")).toBeUndefined();
+    });
+
+    it("un caso reabierto muestra cuándo se reabrió y cuánto falta del plazo nuevo", async () => {
+      const { panel } = await abrir(
+        crearDetalle({
+          reapertura: { reabiertoEn: "2026-10-08T12:00:00.000Z", motivo: "Llegó información nueva" },
+          plazo: { tipo: PlazoTipo.ATENCION, estado: PlazoEstado.EN_PLAZO, venceEn: null, horasRestantes: 72 },
+        }),
+      );
+      expect(panel()?.textContent).toMatch(/Plazo\s*Vence en 3 días\s*Reabierto el .+; vence en 3 días/);
+    });
+
+    it("un caso nunca reabierto no muestra la línea de reapertura", async () => {
+      const { panel } = await abrir(crearDetalle());
+      expect(panel()?.textContent).not.toContain("Reabierto el");
     });
 
     it("tomar y resolver aparecen cuando el servidor los permite", async () => {
@@ -563,13 +596,55 @@ describe("CasoRevision", () => {
   });
 
   describe("corregir según el área de quien revisa", () => {
-    it("un establecimiento no puede elegir corrupción", async () => {
+    it("un establecimiento también puede elegir corrupción", async () => {
       area.set({ codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: TipoArea.ESTABLECIMIENTO });
       const { element, pulsar } = await abrir(crearDetalle({ acciones: [AccionCaso.CORREGIR] }));
       await pulsar("Corregir categoría");
       const opciones = Array.from(element.querySelectorAll("[role='dialog'] option")).map((opcion) => opcion.getAttribute("value"));
-      expect(opciones).not.toContain("denuncia-corrupcion");
+      expect(opciones).toContain("denuncia-corrupcion");
       expect(opciones).toContain("queja");
+    });
+
+    it("corrupción desde un establecimiento pide confirmar: no llama al servidor hasta confirmar", async () => {
+      area.set({ codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: TipoArea.ESTABLECIMIENTO });
+      const { panel, boton, pulsar, escribir } = await abrir(crearDetalle({ acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      await escribir("select", "denuncia-corrupcion");
+      await pulsar("Aplicar corrección");
+
+      expect(panel()?.textContent).toContain("Este caso pasará a OTRANS y saldrá de tu bandeja. No se puede deshacer.");
+      expect(api.corregir).not.toHaveBeenCalled();
+      expect(boton("Confirmar y enviar a OTRANS")).toBeDefined();
+
+      await pulsar("Cancelar");
+      expect(panel()?.textContent).not.toContain("saldrá de tu bandeja");
+      expect(api.corregir).not.toHaveBeenCalled();
+    });
+
+    it("al confirmar, manda la corrección, cierra el panel y deja el aviso sin recargar el detalle", async () => {
+      area.set({ codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: TipoArea.ESTABLECIMIENTO });
+      const { fixture, panel, pulsar, escribir } = await abrir(crearDetalle({ acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      await escribir("select", "denuncia-corrupcion");
+      await pulsar("Aplicar corrección");
+      api.corregir.mockResolvedValue({ mensaje: "El caso MINSA-2026-000001 se envió a OTRANS.", caso: null, enviadoAOtrans: true });
+      await pulsar("Confirmar y enviar a OTRANS");
+
+      expect(api.corregir).toHaveBeenCalledWith("MINSA-2026-000001", "denuncia-corrupcion");
+      expect(panel()).toBeNull();
+      expect(fixture.componentInstance.codigo()).toBeNull();
+      expect(api.detalle).toHaveBeenCalledTimes(1);
+      expect(TestBed.inject(CasosStore).avisoEnvio()).toBe("El caso MINSA-2026-000001 se envió a OTRANS.");
+    });
+
+    it("el administrador (sin área) corrige a corrupción sin confirmación de salida", async () => {
+      const { panel, pulsar, escribir } = await abrir(crearDetalle({ acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      await escribir("select", "denuncia-corrupcion");
+      api.corregir.mockResolvedValue(respuesta({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION, acciones: [] }, "Corregida."));
+      await pulsar("Aplicar corrección");
+      expect(panel()?.textContent).not.toContain("saldrá de tu bandeja");
+      expect(api.corregir).toHaveBeenCalled();
     });
 
     it("OTRANS y el administrador (sin área) sí pueden elegir corrupción", async () => {

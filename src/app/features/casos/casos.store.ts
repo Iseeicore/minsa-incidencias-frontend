@@ -41,6 +41,12 @@ export class CasosStore {
   readonly estadoDetalle = signal<CargaEstado>(CargaEstado.INICIAL);
   readonly errorDetalle = signal<string | null>(null);
   readonly cambios = signal(0);
+  /** Aviso de que un caso se envió a OTRANS; sobrevive al cierre del panel hasta que la persona lo descarte. */
+  readonly avisoEnvio = signal<string | null>(null);
+
+  descartarAvisoEnvio(): void {
+    this.avisoEnvio.set(null);
+  }
 
   async abrir(codigo: string): Promise<void> {
     const token = ++this.peticion;
@@ -116,9 +122,17 @@ export class CasosStore {
   private async ejecutar(accion: AccionCaso, llamada: () => Promise<RespuestaAccion>): Promise<ResultadoAccion> {
     try {
       const respuesta = await llamada();
+      this.cambios.update((cantidad) => cantidad + 1);
+      if (respuesta.enviadoAOtrans) {
+        this.peticion++;
+        this.codigoActual = null;
+        this.detalle.set(null);
+        this.estadoDetalle.set(CargaEstado.INICIAL);
+        this.avisoEnvio.set(respuesta.mensaje);
+        return { ok: true, mensaje: respuesta.mensaje, enviadoAOtrans: true };
+      }
       this.detalle.set(respuesta.caso);
       this.estadoDetalle.set(CargaEstado.LISTO);
-      this.cambios.update((cantidad) => cantidad + 1);
       return { ok: true, mensaje: respuesta.mensaje };
     } catch (error) {
       if (error instanceof IncidenciaError && ESTADOS_QUE_PIDEN_RECARGAR.includes(error.estado)) {

@@ -1,8 +1,8 @@
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
-import { crearCaso } from "@/features/casos/testing/caso-builder";
-import { duracionCorta, textoPlazo } from "./texto-plazo";
+import { crearCaso, crearDetalle } from "@/features/casos/testing/caso-builder";
+import { duracionCorta, textoPlazo, textoReapertura } from "./texto-plazo";
 
 const SIN_PLAZO = { tipo: null, estado: null, venceEn: null, horasRestantes: null };
 
@@ -57,5 +57,19 @@ describe("textoPlazo", () => {
 
   it("un caso sin plazo calculado muestra el guion", () => {
     expect(textoPlazo(crearCaso({ plazo: SIN_PLAZO }))).toBe("—");
+  });
+});
+
+describe("textoReapertura", () => {
+  it("un caso nunca reabierto no dice nada", () => {
+    expect(textoReapertura(crearDetalle())).toBeNull();
+  });
+
+  it("un caso reabierto dice cuándo y cuánto le queda del plazo nuevo", () => {
+    const caso = crearDetalle({
+      reapertura: { reabiertoEn: "2026-10-08T12:00:00.000Z", motivo: "Llegó información nueva" },
+      plazo: { tipo: PlazoTipo.ATENCION, estado: PlazoEstado.EN_PLAZO, venceEn: null, horasRestantes: 72 },
+    });
+    expect(textoReapertura(caso)).toMatch(/^Reabierto el .+; vence en 3 días$/);
   });
 });

@@ -34,7 +34,7 @@ describe("AppShell", () => {
   const ana: SesionUsuario = {
     nombreCompleto: "Ana Prueba",
     correo: "ana@minsa.gob.pe",
-    vistas: ["INICIO", "CASOS", "BANDEJAS", "DERIVACIONES"],
+    vistas: ["INICIO", "CASOS", "BANDEJAS"],
     roles: ["GESTOR"],
     area: null,
   };
@@ -57,7 +57,7 @@ describe("AppShell", () => {
   it("solo se muestran las entradas con pantalla, sin entradas en gris ni secciones vacías", async () => {
     const { element } = await setup(ana);
     const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas", "Derivaciones"]);
+    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas"]);
     expect(element.querySelectorAll("nav [aria-disabled='true']")).toHaveLength(0);
     expect(element.querySelectorAll("nav app-sidebar-group")).toHaveLength(1);
     expect(element.querySelector("nav")?.textContent).not.toContain("Inteligencia IA");
