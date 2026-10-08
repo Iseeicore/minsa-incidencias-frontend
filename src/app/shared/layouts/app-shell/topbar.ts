@@ -25,7 +25,7 @@ import { firstName } from "@/shared/utils/initials";
       >
         <app-icon [name]="IconName.CALENDAR" [size]="18" />
       </span>
-      <app-icon-button [icon]="IconName.BELL" label="Alertas (próximamente)" disabled />
+      <ng-content select="[avisos]" />
     </div>
   `,
 })

@@ -1,281 +1,281 @@
 import { TestBed } from "@angular/core/testing";
-import { CASOS_INICIALES, CasosStore, MAX_RESOLUCION } from "@/features/casos/casos.store";
+import { CasosStore } from "@/features/casos/casos.store";
+import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
-import { RolDemo } from "@/features/casos/enums/rol-demo.enum";
-import { crearCaso } from "@/features/casos/testing/caso-builder";
-import type { Caso } from "@/features/casos/types/caso.types";
+import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
+import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
+import { IncidenciaError } from "@/features/casos/services/incidencia-error";
+import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
+import { crearDetalle } from "@/features/casos/testing/caso-builder";
+import type { CasoDetalle, RespuestaAccion } from "@/features/casos/types/caso.types";
+
+const RESOLUCION = {
+  medidasTomadas: "Se entregó el medicamento",
+  fundamento: "Había stock en farmacia",
+  resultado: ResultadoResolucion.ATENDIDO,
+} as const;
+
+function pendiente<T>() {
+  let resolver!: (valor: T) => void;
+  let rechazar!: (error: unknown) => void;
+  const promesa = new Promise<T>((alResolver, alRechazar) => {
+    resolver = alResolver;
+    rechazar = alRechazar;
+  });
+  return { promesa, resolver, rechazar };
+}
+
+function respuesta(caso: CasoDetalle | null, mensaje = "Hecho"): RespuestaAccion {
+  return { mensaje, caso };
+}
 
 describe("CasosStore", () => {
-  function crearStore(casos: readonly Caso[]) {
-    TestBed.configureTestingModule({ providers: [{ provide: CASOS_INICIALES, useValue: casos }] });
-    return TestBed.inject(CasosStore);
+  function setup() {
+    const api = {
+      detalle: vi.fn(),
+      confirmar: vi.fn(),
+      corregir: vi.fn(),
+      derivar: vi.fn(),
+      tomar: vi.fn(),
+      resolver: vi.fn(),
+      archivar: vi.fn(),
+      reabrir: vi.fn(),
+    };
+    TestBed.configureTestingModule({ providers: [{ provide: IncidenciasApi, useValue: api }] });
+    return { api, store: TestBed.inject(CasosStore) };
   }
 
-  const buscar = (store: CasosStore, codigo: string) => store.casos().find((caso) => caso.codigo === codigo) as Caso;
+  describe("abrir", () => {
+    it("carga el detalle y pasa de cargando a listo", async () => {
+      const { api, store } = setup();
+      const espera = pendiente<CasoDetalle>();
+      api.detalle.mockReturnValue(espera.promesa);
 
-  it("empieza con el rol de gestor", () => {
-    expect(crearStore([]).rol()).toBe(RolDemo.GESTOR);
-  });
+      const apertura = store.abrir("MINSA-2026-000001");
+      expect(store.estadoDetalle()).toBe(CargaEstado.CARGANDO);
 
-  it("solo expone los casos que el rol puede ver", () => {
-    const store = crearStore([
-      crearCaso({ codigo: "A", categoria: CategoriaCaso.QUEJA }),
-      crearCaso({ codigo: "B", categoria: CategoriaCaso.RECLAMO }),
-    ]);
-    store.cambiarRol(RolDemo.AREA_QUEJA);
-    expect(store.casos().map((caso) => caso.codigo)).toEqual(["A"]);
-  });
-
-  it("al arrancar archiva lo vencido, como el trabajo programado de la base", () => {
-    const store = crearStore([crearCaso({ codigo: "VIEJO", horasDesdeLlegada: 100 })]);
-    expect(buscar(store, "VIEJO").estado).toBe(EstadoCaso.ARCHIVADO);
-  });
-
-  describe("confirmar", () => {
-    it("el gestor confirma: queda revisado y se anota en el historial", () => {
-      const store = crearStore([crearCaso({ codigo: "A" })]);
-      const resultado = store.confirmar("A");
-      expect(resultado.ok).toBe(true);
-      expect(buscar(store, "A").revisadoPorHumano).toBe(true);
-      expect(buscar(store, "A").estado).toBe(EstadoCaso.CLASIFICADO);
-      expect(buscar(store, "A").historial.at(-1)?.titulo).toBe("Categoría confirmada");
+      espera.resolver(crearDetalle({ codigo: "MINSA-2026-000001" }));
+      await apertura;
+      expect(store.estadoDetalle()).toBe(CargaEstado.LISTO);
+      expect(store.detalle()?.codigo).toBe("MINSA-2026-000001");
+      expect(store.errorDetalle()).toBeNull();
+      expect(api.detalle).toHaveBeenCalledWith("MINSA-2026-000001");
     });
 
-    it("la revisión es una sola vez: la segunda se rechaza y no cambia nada", () => {
-      const store = crearStore([crearCaso({ codigo: "A" })]);
-      store.confirmar("A");
-      const historial = buscar(store, "A").historial.length;
-      const segunda = store.confirmar("A");
-      expect(segunda.ok).toBe(false);
-      expect(buscar(store, "A").historial).toHaveLength(historial);
-    });
-  });
-
-  describe("corregir", () => {
-    it("cambia la categoría y el área sigue a la categoría", () => {
-      const store = crearStore([crearCaso({ codigo: "A", categoria: CategoriaCaso.QUEJA, categoriaIa: CategoriaCaso.QUEJA })]);
-      const resultado = store.corregir("A", CategoriaCaso.RECLAMO);
-      expect(resultado.ok).toBe(true);
-      const caso = buscar(store, "A");
-      expect(caso.categoria).toBe(CategoriaCaso.RECLAMO);
-      expect(caso.categoriaIa).toBe(CategoriaCaso.QUEJA);
-      expect(caso.corregida).toBe(true);
-      expect(caso.revisadoPorHumano).toBe(true);
-      expect(caso.historial.at(-1)?.detalle).toContain("Área de reclamos");
+    it("un caso que el rol no ve (404) deja el mensaje de no disponible", async () => {
+      const { api, store } = setup();
+      api.detalle.mockRejectedValue(new IncidenciaError(404, "NOT_FOUND"));
+      await store.abrir("MINSA-2026-000009");
+      expect(store.estadoDetalle()).toBe(CargaEstado.ERROR);
+      expect(store.detalle()).toBeNull();
+      expect(store.errorDetalle()).toContain("ya no está disponible");
     });
 
-    it("rechaza dejar la misma categoría: para eso se confirma", () => {
-      const store = crearStore([crearCaso({ codigo: "A" })]);
-      const resultado = store.corregir("A", CategoriaCaso.RECLAMO);
-      expect(resultado).toEqual({ ok: false, error: expect.stringContaining("distinta") });
-      expect(buscar(store, "A").revisadoPorHumano).toBe(false);
+    it("un fallo de red deja el mensaje de conexión y permite reintentar", async () => {
+      const { api, store } = setup();
+      api.detalle.mockRejectedValueOnce(new IncidenciaError(0, null));
+      await store.abrir("MINSA-2026-000001");
+      expect(store.errorDetalle()).toContain("conectar");
+
+      api.detalle.mockResolvedValueOnce(crearDetalle());
+      await store.reintentar();
+      expect(store.estadoDetalle()).toBe(CargaEstado.LISTO);
+      expect(store.errorDetalle()).toBeNull();
     });
 
-    it("tras corregir ya no se puede volver a revisar", () => {
-      const store = crearStore([crearCaso({ codigo: "A" })]);
-      store.corregir("A", CategoriaCaso.QUEJA);
-      expect(store.corregir("A", CategoriaCaso.OTRO).ok).toBe(false);
-      expect(buscar(store, "A").categoria).toBe(CategoriaCaso.QUEJA);
+    it("la respuesta lenta de un caso anterior no pisa al caso que se abrió después", async () => {
+      const { api, store } = setup();
+      const lenta = pendiente<CasoDetalle>();
+      api.detalle.mockReturnValueOnce(lenta.promesa);
+      api.detalle.mockResolvedValueOnce(crearDetalle({ codigo: "MINSA-2026-000002" }));
+
+      const primera = store.abrir("MINSA-2026-000001");
+      await store.abrir("MINSA-2026-000002");
+      lenta.resolver(crearDetalle({ codigo: "MINSA-2026-000001" }));
+      await primera;
+
+      expect(store.detalle()?.codigo).toBe("MINSA-2026-000002");
     });
 
-    it("una corrección dentro de lo que el rol ve no avisa de ningún traslado", () => {
-      const store = crearStore([crearCaso({ codigo: "A" })]);
-      const resultado = store.corregir("A", CategoriaCaso.QUEJA);
-      expect(resultado.ok).toBe(true);
-      expect(resultado.ok && resultado.mensaje).not.toContain("ya no aparece");
-    });
-
-    it("el gestor que corrige a corrupción pierde el caso de su lista y se le avisa a qué área pasó", () => {
-      const store = crearStore([crearCaso({ codigo: "A" })]);
-      const resultado = store.corregir("A", CategoriaCaso.DENUNCIA_CORRUPCION);
-      expect(resultado.ok).toBe(true);
-      expect(resultado.ok && resultado.mensaje).toContain("Área de denuncias por corrupción");
-      expect(resultado.ok && resultado.mensaje).toContain("ya no aparece en tu lista");
-      expect(store.casos().map((caso) => caso.codigo)).toEqual([]);
-
-      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
-      const caso = buscar(store, "A");
-      expect(caso.categoria).toBe(CategoriaCaso.DENUNCIA_CORRUPCION);
-      expect(caso.corregida).toBe(true);
-      expect(caso.estado).toBe(EstadoCaso.CLASIFICADO);
-    });
-
-    it("si el área de corrupción corrige a Otro, que no tiene área, el aviso lo manda a la bandeja del gestor", () => {
-      const store = crearStore([
-        crearCaso({
-          codigo: "A",
-          categoria: CategoriaCaso.DENUNCIA_CORRUPCION,
-          categoriaIa: CategoriaCaso.DENUNCIA_CORRUPCION,
-        }),
-      ]);
-      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
-      const resultado = store.corregir("A", CategoriaCaso.OTRO);
-      expect(resultado.ok && resultado.mensaje).toContain("bandeja del gestor");
-      expect(resultado.ok && resultado.mensaje).toContain("ya no aparece en tu lista");
-    });
-
-    it("el área de corrupción que corrige a queja pasa el caso al gestor", () => {
-      const store = crearStore([
-        crearCaso({
-          codigo: "A",
-          categoria: CategoriaCaso.DENUNCIA_CORRUPCION,
-          categoriaIa: CategoriaCaso.DENUNCIA_CORRUPCION,
-        }),
-      ]);
-      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
-      const resultado = store.corregir("A", CategoriaCaso.QUEJA);
-      expect(resultado.ok).toBe(true);
-      expect(resultado.ok && resultado.mensaje).toContain("Área de quejas");
-      expect(resultado.ok && resultado.mensaje).toContain("ya no aparece en tu lista");
-      expect(store.casos()).toEqual([]);
-
-      store.cambiarRol(RolDemo.GESTOR);
-      expect(buscar(store, "A").categoria).toBe(CategoriaCaso.QUEJA);
-      expect(buscar(store, "A").revisadoPorHumano).toBe(true);
+    it("cerrar limpia el detalle y descarta la respuesta que llegue tarde", async () => {
+      const { api, store } = setup();
+      const lenta = pendiente<CasoDetalle>();
+      api.detalle.mockReturnValue(lenta.promesa);
+      const apertura = store.abrir("MINSA-2026-000001");
+      store.cerrar();
+      lenta.resolver(crearDetalle());
+      await apertura;
+      expect(store.detalle()).toBeNull();
+      expect(store.estadoDetalle()).toBe(CargaEstado.INICIAL);
     });
   });
 
-  describe("derivar", () => {
-    it("el gestor deriva un caso revisado: pasa a DERIVADO", () => {
-      const store = crearStore([crearCaso({ codigo: "A", revisadoPorHumano: true })]);
-      store.cambiarRol(RolDemo.GESTOR);
-      const resultado = store.derivar("A");
-      expect(resultado).toEqual({ ok: true, mensaje: expect.stringContaining("Área de reclamos") });
-      expect(buscar(store, "A").estado).toBe(EstadoCaso.DERIVADO);
+  describe("acciones", () => {
+    it.each([
+      ["confirmar", (store: CasosStore) => store.confirmar("MINSA-2026-000001"), ["MINSA-2026-000001"]],
+      ["derivar", (store: CasosStore) => store.derivar("MINSA-2026-000001", "EESS-6206"), ["MINSA-2026-000001", "EESS-6206"]],
+      ["tomar", (store: CasosStore) => store.tomar("MINSA-2026-000001"), ["MINSA-2026-000001"]],
+      [
+        "corregir",
+        (store: CasosStore) => store.corregir("MINSA-2026-000001", CategoriaCaso.QUEJA),
+        ["MINSA-2026-000001", CategoriaCaso.QUEJA],
+      ],
+      ["resolver", (store: CasosStore) => store.resolver("MINSA-2026-000001", RESOLUCION), ["MINSA-2026-000001", RESOLUCION]],
+      [
+        "archivar",
+        (store: CasosStore) => store.archivar("MINSA-2026-000001", MotivoArchivo.NO_CORRESPONDE, "No es del establecimiento"),
+        ["MINSA-2026-000001", MotivoArchivo.NO_CORRESPONDE, "No es del establecimiento"],
+      ],
+      [
+        "reabrir",
+        (store: CasosStore) => store.reabrir("MINSA-2026-000001", "Llegó información nueva"),
+        ["MINSA-2026-000001", "Llegó información nueva"],
+      ],
+    ] as const)("%s llama al servidor, actualiza el detalle y avisa que algo cambió", async (nombre, ejecutar, argumentos) => {
+      const { api, store } = setup();
+      api[nombre].mockResolvedValue(respuesta(crearDetalle({ estado: EstadoCaso.DERIVADO }), "Listo"));
+      const antes = store.cambios();
+
+      const resultado = await ejecutar(store);
+
+      expect(api[nombre]).toHaveBeenCalledWith(...argumentos);
+      expect(resultado).toEqual({ ok: true, mensaje: "Listo" });
+      expect(store.detalle()?.estado).toBe(EstadoCaso.DERIVADO);
+      expect(store.cambios()).toBe(antes + 1);
     });
 
-    it("no se deriva un caso sin área (categoría Otro)", () => {
-      const store = crearStore([crearCaso({ codigo: "A", categoria: CategoriaCaso.OTRO, revisadoPorHumano: true })]);
-      store.cambiarRol(RolDemo.GESTOR);
-      expect(store.derivar("A").ok).toBe(false);
-      expect(buscar(store, "A").estado).toBe(EstadoCaso.CLASIFICADO);
-    });
-  });
+    it("si la corrección saca el caso de la vista, el detalle queda vacío y el mensaje se devuelve", async () => {
+      const { api, store } = setup();
+      api.detalle.mockResolvedValue(crearDetalle());
+      await store.abrir("MINSA-2026-000001");
+      api.corregir.mockResolvedValue(respuesta(null, "El caso pasó al área de corrupción."));
 
-  describe("tomar y resolver", () => {
-    const derivado = () => crearCaso({ codigo: "A", estado: EstadoCaso.DERIVADO, revisadoPorHumano: true });
+      const resultado = await store.corregir("MINSA-2026-000001", CategoriaCaso.DENUNCIA_CORRUPCION);
 
-    it("el área toma el caso: pasa a EN_GESTION", () => {
-      const store = crearStore([derivado()]);
-      store.cambiarRol(RolDemo.AREA_RECLAMO);
-      expect(store.tomar("A").ok).toBe(true);
-      expect(buscar(store, "A").estado).toBe(EstadoCaso.EN_GESTION);
+      expect(resultado).toEqual({ ok: true, mensaje: "El caso pasó al área de corrupción." });
+      expect(store.detalle()).toBeNull();
+      expect(store.cambios()).toBe(1);
     });
 
-    it("resolver exige un texto", () => {
-      const store = crearStore([derivado()]);
-      store.cambiarRol(RolDemo.AREA_RECLAMO);
-      expect(store.resolver("A", "   ")).toEqual({ ok: false, error: "La resolución no puede estar vacía." });
-      expect(buscar(store, "A").estado).toBe(EstadoCaso.DERIVADO);
+    it("si el caso se envió a OTRANS, cierra el detalle sin recargarlo, deja el aviso y recarga las listas", async () => {
+      const { api, store } = setup();
+      api.detalle.mockResolvedValue(crearDetalle());
+      await store.abrir("MINSA-2026-000001");
+      api.corregir.mockResolvedValue({ mensaje: "El caso MINSA-2026-000001 se envió a OTRANS.", caso: null, enviadoAOtrans: true });
+
+      const resultado = await store.corregir("MINSA-2026-000001", CategoriaCaso.DENUNCIA_CORRUPCION);
+
+      expect(resultado).toEqual({ ok: true, mensaje: "El caso MINSA-2026-000001 se envió a OTRANS.", enviadoAOtrans: true });
+      expect(store.detalle()).toBeNull();
+      expect(store.estadoDetalle()).toBe(CargaEstado.INICIAL);
+      expect(store.avisoEnvio()).toBe("El caso MINSA-2026-000001 se envió a OTRANS.");
+      expect(store.cambios()).toBe(1);
+      expect(api.detalle).toHaveBeenCalledTimes(1);
+
+      store.descartarAvisoEnvio();
+      expect(store.avisoEnvio()).toBeNull();
     });
 
-    it("resolver rechaza un texto demasiado largo", () => {
-      const store = crearStore([derivado()]);
-      store.cambiarRol(RolDemo.AREA_RECLAMO);
-      expect(store.resolver("A", "x".repeat(MAX_RESOLUCION + 1)).ok).toBe(false);
+    it("un 403 devuelve el error sin tocar el detalle ni avisar de cambios", async () => {
+      const { api, store } = setup();
+      api.detalle.mockResolvedValue(crearDetalle());
+      await store.abrir("MINSA-2026-000001");
+      api.derivar.mockRejectedValue(new IncidenciaError(403, "FORBIDDEN"));
+
+      const resultado = await store.derivar("MINSA-2026-000001", "EESS-6206");
+
+      expect(resultado.ok).toBe(false);
+      expect(resultado.ok === false && resultado.error).toContain("No tienes permiso");
+      expect(store.detalle()).not.toBeNull();
+      expect(store.cambios()).toBe(0);
     });
 
-    it("resolver registra el texto, pasa a RESUELTO y empieza la vigencia", () => {
-      const store = crearStore([derivado()]);
-      store.cambiarRol(RolDemo.AREA_RECLAMO);
-      const resultado = store.resolver("A", "  Se devolvió el dinero.  ");
-      expect(resultado).toEqual({ ok: true, mensaje: expect.stringContaining("3 días") });
-      const caso = buscar(store, "A");
-      expect(caso.estado).toBe(EstadoCaso.RESUELTO);
-      expect(caso.resolucion).toBe("Se devolvió el dinero.");
-      expect(caso.horasDesdeResolucion).toBe(0);
+    it("un 409 avisa que otra persona pudo actuar y pide recargar las listas", async () => {
+      const { api, store } = setup();
+      api.confirmar.mockRejectedValue(new IncidenciaError(409, "CONFLICT"));
+      const resultado = await store.confirmar("MINSA-2026-000001");
+      expect(resultado.ok === false && resultado.error).toContain("otra persona");
+      expect(store.cambios()).toBe(1);
     });
-  });
 
-  describe("el área de corrupción toma directo, sin derivar", () => {
-    const denuncia = (parcial: Partial<Caso> = {}) =>
-      crearCaso({
-        codigo: "A",
-        categoria: CategoriaCaso.DENUNCIA_CORRUPCION,
-        categoriaIa: CategoriaCaso.DENUNCIA_CORRUPCION,
-        ...parcial,
+    it("un 404 al actuar también recarga las listas", async () => {
+      const { api, store } = setup();
+      api.tomar.mockRejectedValue(new IncidenciaError(404, "NOT_FOUND"));
+      const resultado = await store.tomar("MINSA-2026-000001");
+      expect(resultado.ok === false && resultado.error).toContain("ya no está disponible");
+      expect(store.cambios()).toBe(1);
+    });
+
+    it("un 422 al corregir explica que la categoría debe ser distinta", async () => {
+      const { api, store } = setup();
+      api.corregir.mockRejectedValue(new IncidenciaError(422, "UNPROCESSABLE"));
+      const resultado = await store.corregir("MINSA-2026-000001", CategoriaCaso.RECLAMO);
+      expect(resultado.ok === false && resultado.error).toContain("distinta");
+    });
+
+    it("derivar sin área de destino la deja en OTRANS: se llama sin área", async () => {
+      const { api, store } = setup();
+      api.derivar.mockResolvedValue(respuesta(crearDetalle({ estado: EstadoCaso.DERIVADO })));
+      await store.derivar("MINSA-2026-000001");
+      expect(api.derivar).toHaveBeenCalledWith("MINSA-2026-000001", undefined);
+    });
+
+    it("no permite resolver con textos cortos o largos, sin llamar al servidor", async () => {
+      const { api, store } = setup();
+      const corta = await store.resolver("MINSA-2026-000001", { ...RESOLUCION, medidasTomadas: "   corta   " });
+      expect(corta.ok === false && corta.error).toContain("Las medidas tomadas necesita al menos 10");
+      const sinFundamento = await store.resolver("MINSA-2026-000001", { ...RESOLUCION, fundamento: "x" });
+      expect(sinFundamento.ok === false && sinFundamento.error).toContain("El fundamento necesita al menos 10");
+      const larga = await store.resolver("MINSA-2026-000001", { ...RESOLUCION, fundamento: "x".repeat(4001) });
+      expect(larga.ok === false && larga.error).toContain("4000");
+      expect(api.resolver).not.toHaveBeenCalled();
+    });
+
+    it("manda la resolución sin espacios sobrantes", async () => {
+      const { api, store } = setup();
+      api.resolver.mockResolvedValue(respuesta(crearDetalle({ estado: EstadoCaso.RESUELTO })));
+      await store.resolver("MINSA-2026-000001", {
+        medidasTomadas: "  Se entregó el medicamento  ",
+        fundamento: "  Había stock en farmacia  ",
+        resultado: ResultadoResolucion.CERRADO,
       });
-
-    it("revisada la categoría, toma el caso clasificado y pasa a EN_GESTION", () => {
-      const store = crearStore([denuncia({ revisadoPorHumano: true })]);
-      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
-      expect(store.tomar("A").ok).toBe(true);
-      const caso = buscar(store, "A");
-      expect(caso.estado).toBe(EstadoCaso.EN_GESTION);
-      expect(caso.historial.at(-1)?.titulo).toBe("En gestión");
-      expect(caso.historial.at(-1)?.detalle).toContain("sin derivar");
+      expect(api.resolver).toHaveBeenCalledWith("MINSA-2026-000001", {
+        medidasTomadas: "Se entregó el medicamento",
+        fundamento: "Había stock en farmacia",
+        resultado: ResultadoResolucion.CERRADO,
+      });
     });
 
-    it("sin revisar la categoría no puede tomarlo", () => {
-      const store = crearStore([denuncia()]);
-      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
-      expect(store.tomar("A")).toEqual({ ok: false, error: "No tienes permiso para esta acción sobre este caso." });
-      expect(buscar(store, "A").estado).toBe(EstadoCaso.CLASIFICADO);
+    it("archivar exige una justificación de 10 a 2000 caracteres y la manda recortada", async () => {
+      const { api, store } = setup();
+      const corta = await store.archivar("MINSA-2026-000001", MotivoArchivo.DATOS_INSUFICIENTES, "corta");
+      expect(corta.ok === false && corta.error).toContain("La justificación necesita al menos 10");
+      const larga = await store.archivar("MINSA-2026-000001", MotivoArchivo.DATOS_INSUFICIENTES, "x".repeat(2001));
+      expect(larga.ok === false && larga.error).toContain("2000");
+      expect(api.archivar).not.toHaveBeenCalled();
+
+      api.archivar.mockResolvedValue(respuesta(crearDetalle({ estado: EstadoCaso.ARCHIVADO })));
+      await store.archivar("MINSA-2026-000001", MotivoArchivo.DATOS_INSUFICIENTES, "  Falta el nombre del servicio  ");
+      expect(api.archivar).toHaveBeenCalledWith("MINSA-2026-000001", MotivoArchivo.DATOS_INSUFICIENTES, "Falta el nombre del servicio");
     });
 
-    it("otra área no puede tomar un caso clasificado: debe esperar la derivación", () => {
-      const store = crearStore([crearCaso({ codigo: "A", revisadoPorHumano: true })]);
-      store.cambiarRol(RolDemo.AREA_RECLAMO);
-      expect(store.tomar("A").ok).toBe(false);
-      expect(buscar(store, "A").estado).toBe(EstadoCaso.CLASIFICADO);
+    it("reabrir exige un motivo de al menos 10 caracteres", async () => {
+      const { api, store } = setup();
+      const corto = await store.reabrir("MINSA-2026-000001", "no");
+      expect(corto.ok === false && corto.error).toContain("El motivo necesita al menos 10");
+      expect(api.reabrir).not.toHaveBeenCalled();
     });
 
-    it("flujo completo de corrupción: confirma, toma y resuelve, y todo alimenta el historial", () => {
-      const store = crearStore([denuncia()]);
-      store.cambiarRol(RolDemo.AREA_DENUNCIA_CORRUPCION);
-
-      expect(store.confirmar("A").ok).toBe(true);
-      expect(store.tomar("A").ok).toBe(true);
-      expect(store.resolver("A", "Se remitió a Integridad.").ok).toBe(true);
-
-      const caso = buscar(store, "A");
-      expect(caso.estado).toBe(EstadoCaso.RESUELTO);
-      expect(caso.historial.map((paso) => paso.titulo)).toEqual(["Categoría confirmada", "En gestión", "Resuelto"]);
+    it.each([
+      ["archivar", (store: CasosStore) => store.archivar("MINSA-2026-000001", MotivoArchivo.NO_CORRESPONDE, "No es de este centro"), "no se puede archivar"],
+      ["reabrir", (store: CasosStore) => store.reabrir("MINSA-2026-000001", "Llegó información nueva"), "vigencia"],
+      ["resolver", (store: CasosStore) => store.resolver("MINSA-2026-000001", RESOLUCION), "no se puede resolver"],
+    ] as const)("un 422 al %s explica por qué", async (nombre, ejecutar, texto) => {
+      const { api, store } = setup();
+      api[nombre].mockRejectedValue(new IncidenciaError(422, "UNPROCESSABLE"));
+      const resultado = await ejecutar(store);
+      expect(resultado.ok === false && resultado.error).toContain(texto);
     });
-  });
-
-  describe("permisos", () => {
-    it("un rol sin la acción es rechazado, como haría el servidor", () => {
-      const store = crearStore([crearCaso({ codigo: "A", revisadoPorHumano: true })]);
-      store.cambiarRol(RolDemo.AREA_RECLAMO);
-      expect(store.derivar("A")).toEqual({ ok: false, error: "No tienes permiso para esta acción sobre este caso." });
-    });
-
-    it("el administrador no puede ejecutar ninguna acción sobre los casos", () => {
-      const store = crearStore([crearCaso({ codigo: "A" })]);
-      store.cambiarRol(RolDemo.ADMINISTRADOR);
-      expect(store.confirmar("A").ok).toBe(false);
-      expect(store.corregir("A", CategoriaCaso.QUEJA).ok).toBe(false);
-    });
-
-    it("un caso inexistente se informa", () => {
-      expect(crearStore([]).confirmar("NO-EXISTE")).toEqual({ ok: false, error: "No se encontró el caso." });
-    });
-
-    it("un caso fuera de la vista del rol tampoco se puede tocar", () => {
-      const store = crearStore([crearCaso({ codigo: "A", categoria: CategoriaCaso.DENUNCIA_CORRUPCION, revisadoPorHumano: true })]);
-      store.cambiarRol(RolDemo.GESTOR);
-      expect(store.derivar("A").ok).toBe(false);
-    });
-  });
-
-  it("flujo completo: el gestor confirma y deriva, el área toma y resuelve", () => {
-    const store = crearStore([crearCaso({ codigo: "A" })]);
-
-    expect(store.confirmar("A").ok).toBe(true);
-    expect(store.derivar("A").ok).toBe(true);
-    store.cambiarRol(RolDemo.AREA_RECLAMO);
-    expect(store.tomar("A").ok).toBe(true);
-    expect(store.resolver("A", "Atendido.").ok).toBe(true);
-
-    const caso = buscar(store, "A");
-    expect(caso.estado).toBe(EstadoCaso.RESUELTO);
-    expect(caso.historial.map((paso) => paso.titulo)).toEqual([
-      "Categoría confirmada",
-      "Derivado",
-      "En gestión",
-      "Resuelto",
-    ]);
   });
 });

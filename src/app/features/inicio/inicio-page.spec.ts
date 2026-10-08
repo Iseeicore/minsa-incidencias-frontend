@@ -26,7 +26,7 @@ describe("InicioPage", () => {
     expect(element.textContent).toContain("Casos que requieren atención");
   });
 
-  it("el gráfico, las listas y la tabla están en regiones desplazables con nombre", async () => {
+  it("la tabla y las alertas están en regiones desplazables con nombre", async () => {
     const { element } = await setup();
     const nombres = Array.from(element.querySelectorAll("app-scroll-area[role='region']")).map((region) =>
       region.getAttribute("aria-label"),
@@ -43,7 +43,7 @@ describe("InicioPage", () => {
       lista.querySelector("ul")?.getAttribute("aria-label"),
     );
     expect(listas).toEqual(["Casos por categoría", "Derivaciones por estado"]);
-    expect(element.querySelectorAll("app-hbar-list [role='progressbar']")).toHaveLength(8);
+    expect(element.querySelectorAll("app-hbar-list [role='meter']")).toHaveLength(8);
   });
 
   it("las pestañas de periodo se desplazan en lugar de romper el diseño", async () => {

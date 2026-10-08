@@ -3,7 +3,7 @@ import { BadgeTone } from "@/shared/enums/badge.enum";
 import { Badge } from "@/shared/ui/badge/badge";
 import { BarChart } from "@/shared/ui/bar-chart/bar-chart";
 import { Card } from "@/shared/ui/card/card";
-import { HBarList, type HBarDatum } from "@/shared/ui/hbar-list/hbar-list";
+import { HBarList } from "@/shared/ui/hbar-list/hbar-list";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 import { StatCard } from "@/shared/ui/stat-card/stat-card";
 import { Tabs } from "@/shared/ui/tabs/tabs";
@@ -18,6 +18,7 @@ import {
   KPIS_DEMO,
 } from "./data/dashboard.demo";
 import { Periodo } from "./enums/periodo.enum";
+import { categoriasABarras, resumenABarras } from "./utils/a-barras";
 
 @Component({
   selector: "app-inicio-page",
@@ -28,16 +29,9 @@ import { Periodo } from "./enums/periodo.enum";
 export class InicioPage {
   protected readonly BadgeTone = BadgeTone;
   protected readonly kpis = KPIS_DEMO;
-  protected readonly categorias: readonly HBarDatum[] = CATEGORIAS_DEMO.map((categoria) => ({
-    label: categoria.label,
-    valor: categoria.casos,
-    detalle: `${categoria.porcentaje} %`,
-  }));
+  protected readonly categorias = categoriasABarras(CATEGORIAS_DEMO);
   protected readonly casosAtencion = CASOS_ATENCION_DEMO;
-  protected readonly derivaciones: readonly HBarDatum[] = DERIVACIONES_DEMO.map((fila) => ({
-    label: fila.label,
-    valor: fila.valor,
-  }));
+  protected readonly derivaciones = resumenABarras(DERIVACIONES_DEMO);
   protected readonly alertas = ALERTAS_DEMO;
   protected readonly periodoOpciones = PERIODO_OPCIONES;
 

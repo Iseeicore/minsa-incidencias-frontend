@@ -1,0 +1,7 @@
+export const MotivoArchivo = {
+  DATOS_INSUFICIENTES: "DATOS_INSUFICIENTES",
+  NO_CORRESPONDE: "NO_CORRESPONDE",
+  VENCIDA_SIN_ATENDER: "VENCIDA_SIN_ATENDER",
+  RESUELTA_VIGENCIA: "RESUELTA_VIGENCIA",
+} as const;
+export type MotivoArchivo = (typeof MotivoArchivo)[keyof typeof MotivoArchivo];

@@ -7,6 +7,8 @@ export interface NavEntry {
   readonly icon: IconName;
   readonly path?: string;
   readonly vista?: VistaCodigo;
+  /** Activar al crear la pantalla: mientras sea false la entrada no se muestra. */
+  readonly implementada: boolean;
 }
 
 export interface NavSection {

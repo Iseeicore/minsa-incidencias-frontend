@@ -11,11 +11,13 @@ ARG API_URL=http://localhost:3033
 ARG PLAZO_ATENCION_DIAS=3
 ARG PLAZO_VIGENCIA_RESOLUCION_DIAS=3
 ARG PLAZO_AVISO_HORAS=24
+ARG WHATSAPP_NUMERO=51944023973
 RUN node scripts/init-env.mjs \
   && sed -i "s#http://localhost:3033#${API_URL}#" src/environments/environment.ts \
   && sed -i "s#atencionDias: 3,#atencionDias: ${PLAZO_ATENCION_DIAS},#" src/environments/environment.ts \
   && sed -i "s#vigenciaResolucionDias: 3,#vigenciaResolucionDias: ${PLAZO_VIGENCIA_RESOLUCION_DIAS},#" src/environments/environment.ts \
   && sed -i "s#avisoHoras: 24,#avisoHoras: ${PLAZO_AVISO_HORAS},#" src/environments/environment.ts \
+  && sed -i "s#numero: \"51944023973\",#numero: \"${WHATSAPP_NUMERO}\",#" src/environments/environment.ts \
   && npm run build
 
 FROM nginxinc/nginx-unprivileged:alpine AS runtime

@@ -27,6 +27,22 @@ describe("SelectField", () => {
     expect(fixture.componentInstance.value()).toBe("b");
   });
 
+  it("con etiquetaVisible la etiqueta se ve y deja de ser solo para lectores de pantalla", async () => {
+    const { fixture } = await setup("a");
+    fixture.componentRef.setInput("etiquetaVisible", true);
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector(".sr-only")).toBeNull();
+    expect(element.querySelector("label span")?.textContent).toBe("Elegir");
+  });
+
+  it("se ve como un campo: borde gris, fondo blanco y anillo de foco", async () => {
+    const { select } = await setup("a");
+    for (const clase of ["border-2", "border-gray-200", "bg-white", "focus:ring-2", "focus:border-primary-500"]) {
+      expect(select.classList.contains(clase), clase).toBe(true);
+    }
+  });
+
   it("tiene una etiqueta accesible", async () => {
     const { fixture } = await setup("a");
     expect((fixture.nativeElement as HTMLElement).querySelector(".sr-only")?.textContent).toBe("Elegir");

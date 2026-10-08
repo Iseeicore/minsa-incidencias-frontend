@@ -10,7 +10,7 @@ describe("HBarList", () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  const barras = (element: HTMLElement) => Array.from(element.querySelectorAll<HTMLElement>("[role='progressbar']"));
+  const barras = (element: HTMLElement) => Array.from(element.querySelectorAll<HTMLElement>("[role='meter']"));
 
   it("mide cada barra contra el valor mayor de la lista", async () => {
     const element = await setup([
@@ -22,11 +22,13 @@ describe("HBarList", () => {
     expect(quejas.style.width).toBe("50%");
   });
 
-  it("muestra el valor y el detalle de cada fila", async () => {
+  it("muestra el valor y el detalle de cada fila y los expone a los lectores de pantalla", async () => {
     const element = await setup([{ label: "Reclamos", valor: 604, detalle: "48 %" }]);
     expect(element.textContent).toContain("Reclamos");
     expect(element.textContent).toContain("48 %");
     expect(barras(element)[0].getAttribute("aria-valuenow")).toBe("604");
+    expect(barras(element)[0].getAttribute("aria-valuemax")).toBe("604");
+    expect(element.querySelector("ul")?.getAttribute("aria-label")).toBe("Casos por categoría");
   });
 
   it("un valor cero no dibuja barra y un valor pequeño sigue visible", async () => {
@@ -40,8 +42,32 @@ describe("HBarList", () => {
     expect(c.style.width).toBe("0%");
   });
 
-  it("sin datos no falla", async () => {
+  it("si todos los valores son cero no dibuja ninguna barra", async () => {
+    const element = await setup([
+      { label: "A", valor: 0 },
+      { label: "B", valor: 0 },
+    ]);
+    expect(barras(element).map((barra) => barra.style.width)).toEqual(["0%", "0%"]);
+  });
+
+  it("sin datos no falla ni dibuja filas", async () => {
     const element = await setup([]);
     expect(barras(element)).toHaveLength(0);
+    expect(element.querySelectorAll("li")).toHaveLength(0);
+  });
+
+  it("un nombre largo se parte en lugar de empujar el contenedor", async () => {
+    const largo = "Establecimiento de salud con un nombre larguísimo que no cabe en una sola línea de la tarjeta";
+    const element = await setup([{ label: largo, valor: 10 }]);
+    const nombre = element.querySelector("li span") as HTMLElement;
+    expect(nombre.textContent).toContain(largo);
+    expect(nombre.className).toContain("min-w-0");
+    expect(nombre.className).toContain("break-words");
+    expect(element.className).toContain("min-w-0");
+  });
+
+  it("separa los miles del valor", async () => {
+    const element = await setup([{ label: "A", valor: 1248 }]);
+    expect(element.querySelector("li")?.textContent).toMatch(/1\D248/);
   });
 });

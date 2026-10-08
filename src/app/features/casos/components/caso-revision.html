@@ -24,20 +24,42 @@
             <dd class="text-gray-900">{{ c.categoria ? categoriaLabel[c.categoria] : sinDato }}</dd>
           </div>
           <div class="flex gap-4">
-            <dt class="w-28 shrink-0 font-medium text-gray-500">Área</dt>
-            <dd class="text-gray-900">{{ areaDestino() }}</dd>
+            <dt class="w-28 shrink-0 font-medium text-gray-500">Establecimiento</dt>
+            <dd class="text-gray-900">
+              @if (c.establecimiento; as establecimiento) {
+                {{ establecimiento.nombre }}
+                <span class="block text-xs text-gray-500">{{ renipress(establecimiento) }}</span>
+              } @else {
+                {{ sinEstablecimiento }}
+              }
+            </dd>
+          </div>
+          <div class="flex gap-4">
+            <dt class="w-28 shrink-0 font-medium text-gray-500">Área destino</dt>
+            <dd class="text-gray-900">{{ c.area?.nombre ?? sinArea }}</dd>
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Prioridad</dt>
-            <dd><app-badge [tone]="prioridadBadge[c.prioridad].tone">{{ prioridadBadge[c.prioridad].label }}</app-badge></dd>
+            <dd>
+              @if (c.prioridad; as nivel) {
+                <app-badge [tone]="prioridadBadge[nivel].tone">{{ prioridadBadge[nivel].label }}</app-badge>
+              } @else {
+                <span class="text-gray-900">{{ sinDato }}</span>
+              }
+            </dd>
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Plazo</dt>
-            <dd class="text-gray-900">{{ plazoTexto() }}</dd>
+            <dd class="text-gray-900">
+              {{ plazoTexto() }}
+              @if (reaperturaTexto(); as reabierto) {
+                <span class="block text-xs text-gray-500">{{ reabierto }}</span>
+              }
+            </dd>
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Organismo</dt>
-            <dd class="text-gray-900">{{ c.organismo }}</dd>
+            <dd class="text-gray-900">{{ c.organismo ?? sinDato }}</dd>
           </div>
           <div class="flex gap-4">
             <dt class="w-28 shrink-0 font-medium text-gray-500">Reclamante</dt>
@@ -45,12 +67,7 @@
           </div>
         </dl>
         <p class="mt-4 whitespace-pre-line rounded-xl bg-gray-50 p-3 text-sm text-gray-800">{{ c.descripcion }}</p>
-        @if (c.resolucion) {
-          <div class="mt-3">
-            <p class="text-xs font-medium text-gray-500">Resolución</p>
-            <p class="mt-1 whitespace-pre-line text-sm text-gray-900">{{ c.resolucion }}</p>
-          </div>
-        }
+        <app-caso-cierre class="mt-4" [caso]="c" />
       </section>
 
       <section aria-labelledby="revision-pruebas">
@@ -90,7 +107,7 @@
                   </div>
                 </div>
                 @if (evidencia.sensible && estaAbierta(evidencia.nombre)) {
-                  <p class="mt-2 text-xs text-gray-600">Vista previa no disponible en la demostración.</p>
+                  <p class="mt-2 text-xs text-gray-600">La vista previa de archivos aún no está disponible.</p>
                 }
               </li>
             }
@@ -122,54 +139,81 @@
 
         @if (acciones().length === 0) {
           <p class="text-sm text-gray-600">{{ motivoSinAcciones() }}</p>
+        } @else if (modo() === ModoPanel.CORREGIR && confirmandoOtrans()) {
+          <div class="space-y-3">
+            <app-alert [tone]="BadgeTone.WARNING">Este caso pasará a OTRANS y saldrá de tu bandeja. No se puede deshacer.</app-alert>
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <app-button [tone]="ButtonTone.DANGER" [icon]="IconName.SHIELD_ALERT" [disabled]="procesando()" (click)="aplicarCorreccion()">Confirmar y enviar a OTRANS</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" [disabled]="procesando()" (click)="cancelar()">Cancelar</app-button>
+            </div>
+          </div>
         } @else if (modo() === ModoPanel.CORREGIR) {
           <div class="space-y-3">
-            <app-select-field label="Nueva categoría" [options]="opcionesCategoria()" [(value)]="nuevaCategoria" />
-            @if (areaNueva(); as area) {
-              <p class="text-sm text-gray-700">Con este cambio el caso corresponde a: <strong>{{ area }}</strong>.</p>
+            <app-select-field label="Nueva categoría" [etiquetaVisible]="true" [options]="opcionesCategoria()" [(value)]="nuevaCategoria" />
+            @if (avisoCorrupcion()) {
+              <p class="text-sm text-gray-700">Las denuncias por corrupción las toma <strong>OTRANS</strong>; no se derivan a un establecimiento.</p>
             }
             <app-alert [tone]="BadgeTone.WARNING">
               La categoría se confirma o se corrige una sola vez. Revisa bien antes de aplicar.
             </app-alert>
-            <div class="flex flex-wrap gap-2">
-              <app-button [disabled]="nuevaCategoria() === ''" (click)="aplicarCorreccion()">Aplicar corrección</app-button>
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar()">Cancelar</app-button>
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <app-button [icon]="IconName.EDIT" [disabled]="!puedeAplicarCorreccion() || procesando()" (click)="aplicarCorreccion()">Aplicar corrección</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" (click)="cancelar()">Cancelar</app-button>
+            </div>
+          </div>
+        } @else if (modo() === ModoPanel.DERIVAR) {
+          <div class="space-y-3">
+            <app-area-selector
+              label="Área de destino"
+              [placeholder]="esCorrupcion() ? 'Busca el área OTRANS de destino...' : 'Busca el establecimiento de destino...'"
+              [tipo]="tipoDestino()"
+              [(seleccionada)]="areaElegida"
+            />
+            @if (esCorrupcion()) {
+              <p class="text-sm text-gray-700">Si no eliges un área, la denuncia se queda en <strong>OTRANS</strong>.</p>
+            }
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <app-button [icon]="IconName.SEND" [disabled]="(areaElegida() === null && !esCorrupcion()) || procesando()" (click)="aplicarDerivacion()">Derivar el caso</app-button>
+              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [icon]="IconName.CLOSE" (click)="cancelar()">Cancelar</app-button>
             </div>
           </div>
         } @else if (modo() === ModoPanel.RESOLVER) {
-          <div class="space-y-3">
-            <app-textarea-field
-              label="Resolución"
-              placeholder="Describe cómo se atendió o se resolvió el caso"
-              [rows]="5"
-              [maxlength]="maxResolucion"
-              [(value)]="resolucion"
-            />
-            <app-alert [tone]="BadgeTone.WARNING">
-              Al registrar la resolución el caso queda resuelto y no se puede deshacer. Se archivará solo a los
-              {{ plazos.vigenciaResolucionDias }} días.
-            </app-alert>
-            <div class="flex flex-wrap gap-2">
-              <app-button [disabled]="resolucion().trim() === ''" (click)="aplicarResolucion()">Registrar resolución</app-button>
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="cancelar()">Cancelar</app-button>
-            </div>
-          </div>
+          <app-formulario-resolucion [procesando]="procesando()" (enviar)="aplicarResolucion($event)" (cancelar)="cancelar()" />
+        } @else if (modo() === ModoPanel.ARCHIVAR) {
+          <app-formulario-archivo [procesando]="procesando()" (enviar)="aplicarArchivo($event)" (cancelar)="cancelar()" />
+        } @else if (modo() === ModoPanel.REABRIR) {
+          <app-formulario-reapertura [procesando]="procesando()" (enviar)="aplicarReapertura($event)" (cancelar)="cancelar()" />
         } @else {
-          <div class="flex flex-wrap gap-2">
-            @if (acciones().includes(AccionCaso.CONFIRMAR)) {
-              <app-button (click)="confirmar()">Confirmar categoría</app-button>
+          <div class="space-y-3">
+            @if (botonesDeAvance().length > 0) {
+              <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                @for (boton of botonesDeAvance(); track boton.accion) {
+                  <app-button
+                    [variant]="boton.variant"
+                    [tone]="boton.tone"
+                    [icon]="iconoAccion[boton.accion]"
+                    [disabled]="procesando()"
+                    (click)="iniciar(boton.accion)"
+                  >
+                    {{ etiquetaAccion[boton.accion] }}
+                  </app-button>
+                }
+              </div>
             }
-            @if (acciones().includes(AccionCaso.CORREGIR)) {
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="abrirCorreccion()">Corregir categoría</app-button>
-            }
-            @if (acciones().includes(AccionCaso.DERIVAR)) {
-              <app-button (click)="derivar()">Derivar al {{ areaDestino() }}</app-button>
-            }
-            @if (acciones().includes(AccionCaso.TOMAR)) {
-              <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="tomar()">Tomar en gestión</app-button>
-            }
-            @if (acciones().includes(AccionCaso.RESOLVER)) {
-              <app-button (click)="abrirResolucion()">Resolver el caso</app-button>
+            @if (botonesDestructivos().length > 0) {
+              <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap" [class]="botonesDeAvance().length > 0 ? 'border-t border-gray-200 pt-3' : ''">
+                @for (boton of botonesDestructivos(); track boton.accion) {
+                  <app-button
+                    [variant]="boton.variant"
+                    [tone]="boton.tone"
+                    [icon]="iconoAccion[boton.accion]"
+                    [disabled]="procesando()"
+                    (click)="iniciar(boton.accion)"
+                  >
+                    {{ etiquetaAccion[boton.accion] }}
+                  </app-button>
+                }
+              </div>
             }
           </div>
           @if (acciones().includes(AccionCaso.CONFIRMAR) || acciones().includes(AccionCaso.CORREGIR)) {
@@ -183,11 +227,20 @@
         <app-timeline label="Historial del caso" [items]="c.historial" />
       </section>
     </div>
+  } @else if (cargando()) {
+    <p class="text-sm text-gray-600" aria-live="polite">Cargando el caso…</p>
   } @else if (codigo() !== null) {
     @if (feedback(); as resultado) {
       <app-alert [tone]="resultado.ok ? BadgeTone.SUCCESS : BadgeTone.DANGER">
         {{ resultado.ok ? resultado.mensaje : resultado.error }}
       </app-alert>
+    } @else if (errorCarga(); as mensaje) {
+      <div class="space-y-3">
+        <app-alert [tone]="noDisponible() ? BadgeTone.NEUTRAL : BadgeTone.DANGER">{{ mensaje }}</app-alert>
+        @if (!noDisponible()) {
+          <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" (click)="reintentar()">Reintentar</app-button>
+        }
+      </div>
     } @else {
       <p class="text-sm text-gray-600">Este caso ya no está disponible para tu rol.</p>
     }

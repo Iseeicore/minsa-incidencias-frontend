@@ -12,6 +12,7 @@ const ENTRY_BASE_CLASSES =
   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-primary-500";
 const ENTRY_ACTIVE_CLASSES = `${ENTRY_BASE_CLASSES} bg-gray-900 text-white`;
 const ENTRY_IDLE_CLASSES = `${ENTRY_BASE_CLASSES} text-gray-700 transition-colors hover:bg-gray-100`;
+
 const ENTRY_DISABLED_CLASSES = `${ENTRY_BASE_CLASSES} cursor-not-allowed text-gray-400`;
 
 const DOCKED_CLASSES = "sticky top-0 block h-dvh shrink-0 p-3 transition-all";

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from "@angular/core";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
+import { formatearNumero } from "@/shared/utils/formatear-numero";
 import { niceScale } from "@/shared/utils/nice-scale";
 
 export interface BarDatum {
@@ -7,8 +8,6 @@ export interface BarDatum {
   readonly base: number;
   readonly extra: number;
 }
-
-const FORMATO_NUMERO = new Intl.NumberFormat("es-PE");
 
 @Component({
   selector: "app-bar-chart",
@@ -46,7 +45,7 @@ const FORMATO_NUMERO = new Intl.NumberFormat("es-PE");
             @for (barra of barras(); track barra.label) {
               <div class="flex h-full min-w-0 flex-1 items-end justify-center">
                 <div
-                  class="group relative flex w-full max-w-12 flex-col-reverse gap-0.5 transition-opacity hover:opacity-80"
+                  class="relative flex w-full max-w-12 flex-col-reverse gap-0.5 transition-opacity hover:opacity-80"
                   [style.height.%]="barra.alto"
                   [attr.title]="barra.titulo"
                 >
@@ -93,6 +92,6 @@ export class BarChart {
   });
 
   protected formato(valor: number): string {
-    return FORMATO_NUMERO.format(valor);
+    return formatearNumero(valor);
   }
 }
