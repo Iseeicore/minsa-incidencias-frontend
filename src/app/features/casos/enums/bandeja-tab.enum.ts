@@ -1,10 +1,9 @@
 export const BandejaTab = {
-  PARA_ACTUAR: "para-actuar",
-  REVISION_IA: "revision-ia",
-  POR_DERIVAR: "por-derivar",
+  POR_REVISAR: "por-revisar",
   EN_GESTION: "en-gestion",
-  POR_VENCER: "por-vencer",
+  DERIVADOS: "derivados",
   RESUELTOS: "resueltos",
   ARCHIVADOS: "archivados",
+  TODOS: "todos",
 } as const;
 export type BandejaTab = (typeof BandejaTab)[keyof typeof BandejaTab];

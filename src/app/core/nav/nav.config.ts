@@ -9,8 +9,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
     label: "Operación",
     entries: [
       { id: "dashboard", label: "Dashboard", icon: IconName.DASHBOARD, path: ROUTE.INICIO, vista: VistaCodigo.INICIO, implementada: true },
-      { id: "casos", label: "Casos", icon: IconName.CASES, path: ROUTE.CASOS, vista: VistaCodigo.CASOS, implementada: true },
-      { id: "bandejas", label: "Mis bandejas", icon: IconName.INBOX, path: ROUTE.BANDEJAS, vista: VistaCodigo.BANDEJAS, implementada: true },
+      { id: "bandeja", label: "Bandeja", icon: IconName.INBOX, path: ROUTE.BANDEJA, vista: VistaCodigo.CASOS, implementada: true },
       {
         id: "derivaciones",
         label: "Derivaciones",

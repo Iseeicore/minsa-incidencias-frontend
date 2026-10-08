@@ -34,7 +34,7 @@ describe("AppShell", () => {
   const ana: SesionUsuario = {
     nombreCompleto: "Ana Prueba",
     correo: "ana@minsa.gob.pe",
-    vistas: ["INICIO", "CASOS", "BANDEJAS"],
+    vistas: ["INICIO", "CASOS"],
     roles: ["GESTOR"],
     area: null,
   };
@@ -49,7 +49,7 @@ describe("AppShell", () => {
   it("muestra el nombre y solo el menú de las vistas del usuario", async () => {
     const { element } = await setup({ ...ana, vistas: ["CASOS"] });
     expect(element.textContent).toContain("Ana Prueba");
-    expect(element.textContent).toContain("Casos");
+    expect(element.textContent).toContain("Bandeja");
     expect(element.textContent).not.toContain("Mis bandejas");
     expect(element.textContent).not.toContain("Derivaciones");
   });
@@ -57,16 +57,16 @@ describe("AppShell", () => {
   it("solo se muestran las entradas con pantalla, sin entradas en gris ni secciones vacías", async () => {
     const { element } = await setup(ana);
     const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas"]);
+    expect(enlaces).toEqual(["Dashboard", "Bandeja"]);
     expect(element.querySelectorAll("nav [aria-disabled='true']")).toHaveLength(0);
     expect(element.querySelectorAll("nav app-sidebar-group")).toHaveLength(1);
     expect(element.querySelector("nav")?.textContent).not.toContain("Inteligencia IA");
   });
 
-  it("el administrador ve todo el menú: 6 enlaces y las 9 entradas sin pantalla en gris, sin navegación", async () => {
+  it("el administrador ve todo el menú: 5 enlaces y las 9 entradas sin pantalla en gris, sin navegación", async () => {
     const { element } = await setup({ ...ana, roles: ["ADMINISTRADOR"] });
     const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
-    expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas", "Derivaciones", "Códigos QR", "Usuarios"]);
+    expect(enlaces).toEqual(["Dashboard", "Bandeja", "Derivaciones", "Códigos QR", "Usuarios"]);
     const grises = Array.from(element.querySelectorAll("nav [aria-disabled='true']"));
     expect(grises).toHaveLength(9);
     expect(grises.every((gris) => gris.tagName === "SPAN" && !gris.hasAttribute("href"))).toBe(true);

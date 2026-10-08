@@ -92,7 +92,7 @@ function plural(cantidad: number, singular: string, plural: string): string {
                     <td class="py-2 pr-4 font-medium">
                       <a
                         class="rounded text-primary-700 underline focus-visible:outline-2 focus-visible:outline-primary-500"
-                        [routerLink]="rutaCasos"
+                        [routerLink]="rutaBandeja"
                         [queryParams]="{ caso: caso.codigo }"
                         (click)="cerrar()"
                       >
@@ -123,7 +123,7 @@ export class AvisosCampana {
   protected readonly ButtonVariant = ButtonVariant;
   protected readonly IconName = IconName;
   protected readonly panelId = PANEL_ID;
-  protected readonly rutaCasos = ROUTE.CASOS;
+  protected readonly rutaBandeja = ROUTE.BANDEJA;
   protected readonly columnas = COLUMNAS;
   protected readonly encabezado = ENCABEZADO;
   protected readonly categoria = CATEGORIA_LABEL;

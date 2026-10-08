@@ -21,15 +21,12 @@ export const routes: Routes = [
         loadComponent: () => import("@/features/inicio/inicio-page").then((module) => module.InicioPage),
       },
       {
-        path: ROUTE_PATH.CASOS,
+        path: ROUTE_PATH.BANDEJA,
         canActivate: [vistaGuard(VistaCodigo.CASOS)],
-        loadComponent: () => import("@/features/casos/casos-page").then((module) => module.CasosPage),
+        loadComponent: () => import("@/features/casos/bandeja-page").then((module) => module.BandejaPage),
       },
-      {
-        path: ROUTE_PATH.BANDEJAS,
-        canActivate: [vistaGuard(VistaCodigo.BANDEJAS)],
-        loadComponent: () => import("@/features/casos/bandejas-page").then((module) => module.BandejasPage),
-      },
+      { path: ROUTE_PATH.CASOS_ANTIGUA, pathMatch: "full", redirectTo: ROUTE_PATH.BANDEJA },
+      { path: ROUTE_PATH.BANDEJAS_ANTIGUA, pathMatch: "full", redirectTo: ROUTE_PATH.BANDEJA },
       {
         path: ROUTE_PATH.DERIVACIONES,
         canActivate: [vistaGuard(VistaCodigo.DERIVACIONES)],

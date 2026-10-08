@@ -1,7 +1,6 @@
 export const VistaCodigo = {
   INICIO: "INICIO",
   CASOS: "CASOS",
-  BANDEJAS: "BANDEJAS",
   DERIVACIONES: "DERIVACIONES",
   QR: "QR",
   USUARIOS: "USUARIOS",

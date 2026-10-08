@@ -34,7 +34,7 @@ describe("AvisosCampana", () => {
   async function setup(respuesta: CasosPorVencer = AVISOS) {
     const api = { porVencer: vi.fn().mockResolvedValue(respuesta) };
     TestBed.configureTestingModule({
-      providers: [provideRouter([{ path: "casos", children: [] }]), { provide: IncidenciasApi, useValue: api }],
+      providers: [provideRouter([{ path: "bandeja", children: [] }]), { provide: IncidenciasApi, useValue: api }],
     });
     const fixture = TestBed.createComponent(AvisosCampana);
     document.body.appendChild(fixture.nativeElement);
@@ -105,7 +105,7 @@ describe("AvisosCampana", () => {
     expect(filas[0].textContent).toContain("Vence en 8 h");
     expect(filas[1].textContent).toContain("Vencido");
     const enlace = filas[0].querySelector("a") as HTMLAnchorElement;
-    expect(enlace.getAttribute("href")).toContain("/casos?caso=MINSA-2026-000004");
+    expect(enlace.getAttribute("href")).toContain("/bandeja?caso=MINSA-2026-000004");
   });
 
   it("sin casos el panel lo dice", async () => {

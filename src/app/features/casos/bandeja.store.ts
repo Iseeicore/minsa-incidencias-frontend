@@ -2,45 +2,55 @@ import { computed, effect, inject, Injectable, signal, untracked } from "@angula
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { debounceTime, filter, map, Subject } from "rxjs";
 import { CasosStore } from "@/features/casos/casos.store";
-import { BUSQUEDA_DEBOUNCE_MS } from "@/features/casos/constants/casos-config";
-import { CATEGORIA_POR_TAB, FILTRO_TODOS, TAMANO_PAGINA } from "@/features/casos/constants/casos-constants";
+import { AHORA, BUSQUEDA_DEBOUNCE_MS } from "@/features/casos/constants/casos-config";
+import { CATEGORIA_POR_TAB, ESTADO_DE_BANDEJA, FILTRO_TODOS, TAMANO_PAGINA } from "@/features/casos/constants/casos-constants";
 import { MENSAJE_CARGA } from "@/features/casos/constants/casos-messages";
+import type { AtajoFecha } from "@/features/casos/enums/atajo-fecha.enum";
+import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
-import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import { mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
 import type { AreaOpcion } from "@/features/casos/types/area.types";
 import type { Caso } from "@/features/casos/types/caso.types";
 import type { ConsultaCasos } from "@/features/casos/types/incidencias-api.types";
+import { errorDeRango, rangoDeAtajo } from "@/features/casos/utils/fechas-lima";
+import { normalizarBusqueda } from "@/features/casos/utils/normalizar-busqueda";
 
 /**
- * Lista de casos de una pantalla con paginación por cursor: el servidor entrega `siguiente` y `hayMas`, y el cursor
- * de cada página ya visitada se guarda en una pila local para poder volver. Filtros y búsqueda viven aquí y se piden
- * al servidor; cambiar cualquiera vuelve a la primera página. Se provee en la página (no en la raíz).
+ * Bandeja de casos con paginación por cursor: el servidor entrega `siguiente` y `hayMas`, y el cursor de cada página
+ * ya visitada se guarda en una pila local para poder volver. Pestaña de estado, categoría, fechas, búsqueda y
+ * establecimiento se piden al servidor; cambiar cualquiera vuelve a la primera página. Se provee en la página.
  */
 @Injectable()
-export class ListaCasosStore {
+export class BandejaStore {
   private readonly api = inject(IncidenciasApi);
   private readonly espera = inject(BUSQUEDA_DEBOUNCE_MS);
+  private readonly ahora = inject(AHORA);
   private readonly textoAplicado = signal("");
   private readonly textoEscrito = signal("");
   private readonly entrada = new Subject<string>();
   private readonly cursorActual = signal<string | null>(null);
   private readonly pila = signal<readonly (string | null)[]>([]);
+  private readonly desdeAplicada = signal("");
+  private readonly hastaAplicada = signal("");
   private peticion = 0;
 
   readonly tamano = TAMANO_PAGINA;
   readonly casos = signal<readonly Caso[]>([]);
   readonly siguiente = signal<string | null>(null);
   readonly hayMas = signal(false);
-  readonly tab = signal<FiltroTab>(FiltroTab.TODOS);
-  readonly estado = signal<string>(FILTRO_TODOS);
-  /** Solo cuenta con el estado archivado: por qué se archivaron los casos que se listan. */
+  readonly bandeja = signal<BandejaTab>(BandejaTab.TODOS);
+  readonly categoria = signal<FiltroTab>(FiltroTab.TODOS);
+  /** Solo cuenta en Archivados: por qué se archivaron los casos que se listan. */
   readonly motivoArchivo = signal<string>(FILTRO_TODOS);
-  readonly verArchivados = computed(() => this.estado() === EstadoCaso.ARCHIVADO);
+  readonly verArchivados = computed(() => this.bandeja() === BandejaTab.ARCHIVADOS);
   readonly establecimiento = signal<AreaOpcion | null>(null);
   readonly texto = this.textoEscrito.asReadonly();
+  /** Lo que muestran los campos de fecha, válido o no; al servidor solo llegan las fechas válidas. */
+  readonly desde = signal("");
+  readonly hasta = signal("");
+  readonly errorFechas = computed(() => errorDeRango(this.desde(), this.hasta()));
   readonly estadoCarga = signal<CargaEstado>(CargaEstado.INICIAL);
   readonly error = signal<string | null>(null);
 
@@ -48,12 +58,14 @@ export class ListaCasosStore {
   readonly pagina = computed(() => this.pila().length + 1);
   readonly hayAnterior = computed(() => this.pila().length > 0);
   readonly vacio = computed(() => this.estadoCarga() === CargaEstado.LISTO && this.casos().length === 0);
+  readonly hayFechas = computed(() => this.desde() !== "" || this.hasta() !== "");
   readonly hayFiltros = computed(
     () =>
-      this.tab() !== FiltroTab.TODOS ||
-      this.estado() !== FILTRO_TODOS ||
+      this.bandeja() !== BandejaTab.TODOS ||
+      this.categoria() !== FiltroTab.TODOS ||
       this.motivoArchivo() !== FILTRO_TODOS ||
       this.establecimiento() !== null ||
+      this.hayFechas() ||
       this.textoAplicado() !== "" ||
       this.textoEscrito().trim() !== "",
   );
@@ -100,14 +112,14 @@ export class ListaCasosStore {
     return this.cargarPagina(pila[pila.length - 1], pila.slice(0, -1));
   }
 
-  cambiarTab(tab: FiltroTab): Promise<void> {
-    this.tab.set(tab);
+  cambiarBandeja(bandeja: BandejaTab): Promise<void> {
+    this.bandeja.set(bandeja);
+    if (bandeja !== BandejaTab.ARCHIVADOS) this.motivoArchivo.set(FILTRO_TODOS);
     return this.desdeElPrincipio();
   }
 
-  cambiarEstado(estado: string): Promise<void> {
-    this.estado.set(estado);
-    if (estado !== EstadoCaso.ARCHIVADO) this.motivoArchivo.set(FILTRO_TODOS);
+  cambiarCategoria(categoria: FiltroTab): Promise<void> {
+    this.categoria.set(categoria);
     return this.desdeElPrincipio();
   }
 
@@ -121,18 +133,46 @@ export class ListaCasosStore {
     return this.desdeElPrincipio();
   }
 
+  /** Un rango inválido se muestra con su mensaje pero no se pide: la lista sigue con el último rango válido. */
+  cambiarFechas(desde: string, hasta: string): Promise<void> {
+    this.desde.set(desde);
+    this.hasta.set(hasta);
+    if (this.errorFechas() !== null) return Promise.resolve();
+    if (desde === this.desdeAplicada() && hasta === this.hastaAplicada()) return Promise.resolve();
+    this.desdeAplicada.set(desde);
+    this.hastaAplicada.set(hasta);
+    return this.desdeElPrincipio();
+  }
+
+  aplicarAtajo(atajo: AtajoFecha): Promise<void> {
+    const rango = rangoDeAtajo(atajo, this.ahora());
+    return this.cambiarFechas(rango.desde, rango.hasta);
+  }
+
+  limpiarFechas(): Promise<void> {
+    return this.cambiarFechas("", "");
+  }
+
   escribirTexto(texto: string): void {
     this.textoEscrito.set(texto);
     this.entrada.next(texto);
   }
 
+  limpiarTexto(): void {
+    this.escribirTexto("");
+  }
+
   limpiar(): Promise<void> {
-    this.tab.set(FiltroTab.TODOS);
-    this.estado.set(FILTRO_TODOS);
+    this.bandeja.set(BandejaTab.TODOS);
+    this.categoria.set(FiltroTab.TODOS);
     this.motivoArchivo.set(FILTRO_TODOS);
     this.establecimiento.set(null);
     this.textoEscrito.set("");
     this.textoAplicado.set("");
+    this.desde.set("");
+    this.hasta.set("");
+    this.desdeAplicada.set("");
+    this.hastaAplicada.set("");
     return this.desdeElPrincipio();
   }
 
@@ -165,19 +205,23 @@ export class ListaCasosStore {
   }
 
   private consulta(cursor: string | null): ConsultaCasos {
-    const estado = this.estado();
+    const estado = ESTADO_DE_BANDEJA[this.bandeja()];
     const motivoArchivo = this.motivoArchivo();
-    const categoria = CATEGORIA_POR_TAB[this.tab()];
-    const texto = this.textoAplicado();
+    const categoria = CATEGORIA_POR_TAB[this.categoria()];
+    const texto = normalizarBusqueda(this.textoAplicado());
     const establecimiento = this.establecimiento()?.establecimiento;
+    const desde = this.desdeAplicada();
+    const hasta = this.hastaAplicada();
     return {
       limite: this.tamano,
       ...(cursor !== null && { cursor }),
-      ...(estado !== FILTRO_TODOS && { estado }),
-      ...(estado === EstadoCaso.ARCHIVADO && motivoArchivo !== FILTRO_TODOS && { motivoArchivo }),
+      ...(estado && { estado }),
+      ...(this.verArchivados() && motivoArchivo !== FILTRO_TODOS && { motivoArchivo }),
       ...(categoria && { categoria }),
       ...(texto !== "" && { texto }),
       ...(establecimiento && { establecimiento: establecimiento.codigoRenipress }),
+      ...(desde !== "" && { desde }),
+      ...(hasta !== "" && { hasta }),
     };
   }
 }

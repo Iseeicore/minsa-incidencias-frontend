@@ -1,10 +1,12 @@
 import { TestBed } from "@angular/core/testing";
 import { CasosStore } from "@/features/casos/casos.store";
-import { BUSQUEDA_DEBOUNCE_MS } from "@/features/casos/constants/casos-config";
+import { AHORA, BUSQUEDA_DEBOUNCE_MS } from "@/features/casos/constants/casos-config";
 import { FILTRO_TODOS } from "@/features/casos/constants/casos-constants";
+import { AtajoFecha } from "@/features/casos/enums/atajo-fecha.enum";
+import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
-import { ListaCasosStore } from "@/features/casos/lista-casos.store";
+import { BandejaStore } from "@/features/casos/bandeja.store";
 import { IncidenciaError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
 import { crearCaso } from "@/features/casos/testing/caso-builder";
@@ -30,17 +32,18 @@ const HOSPITAL: AreaOpcion = {
 
 const esperar = (ms = 15) => new Promise<void>((resolver) => setTimeout(resolver, ms));
 
-describe("ListaCasosStore", () => {
+describe("BandejaStore", () => {
   async function setup(respuesta: ListaCasos = lista(20, "c2")) {
     const api = { listar: vi.fn().mockResolvedValue(respuesta) };
     TestBed.configureTestingModule({
       providers: [
-        ListaCasosStore,
+        BandejaStore,
         { provide: IncidenciasApi, useValue: api },
         { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 },
+        { provide: AHORA, useValue: () => new Date("2026-10-08T15:00:00Z") },
       ],
     });
-    const store = TestBed.inject(ListaCasosStore);
+    const store = TestBed.inject(BandejaStore);
     await esperar();
     return { api, store, casos: TestBed.inject(CasosStore) };
   }
@@ -121,31 +124,43 @@ describe("ListaCasosStore", () => {
   ])("la pestaña %s pide la categoría «%s» y vuelve a la primera página", async (tab, categoria) => {
     const { api, store } = await setup();
     await store.irASiguiente();
-    await store.cambiarTab(tab);
+    await store.cambiarCategoria(tab);
     expect(ultimaConsulta(api)).toEqual({ limite: 20, categoria });
     expect(store.pagina()).toBe(1);
   });
 
   it("la pestaña Todos no manda categoría", async () => {
     const { api, store } = await setup();
-    await store.cambiarTab(FiltroTab.RECLAMOS);
-    await store.cambiarTab(FiltroTab.TODOS);
+    await store.cambiarCategoria(FiltroTab.RECLAMOS);
+    await store.cambiarCategoria(FiltroTab.TODOS);
     expect(ultimaConsulta(api)).not.toHaveProperty("categoria");
   });
 
-  it("filtrar por estado lo manda al servidor, vuelve al principio, y Todo estado lo quita", async () => {
+  it.each([
+    [BandejaTab.POR_REVISAR, "clasificado"],
+    [BandejaTab.EN_GESTION, "en-gestion"],
+    [BandejaTab.DERIVADOS, "derivado"],
+    [BandejaTab.RESUELTOS, "resuelto"],
+    [BandejaTab.ARCHIVADOS, "archivado"],
+  ])("la pestaña %s pide el estado «%s» y vuelve a la primera página", async (bandeja, estado) => {
     const { api, store } = await setup();
     await store.irASiguiente();
-    await store.cambiarEstado("clasificado");
-    expect(ultimaConsulta(api)).toEqual({ limite: 20, estado: "clasificado" });
+    await store.cambiarBandeja(bandeja);
+    expect(ultimaConsulta(api)).toEqual({ limite: 20, estado });
     expect(store.pagina()).toBe(1);
-    await store.cambiarEstado(FILTRO_TODOS);
+  });
+
+  it("la pestaña Todos no manda estado y es la de partida", async () => {
+    const { api, store } = await setup();
+    expect(store.bandeja()).toBe(BandejaTab.TODOS);
+    await store.cambiarBandeja(BandejaTab.RESUELTOS);
+    await store.cambiarBandeja(BandejaTab.TODOS);
     expect(ultimaConsulta(api)).not.toHaveProperty("estado");
   });
 
-  it("los archivados se filtran por motivo en el servidor; otro estado no manda motivo", async () => {
+  it("los archivados se filtran por motivo en el servidor; otra pestaña no manda motivo", async () => {
     const { api, store } = await setup();
-    await store.cambiarEstado("archivado");
+    await store.cambiarBandeja(BandejaTab.ARCHIVADOS);
     expect(store.verArchivados()).toBe(true);
     expect(ultimaConsulta(api)).toEqual({ limite: 20, estado: "archivado" });
 
@@ -153,18 +168,137 @@ describe("ListaCasosStore", () => {
     expect(ultimaConsulta(api)).toEqual({ limite: 20, estado: "archivado", motivoArchivo: "NO_CORRESPONDE" });
     expect(store.hayFiltros()).toBe(true);
 
-    await store.cambiarEstado("resuelto");
+    await store.cambiarBandeja(BandejaTab.RESUELTOS);
     expect(store.verArchivados()).toBe(false);
     expect(store.motivoArchivo()).toBe(FILTRO_TODOS);
     expect(ultimaConsulta(api)).toEqual({ limite: 20, estado: "resuelto" });
   });
 
-  it("limpiar también quita el motivo del archivo", async () => {
-    const { api, store } = await setup();
-    await store.cambiarEstado("archivado");
+  it("cambiar el motivo del archivo vuelve a la primera página", async () => {
+    const { store } = await setup();
+    await store.cambiarBandeja(BandejaTab.ARCHIVADOS);
+    await store.irASiguiente();
+    expect(store.pagina()).toBe(2);
     await store.cambiarMotivoArchivo("DATOS_INSUFICIENTES");
-    await store.limpiar();
-    expect(store.motivoArchivo()).toBe(FILTRO_TODOS);
+    expect(store.pagina()).toBe(1);
+  });
+
+  describe("rango de fechas", () => {
+    it("Desde y Hasta se mandan como YYYY-MM-DD, vuelven a la primera página y se quitan con Limpiar", async () => {
+      const { api, store } = await setup();
+      await store.irASiguiente();
+      await store.cambiarFechas("2026-10-01", "2026-10-07");
+      expect(ultimaConsulta(api)).toEqual({ limite: 20, desde: "2026-10-01", hasta: "2026-10-07" });
+      expect(store.pagina()).toBe(1);
+      expect(store.hayFiltros()).toBe(true);
+
+      await store.limpiarFechas();
+      expect(ultimaConsulta(api)).toEqual({ limite: 20 });
+      expect(store.hayFiltros()).toBe(false);
+    });
+
+    it("con un solo extremo, el otro queda abierto", async () => {
+      const { api, store } = await setup();
+      await store.cambiarFechas("2026-10-01", "");
+      expect(ultimaConsulta(api)).toEqual({ limite: 20, desde: "2026-10-01" });
+      await store.cambiarFechas("", "2026-10-07");
+      expect(ultimaConsulta(api)).toEqual({ limite: 20, hasta: "2026-10-07" });
+    });
+
+    it("desde igual a hasta es un solo día y se acepta", async () => {
+      const { api, store } = await setup();
+      await store.cambiarFechas("2026-10-08", "2026-10-08");
+      expect(store.errorFechas()).toBeNull();
+      expect(ultimaConsulta(api)).toEqual({ limite: 20, desde: "2026-10-08", hasta: "2026-10-08" });
+    });
+
+    it("desde posterior a hasta deja el mensaje y no pide nada: la lista sigue con el último rango válido", async () => {
+      const { api, store } = await setup();
+      await store.cambiarFechas("2026-10-01", "2026-10-07");
+      const antes = api.listar.mock.calls.length;
+      await store.cambiarFechas("2026-10-09", "2026-10-07");
+      expect(store.errorFechas()).toBe("La fecha «Desde» no puede ser posterior a «Hasta».");
+      expect(api.listar.mock.calls.length).toBe(antes);
+      expect(ultimaConsulta(api)).toEqual({ limite: 20, desde: "2026-10-01", hasta: "2026-10-07" });
+    });
+
+    it("el rango máximo es de 366 días; uno más se rechaza con su mensaje", async () => {
+      const { api, store } = await setup();
+      await store.cambiarFechas("2025-10-08", "2026-10-08");
+      expect(store.errorFechas()).toBeNull();
+      expect(ultimaConsulta(api)).toEqual({ limite: 20, desde: "2025-10-08", hasta: "2026-10-08" });
+
+      const antes = api.listar.mock.calls.length;
+      await store.cambiarFechas("2025-10-07", "2026-10-08");
+      expect(store.errorFechas()).toBe("El rango de fechas no puede pasar de 366 días.");
+      expect(api.listar.mock.calls.length).toBe(antes);
+    });
+
+    it("al corregir el rango el mensaje desaparece y se pide de nuevo", async () => {
+      const { api, store } = await setup();
+      await store.cambiarFechas("2026-10-09", "2026-10-07");
+      expect(ultimaConsulta(api)).toEqual({ limite: 20 });
+      await store.cambiarFechas("2026-10-05", "2026-10-07");
+      expect(store.errorFechas()).toBeNull();
+      expect(ultimaConsulta(api)).toEqual({ limite: 20, desde: "2026-10-05", hasta: "2026-10-07" });
+    });
+
+    it("repetir el mismo rango no vuelve a pedir", async () => {
+      const { api, store } = await setup();
+      await store.cambiarFechas("2026-10-01", "2026-10-07");
+      const antes = api.listar.mock.calls.length;
+      await store.cambiarFechas("2026-10-01", "2026-10-07");
+      expect(api.listar.mock.calls.length).toBe(antes);
+    });
+
+    it.each([
+      [AtajoFecha.HOY, { desde: "2026-10-08", hasta: "2026-10-08" }],
+      [AtajoFecha.SIETE_DIAS, { desde: "2026-10-02", hasta: "2026-10-08" }],
+      [AtajoFecha.TREINTA_DIAS, { desde: "2026-09-09", hasta: "2026-10-08" }],
+      [AtajoFecha.ESTE_MES, { desde: "2026-10-01", hasta: "2026-10-08" }],
+    ])("el atajo %s fija las fechas de Lima y las manda al servidor", async (atajo, rango) => {
+      const { api, store } = await setup();
+      await store.aplicarAtajo(atajo);
+      expect(store.desde()).toBe(rango.desde);
+      expect(store.hasta()).toBe(rango.hasta);
+      expect(ultimaConsulta(api)).toEqual({ limite: 20, ...rango });
+    });
+  });
+
+  it("combina pestaña, categoría, fechas, texto y establecimiento en una sola consulta", async () => {
+    const { api, store } = await setup();
+    await store.cambiarBandeja(BandejaTab.DERIVADOS);
+    await store.cambiarCategoria(FiltroTab.QUEJAS);
+    await store.cambiarEstablecimiento(HOSPITAL);
+    await store.cambiarFechas("2026-10-01", "2026-10-07");
+    store.escribirTexto("demora");
+    await esperar();
+    expect(ultimaConsulta(api)).toEqual({
+      limite: 20,
+      estado: "derivado",
+      categoria: "queja",
+      establecimiento: "6206",
+      desde: "2026-10-01",
+      hasta: "2026-10-07",
+      texto: "demora",
+    });
+  });
+
+  it("un código pegado sin los ceros se completa antes de preguntar al servidor", async () => {
+    const { api, store } = await setup();
+    store.escribirTexto("minsa-2026-17");
+    await esperar();
+    expect(ultimaConsulta(api)).toEqual({ limite: 20, texto: "MINSA-2026-000017" });
+    expect(store.texto()).toBe("minsa-2026-17");
+  });
+
+  it("limpiarTexto vacía el buscador y vuelve a pedir sin texto", async () => {
+    const { api, store } = await setup();
+    store.escribirTexto("demora");
+    await esperar();
+    store.limpiarTexto();
+    await esperar();
+    expect(store.texto()).toBe("");
     expect(ultimaConsulta(api)).toEqual({ limite: 20 });
   });
 
@@ -203,10 +337,12 @@ describe("ListaCasosStore", () => {
     expect(api.listar.mock.calls.length).toBe(antes);
   });
 
-  it("limpiar quita pestaña, estado, establecimiento y texto y vuelve a pedir una vez", async () => {
+  it("limpiar quita pestañas, categoría, motivo, fechas, establecimiento y texto y vuelve a pedir una vez", async () => {
     const { api, store } = await setup();
-    await store.cambiarTab(FiltroTab.QUEJAS);
-    await store.cambiarEstado("derivado");
+    await store.cambiarCategoria(FiltroTab.QUEJAS);
+    await store.cambiarBandeja(BandejaTab.ARCHIVADOS);
+    await store.cambiarMotivoArchivo("NO_CORRESPONDE");
+    await store.cambiarFechas("2026-10-01", "2026-10-07");
     await store.cambiarEstablecimiento(HOSPITAL);
     store.escribirTexto("demora");
     await esperar();
@@ -218,6 +354,8 @@ describe("ListaCasosStore", () => {
     expect(store.hayFiltros()).toBe(false);
     expect(store.texto()).toBe("");
     expect(store.establecimiento()).toBeNull();
+    expect(store.hayFechas()).toBe(false);
+    expect(store.bandeja()).toBe(BandejaTab.TODOS);
     expect(api.listar.mock.calls.length).toBe(antes + 1);
     expect(ultimaConsulta(api)).toEqual({ limite: 20 });
   });
@@ -243,8 +381,8 @@ describe("ListaCasosStore", () => {
     api.listar.mockReturnValueOnce(new Promise<ListaCasos>((resolver) => (soltar = resolver)));
     api.listar.mockResolvedValueOnce({ casos: [crearCaso({ codigo: "MINSA-2026-000099" })], siguiente: null, hayMas: false });
 
-    const lenta = store.cambiarTab(FiltroTab.QUEJAS);
-    await store.cambiarTab(FiltroTab.RECLAMOS);
+    const lenta = store.cambiarCategoria(FiltroTab.QUEJAS);
+    await store.cambiarCategoria(FiltroTab.RECLAMOS);
     soltar(lista(20, "c2"));
     await lenta;
 

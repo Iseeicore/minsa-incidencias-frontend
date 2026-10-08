@@ -1,4 +1,6 @@
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
+import { AtajoFecha } from "@/features/casos/enums/atajo-fecha.enum";
+import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
@@ -20,7 +22,9 @@ export const HORAS_POR_DIA = 24;
 export const TAMANO_PAGINA = 20;
 export const LIMITE_AREAS = 8;
 export const MINIMO_BUSQUEDA_AREA = 2;
-export const LIMITE_BANDEJA = 100;
+export const MAX_RANGO_DIAS = 366;
+export const LARGO_NUMERO_CODIGO = 6;
+export const PLACEHOLDER_BUSQUEDA = "Buscar por código (MINSA-2026-000017) o por relato";
 export const MAX_RESOLUCION = 4000;
 export const MAX_ARCHIVO_DETALLE = 2000;
 export const MAX_REAPERTURA_MOTIVO = 2000;
@@ -98,7 +102,7 @@ export const PRIORIDAD_CASO_BADGE: Record<Prioridad, { readonly label: string; r
 };
 
 export const TABS_OPCIONES: readonly TabOption[] = [
-  { value: FiltroTab.TODOS, label: "Todos" },
+  { value: FiltroTab.TODOS, label: "Todas" },
   { value: FiltroTab.RECLAMOS, label: "Reclamos" },
   { value: FiltroTab.QUEJAS, label: "Quejas" },
   { value: FiltroTab.CORRUPCION, label: "Corrupción" },
@@ -136,7 +140,42 @@ export const CATEGORIA_POR_TAB: Record<FiltroTab, string | undefined> = {
   [FiltroTab.SIN_CATEGORIA]: SIN_CATEGORIA_API,
 };
 
-export const ESTADO_OPCIONES: readonly SelectOption[] = [
-  { value: FILTRO_TODOS, label: "Todo estado" },
-  ...Object.values(EstadoCaso).map((estado) => ({ value: estado, label: ESTADO_BADGE[estado].label })),
+export interface BandejaOpcion extends TabOption {
+  readonly value: BandejaTab;
+  readonly ayuda: string;
+}
+
+export const BANDEJAS: readonly BandejaOpcion[] = [
+  {
+    value: BandejaTab.POR_REVISAR,
+    label: "Por revisar",
+    ayuda: "Clasificados por la IA: falta confirmar o corregir la categoría y derivarlos al área.",
+  },
+  { value: BandejaTab.EN_GESTION, label: "En gestión", ayuda: "Casos que el área está atendiendo." },
+  { value: BandejaTab.DERIVADOS, label: "Derivados", ayuda: "Enviados al área, esperando que alguien los tome." },
+  { value: BandejaTab.RESUELTOS, label: "Resueltos", ayuda: "Con resolución vigente; se archivan cuando cumplen su vigencia." },
+  {
+    value: BandejaTab.ARCHIVADOS,
+    label: "Archivados",
+    ayuda:
+      "Archivados a mano, vencidos sin atender y resueltos que cumplieron su vigencia. Ábrelos para ver el motivo o reabrirlos.",
+  },
+  { value: BandejaTab.TODOS, label: "Todos", ayuda: "Todos los casos que tu rol puede ver, en cualquier estado." },
+];
+
+/** Estado que el servidor filtra en cada pestaña; `Todos` no manda estado. */
+export const ESTADO_DE_BANDEJA: Record<BandejaTab, EstadoCaso | undefined> = {
+  [BandejaTab.POR_REVISAR]: EstadoCaso.CLASIFICADO,
+  [BandejaTab.EN_GESTION]: EstadoCaso.EN_GESTION,
+  [BandejaTab.DERIVADOS]: EstadoCaso.DERIVADO,
+  [BandejaTab.RESUELTOS]: EstadoCaso.RESUELTO,
+  [BandejaTab.ARCHIVADOS]: EstadoCaso.ARCHIVADO,
+  [BandejaTab.TODOS]: undefined,
+};
+
+export const ATAJOS_FECHA: readonly { readonly value: AtajoFecha; readonly label: string }[] = [
+  { value: AtajoFecha.HOY, label: "Hoy" },
+  { value: AtajoFecha.SIETE_DIAS, label: "7 días" },
+  { value: AtajoFecha.TREINTA_DIAS, label: "30 días" },
+  { value: AtajoFecha.ESTE_MES, label: "Este mes" },
 ];

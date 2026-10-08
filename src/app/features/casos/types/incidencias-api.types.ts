@@ -114,4 +114,7 @@ export interface ConsultaCasos {
   readonly texto?: string;
   /** Código RENIPRESS; filtro para quien ve varios establecimientos. */
   readonly establecimiento?: string;
+  /** Fecha de llegada, inclusiva, `YYYY-MM-DD` en hora de Lima. */
+  readonly desde?: string;
+  readonly hasta?: string;
 }

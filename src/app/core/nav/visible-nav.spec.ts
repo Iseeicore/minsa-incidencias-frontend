@@ -31,8 +31,7 @@ describe("visibleNav", () => {
 
   it("agrega solo la entrada de cada vista que el usuario tiene", () => {
     const visibles = ids([VistaCodigo.INICIO, VistaCodigo.CASOS]);
-    expect(visibles).toEqual(expect.arrayContaining(["dashboard", "casos"]));
-    expect(visibles).not.toContain("bandejas");
+    expect(visibles).toEqual(expect.arrayContaining(["dashboard", "bandeja"]));
     expect(visibles).not.toContain("derivaciones");
   });
 
@@ -54,7 +53,7 @@ describe("visibleNav", () => {
     const todas = Object.values(VistaCodigo);
     const total = NAV_SECTIONS.flatMap((section) => section.entries);
 
-    it("ve todas las secciones y las 15 entradas, también con la sesión sin vistas", () => {
+    it("ve todas las secciones y las 14 entradas, también con la sesión sin vistas", () => {
       for (const vistas of [todas, []]) {
         const secciones = visibleNav(NAV_SECTIONS, vistas, true);
         expect(secciones.map((section) => section.id)).toEqual(NAV_SECTIONS.map((section) => section.id));
@@ -90,14 +89,14 @@ describe("visibleNav", () => {
     const SIN_DERIVACIONES_QR_NI_USUARIOS = SIN_QR_NI_USUARIOS.filter((vista) => vista !== VistaCodigo.DERIVACIONES);
     const SIN_DERIVACIONES = TODAS.filter((vista) => vista !== VistaCodigo.DERIVACIONES);
     const operacion = (vistas: VistaCodigo[]) =>
-      ids(vistas).filter((id) => ["dashboard", "casos", "bandejas", "derivaciones", "qr", "usuarios"].includes(id));
+      ids(vistas).filter((id) => ["dashboard", "bandeja", "derivaciones", "qr", "usuarios"].includes(id));
 
-    it("ADMINISTRADOR ve Dashboard, Casos, Mis bandejas, Derivaciones, Códigos QR y Usuarios", () => {
-      expect(operacion(TODAS)).toEqual(["dashboard", "casos", "bandejas", "derivaciones", "qr", "usuarios"]);
+    it("ADMINISTRADOR ve Dashboard, Bandeja, Derivaciones, Códigos QR y Usuarios", () => {
+      expect(operacion(TODAS)).toEqual(["dashboard", "bandeja", "derivaciones", "qr", "usuarios"]);
     });
 
-    it("GESTOR ve Dashboard, Casos y Mis bandejas, sin Derivaciones, Códigos QR ni Usuarios", () => {
-      expect(operacion(SIN_DERIVACIONES_QR_NI_USUARIOS)).toEqual(["dashboard", "casos", "bandejas"]);
+    it("GESTOR ve Dashboard y Bandeja, sin Derivaciones, Códigos QR ni Usuarios", () => {
+      expect(operacion(SIN_DERIVACIONES_QR_NI_USUARIOS)).toEqual(["dashboard", "bandeja"]);
     });
 
     it("la lista fija por rol no existe: Derivaciones aparece solo si la API manda la vista", () => {
@@ -105,12 +104,12 @@ describe("visibleNav", () => {
       expect(operacion(SIN_DERIVACIONES_QR_NI_USUARIOS)).not.toContain("derivaciones");
     });
 
-    it("OTRANS ve Dashboard, Casos y Mis bandejas, sin Derivaciones, Códigos QR ni Usuarios", () => {
-      expect(operacion(SIN_DERIVACIONES_QR_NI_USUARIOS)).toEqual(["dashboard", "casos", "bandejas"]);
+    it("OTRANS ve Dashboard y Bandeja, sin Derivaciones, Códigos QR ni Usuarios", () => {
+      expect(operacion(SIN_DERIVACIONES_QR_NI_USUARIOS)).toEqual(["dashboard", "bandeja"]);
     });
 
-    it("ESTABLECIMIENTO ve Dashboard, Casos, Mis bandejas, Códigos QR y Usuarios, sin Derivaciones", () => {
-      expect(operacion(SIN_DERIVACIONES)).toEqual(["dashboard", "casos", "bandejas", "qr", "usuarios"]);
+    it("ESTABLECIMIENTO ve Dashboard, Bandeja, Códigos QR y Usuarios, sin Derivaciones", () => {
+      expect(operacion(SIN_DERIVACIONES)).toEqual(["dashboard", "bandeja", "qr", "usuarios"]);
     });
 
     it("la entrada «Usuarios» está implementada, en Configuración, y apunta a /usuarios", () => {

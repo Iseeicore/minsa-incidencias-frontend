@@ -1,8 +1,9 @@
 export const ROUTE_PATH = {
   LOGIN: "login",
   INICIO: "inicio",
-  CASOS: "casos",
-  BANDEJAS: "bandejas",
+  BANDEJA: "bandeja",
+  CASOS_ANTIGUA: "casos",
+  BANDEJAS_ANTIGUA: "bandejas",
   DERIVACIONES: "derivaciones",
   QR: "qr",
   USUARIOS: "usuarios",
@@ -12,8 +13,7 @@ export const ROUTE_PATH = {
 export const ROUTE = {
   LOGIN: `/${ROUTE_PATH.LOGIN}`,
   INICIO: `/${ROUTE_PATH.INICIO}`,
-  CASOS: `/${ROUTE_PATH.CASOS}`,
-  BANDEJAS: `/${ROUTE_PATH.BANDEJAS}`,
+  BANDEJA: `/${ROUTE_PATH.BANDEJA}`,
   DERIVACIONES: `/${ROUTE_PATH.DERIVACIONES}`,
   QR: `/${ROUTE_PATH.QR}`,
   USUARIOS: `/${ROUTE_PATH.USUARIOS}`,
