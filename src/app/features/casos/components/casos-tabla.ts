@@ -16,7 +16,7 @@ import { Badge } from "@/shared/ui/badge/badge";
 import { Button } from "@/shared/ui/button/button";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 
-const ENCABEZADO = "sticky top-0 z-10 bg-white pb-3 pr-6 text-xs font-medium text-gray-500";
+const ENCABEZADO = "bg-white pb-3 pr-6 text-xs font-medium text-gray-500";
 
 const COLUMNAS: readonly { readonly key: string; readonly label: string }[] = [
   { key: "codigo", label: "Código" },

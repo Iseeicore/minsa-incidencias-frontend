@@ -34,17 +34,6 @@
                     <span class="truncate">{{ entrada.label }}</span>
                   }
                 </a>
-              } @else {
-                <span
-                  aria-disabled="true"
-                  [class]="disabledClasses"
-                  [attr.title]="entrada.label + ' (próximamente)'"
-                >
-                  <app-icon [name]="entrada.icon" />
-                  @if (!compact()) {
-                    <span class="truncate">{{ entrada.label }}</span>
-                  }
-                </span>
               }
             </li>
           }

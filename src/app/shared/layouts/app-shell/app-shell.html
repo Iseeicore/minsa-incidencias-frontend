@@ -1,4 +1,4 @@
-<div class="flex min-h-dvh bg-gray-100">
+<div class="flex h-dvh overflow-hidden bg-gray-100">
   <app-sidebar
     [secciones]="secciones()"
     [nombre]="nombre()"
@@ -13,7 +13,7 @@
   @if (pantallaChica() && menuAbierto()) {
     <div class="fixed inset-0 z-30 bg-gray-900/40" aria-hidden="true" (click)="cerrarMenu()"></div>
   }
-  <div class="flex min-w-0 flex-1 flex-col">
+  <div class="flex min-w-0 flex-1 flex-col overflow-y-auto">
     <app-topbar [nombre]="nombre()" [compact]="compact()" [pantallaChica]="pantallaChica()" (alternar)="alternarMenu()">
       <app-avisos-campana avisos />
     </app-topbar>

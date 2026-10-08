@@ -43,11 +43,13 @@ describe("AppShell", () => {
     expect(element.textContent).not.toContain("Derivaciones");
   });
 
-  it("solo las entradas con pantalla son enlace y el resto queda deshabilitado", async () => {
+  it("solo se muestran las entradas con pantalla, sin entradas en gris ni secciones vacías", async () => {
     const { element } = await setup(ana);
     const enlaces = Array.from(element.querySelectorAll("nav a")).map((a) => a.textContent?.trim());
     expect(enlaces).toEqual(["Dashboard", "Casos", "Mis bandejas", "Derivaciones"]);
-    expect(element.querySelectorAll("nav [aria-disabled='true']").length).toBeGreaterThan(0);
+    expect(element.querySelectorAll("nav [aria-disabled='true']")).toHaveLength(0);
+    expect(element.querySelectorAll("nav app-sidebar-group")).toHaveLength(1);
+    expect(element.querySelector("nav")?.textContent).not.toContain("Inteligencia IA");
   });
 
   it("contraer el menú oculta las etiquetas y deja los iconos", async () => {

@@ -5,7 +5,7 @@ import { ChangeDetectionStrategy, Component, input } from "@angular/core";
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class:
-      "block max-h-128 max-w-full overflow-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
+      "block max-w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500",
     role: "region",
     tabindex: "0",
     "[attr.aria-label]": "label()",

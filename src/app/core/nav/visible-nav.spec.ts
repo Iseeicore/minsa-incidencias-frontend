@@ -6,11 +6,27 @@ const ids = (vistas: VistaCodigo[]) =>
   visibleNav(NAV_SECTIONS, vistas).flatMap((section) => section.entries.map((entry) => entry.id));
 
 describe("visibleNav", () => {
-  it("sin vistas oculta las entradas que piden una vista y deja las que aún no tienen pantalla", () => {
-    const visibles = ids([]);
-    expect(visibles).not.toContain("dashboard");
-    expect(visibles).not.toContain("casos");
-    expect(visibles).toContain("usuarios");
+  it("sin vistas no muestra nada: las entradas sin pantalla nunca se ven", () => {
+    expect(ids([])).toEqual([]);
+    expect(visibleNav(NAV_SECTIONS, [])).toEqual([]);
+  });
+
+  it("oculta las entradas sin pantalla aunque el rol tenga todas las vistas, y sus secciones", () => {
+    const secciones = visibleNav(NAV_SECTIONS, Object.values(VistaCodigo));
+    const visibles = secciones.flatMap((section) => section.entries.map((entry) => entry.id));
+    for (const id of ["revision-ia", "dataset", "modelos", "etiquetas", "usuarios", "evidencias", "auditoria"]) {
+      expect(visibles).not.toContain(id);
+    }
+    expect(secciones.map((section) => section.id)).toEqual(["operacion"]);
+  });
+
+  it("una entrada sin vista se muestra solo si está implementada", () => {
+    const entradas = [
+      { id: "a", label: "A", icon: "users", implementada: true },
+      { id: "b", label: "B", icon: "users", implementada: false },
+    ] as const;
+    const secciones = visibleNav([{ id: "x", label: "X", entries: entradas }], []);
+    expect(secciones[0]?.entries.map((entry) => entry.id)).toEqual(["a"]);
   });
 
   it("agrega solo la entrada de cada vista que el usuario tiene", () => {
@@ -20,9 +36,9 @@ describe("visibleNav", () => {
     expect(visibles).not.toContain("derivaciones");
   });
 
-  it("con todas las vistas muestra todo el menú", () => {
+  it("con todas las vistas muestra todas las entradas implementadas", () => {
     const todas = Object.values(VistaCodigo);
-    const total = NAV_SECTIONS.flatMap((section) => section.entries).length;
+    const total = NAV_SECTIONS.flatMap((section) => section.entries).filter((entry) => entry.implementada).length;
     expect(ids(todas)).toHaveLength(total);
   });
 
@@ -54,7 +70,7 @@ describe("visibleNav", () => {
 
   it("quita las secciones que quedan vacías", () => {
     const secciones = visibleNav(
-      [{ id: "x", label: "X", entries: [{ id: "a", label: "A", icon: "users", vista: VistaCodigo.CASOS }] }],
+      [{ id: "x", label: "X", entries: [{ id: "a", label: "A", icon: "users", vista: VistaCodigo.CASOS, implementada: true }] }],
       [],
     );
     expect(secciones).toEqual([]);
