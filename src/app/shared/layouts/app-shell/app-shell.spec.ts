@@ -43,6 +43,7 @@ describe("AppShell", () => {
     const { element } = await setup(ana);
     const contenido = element.querySelector<HTMLElement>("div.overflow-y-auto");
     expect(contenido?.classList.contains("relative")).toBe(true);
+    expect(contenido?.classList.contains("overflow-x-hidden")).toBe(true);
   });
 
   it("muestra el nombre y solo el menú de las vistas del usuario", async () => {
