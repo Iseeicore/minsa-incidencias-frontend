@@ -11,86 +11,114 @@
 
   <app-tabs label="Estado del caso" [options]="bandejas" [value]="store.bandeja()" (valueChange)="cambiarBandeja($event)" />
 
-  <section aria-label="Filtros" class="min-w-0 space-y-4">
-    <app-tabs
-      label="Categoría"
-      [options]="categoriasOpciones()"
-      [value]="store.categoria()"
-      (valueChange)="cambiarCategoria($event)"
-    />
-
-    <app-search-input
-      class="md:max-w-xl"
-      label="Buscar caso"
-      [placeholder]="placeholderBusqueda"
-      [value]="store.texto()"
-      (valueChange)="store.escribirTexto($event)"
-    />
-
-    <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <app-date-field
-        class="sm:w-48"
-        label="Desde"
-        [invalid]="store.errorFechas() !== null"
-        [value]="store.desde()"
-        (valueChange)="alCambiarDesde($event)"
-      />
-      <app-date-field
-        class="sm:w-48"
-        label="Hasta"
-        [invalid]="store.errorFechas() !== null"
-        [value]="store.hasta()"
-        (valueChange)="alCambiarHasta($event)"
-      />
-      <div class="flex flex-wrap gap-2" role="group" aria-label="Atajos de fecha">
-        @for (atajo of atajos; track atajo.value) {
-          <app-button
-            [variant]="ButtonVariant.OUTLINE"
-            [tone]="ButtonTone.NEUTRAL"
-            [size]="ButtonSize.SM"
-            (click)="store.aplicarAtajo(atajo.value)"
-          >
-            {{ atajo.label }}
-          </app-button>
-        }
-        @if (store.hayFechas()) {
-          <app-button
-            [variant]="ButtonVariant.OUTLINE"
-            [tone]="ButtonTone.NEUTRAL"
-            [size]="ButtonSize.SM"
-            (click)="store.limpiarFechas()"
-          >
-            Limpiar<span class="sr-only"> fechas</span>
-          </app-button>
-        }
-      </div>
+  <section
+    aria-label="Filtros"
+    class="min-w-0 space-y-5 rounded-2xl bg-white p-4 sm:p-5 [&_input]:border [&_input]:border-gray-200 [&_select]:border [&_select]:border-gray-200"
+  >
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-base font-bold text-gray-900">Filtros</h2>
+      <p class="text-sm text-gray-600">Los filtros se combinan entre sí.</p>
     </div>
-    @if (store.errorFechas(); as mensaje) {
-      <p class="text-sm font-medium text-danger-600" role="alert">{{ mensaje }}</p>
-    }
+
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-end">
+      <div class="min-w-0 space-y-1.5" [class]="veTodasLasAreas() ? 'lg:col-span-7' : 'lg:col-span-12'">
+        <p class="text-sm font-medium text-gray-700">Buscar caso</p>
+        <app-search-input
+          label="Buscar caso"
+          [placeholder]="placeholderBusqueda"
+          [value]="store.texto()"
+          (valueChange)="store.escribirTexto($event)"
+        />
+      </div>
+
+      @if (veTodasLasAreas()) {
+        <div class="min-w-0 space-y-1.5 lg:col-span-5">
+          <app-area-selector
+            class="block"
+            label="Filtrar por establecimiento"
+            placeholder="Busca un establecimiento..."
+            [seleccionada]="store.establecimiento()"
+            (seleccionadaChange)="store.cambiarEstablecimiento($event)"
+          />
+        </div>
+      }
+    </div>
+
+    <div class="space-y-1.5">
+      <p class="text-xs font-bold uppercase tracking-wide text-gray-500">Fecha de llegada</p>
+      <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <app-date-field
+          class="sm:w-48"
+          label="Desde"
+          [invalid]="store.errorFechas() !== null"
+          [value]="store.desde()"
+          (valueChange)="alCambiarDesde($event)"
+        />
+        <app-date-field
+          class="sm:w-48"
+          label="Hasta"
+          [invalid]="store.errorFechas() !== null"
+          [value]="store.hasta()"
+          (valueChange)="alCambiarHasta($event)"
+        />
+        <div class="flex flex-wrap gap-2 sm:pb-1" role="group" aria-label="Atajos de fecha">
+          @for (atajo of atajos; track atajo.value) {
+            <app-button
+              [variant]="ButtonVariant.OUTLINE"
+              [tone]="ButtonTone.NEUTRAL"
+              [size]="ButtonSize.SM"
+              (click)="store.aplicarAtajo(atajo.value)"
+            >
+              {{ atajo.label }}
+            </app-button>
+          }
+          @if (store.hayFechas()) {
+            <app-button
+              [variant]="ButtonVariant.OUTLINE"
+              [tone]="ButtonTone.NEUTRAL"
+              [size]="ButtonSize.SM"
+              (click)="store.limpiarFechas()"
+            >
+              Limpiar<span class="sr-only"> fechas</span>
+            </app-button>
+          }
+        </div>
+      </div>
+      @if (store.errorFechas(); as mensaje) {
+        <p class="text-sm font-medium text-danger-600" role="alert">{{ mensaje }}</p>
+      }
+    </div>
+
+    <div class="space-y-1.5">
+      <p class="text-xs font-bold uppercase tracking-wide text-gray-500">Categoría</p>
+      <app-tabs
+        label="Categoría"
+        [options]="categoriasOpciones()"
+        [value]="store.categoria()"
+        (valueChange)="cambiarCategoria($event)"
+      />
+    </div>
 
     @if (store.verArchivados()) {
-      <app-select-field
-        class="md:max-w-xs"
-        label="Filtrar por motivo del archivo"
-        [options]="motivoOpciones"
-        [value]="store.motivoArchivo()"
-        (valueChange)="store.cambiarMotivoArchivo($event)"
-      />
+      <div class="space-y-1.5">
+        <p class="text-xs font-bold uppercase tracking-wide text-gray-500">Motivo del archivo</p>
+        <app-select-field
+          class="md:max-w-xs"
+          label="Filtrar por motivo del archivo"
+          [options]="motivoOpciones"
+          [value]="store.motivoArchivo()"
+          (valueChange)="store.cambiarMotivoArchivo($event)"
+        />
+      </div>
     }
 
-    @if (veTodasLasAreas()) {
-      <app-area-selector
-        class="block md:max-w-md"
-        label="Filtrar por establecimiento"
-        placeholder="Busca un establecimiento..."
-        [seleccionada]="store.establecimiento()"
-        (seleccionadaChange)="store.cambiarEstablecimiento($event)"
-      />
-    }
+    <app-filtros-activos
+      class="hidden border-t border-gray-100 pt-4 has-[section]:block"
+      [filtros]="filtrosAplicados()"
+      (quitar)="quitarFiltro($event)"
+      (limpiar)="store.limpiar()"
+    />
   </section>
-
-  <app-filtros-activos [filtros]="filtrosAplicados()" (quitar)="quitarFiltro($event)" (limpiar)="store.limpiar()" />
 
   <app-card>
     <div class="mb-1 flex items-center justify-between gap-3">
