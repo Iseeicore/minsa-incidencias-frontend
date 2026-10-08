@@ -38,7 +38,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
       { id: "etiquetas", label: "Etiquetas", icon: IconName.LABELS, implementada: false },
       { id: "competencias", label: "Competencias", icon: IconName.COMPETENCIES, implementada: false },
       { id: "organismos", label: "Organismos y áreas", icon: IconName.ORGANIZATIONS, implementada: false },
-      { id: "usuarios", label: "Usuarios", icon: IconName.USERS, implementada: false },
+      { id: "usuarios", label: "Usuarios", icon: IconName.USERS, path: ROUTE.USUARIOS, vista: VistaCodigo.USUARIOS, implementada: true },
     ],
   },
   {

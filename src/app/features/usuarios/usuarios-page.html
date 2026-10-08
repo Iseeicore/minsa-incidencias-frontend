@@ -1,0 +1,100 @@
+<div class="space-y-6">
+  <header class="flex flex-wrap items-end justify-between gap-3">
+    <div class="min-w-0">
+      <p class="text-sm font-medium text-gray-600">Configuración</p>
+      <h1 class="text-3xl font-bold text-gray-900">Usuarios</h1>
+      @if (area(); as miArea) {
+        <p class="mt-1 text-sm text-gray-600">Establecimiento: {{ miArea.nombre }}</p>
+      }
+    </div>
+    <app-button (click)="creando.set(true)">
+      <app-icon [name]="IconName.PLUS" [size]="16" />
+      Nuevo usuario
+    </app-button>
+  </header>
+
+  @if (!veTodasLasAreas()) {
+    <section aria-label="Cupo de usuarios" class="flex flex-wrap items-center gap-3">
+      <app-badge [tone]="limiteAlcanzado() ? BadgeTone.WARNING : BadgeTone.PRIMARY">
+        {{ lista.activos() }} de {{ tope }} usuarios activos{{ parcial() ? " en esta página" : "" }}
+      </app-badge>
+      @if (limiteAlcanzado()) {
+        <p class="text-sm text-gray-600">Para crear o activar a otra persona, desactiva antes a un usuario.</p>
+      }
+    </section>
+  }
+
+  <section aria-label="Filtros" class="flex flex-col gap-3 md:flex-row md:items-start">
+    <app-search-input
+      class="md:max-w-sm md:flex-1"
+      label="Buscar usuario"
+      placeholder="Buscar por nombre o correo..."
+      [value]="lista.texto()"
+      (valueChange)="lista.escribirTexto($event)"
+    />
+    @if (veTodasLasAreas()) {
+      <app-area-selector
+        class="md:w-80"
+        label="Filtrar por área"
+        placeholder="Busca un área..."
+        [soloEstablecimientos]="false"
+        [seleccionada]="lista.area()"
+        (seleccionadaChange)="lista.cambiarArea($event)"
+      />
+    }
+  </section>
+
+  <app-card>
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <h2 class="text-base font-bold text-gray-900">Listado</h2>
+      <p class="text-sm font-medium text-gray-600" aria-live="polite">
+        {{ lista.usuarios().length }} {{ lista.usuarios().length === 1 ? "usuario" : "usuarios" }} en esta página
+      </p>
+    </div>
+
+    @if (lista.error(); as mensaje) {
+      <div class="mb-4 space-y-3">
+        <app-alert [tone]="BadgeTone.DANGER">{{ mensaje }}</app-alert>
+        <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="lista.cargar()">
+          Reintentar
+        </app-button>
+      </div>
+    }
+
+    @if (lista.usuarios().length > 0) {
+      <div [attr.aria-busy]="lista.estadoCarga() === CargaEstado.CARGANDO">
+        <app-usuarios-tabla [usuarios]="lista.usuarios()" (editar)="editando.set($event)" />
+      </div>
+      <app-paginador-cursor
+        class="mt-4"
+        label="Paginación de usuarios"
+        singular="usuario"
+        plural="usuarios"
+        [pagina]="lista.pagina()"
+        [cantidad]="lista.usuarios().length"
+        [hayAnterior]="lista.hayAnterior()"
+        [hayMas]="lista.hayMas()"
+        [cargando]="lista.estadoCarga() === CargaEstado.CARGANDO"
+        (anterior)="lista.irAAnterior()"
+        (siguiente)="lista.irASiguiente()"
+      />
+    } @else if (lista.estadoCarga() === CargaEstado.INICIAL || lista.estadoCarga() === CargaEstado.CARGANDO) {
+      <p class="py-10 text-center text-sm font-medium text-gray-700" aria-live="polite">Cargando usuarios…</p>
+    } @else if (lista.vacio()) {
+      <div class="flex flex-col items-center gap-3 py-10 text-center">
+        <p class="text-sm font-medium text-gray-700">
+          {{ lista.hayFiltros() ? "No hay usuarios con estos filtros." : "Todavía no hay usuarios." }}
+        </p>
+        @if (lista.hayFiltros()) {
+          <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="lista.limpiar()">
+            Limpiar filtros
+          </app-button>
+        }
+      </div>
+    }
+  </app-card>
+</div>
+
+<app-usuario-nuevo [(abierto)]="creando" (creado)="mostrarClave($event)" />
+<app-usuario-edicion [usuario]="editando()" (cerrado)="editando.set(null)" (claveRestablecida)="mostrarClave($event)" />
+<app-clave-inicial-dialogo [credencial]="credencial()" (cerrado)="cerrarClave()" />

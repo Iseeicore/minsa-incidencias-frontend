@@ -5,6 +5,7 @@ export const ROUTE_PATH = {
   BANDEJAS: "bandejas",
   DERIVACIONES: "derivaciones",
   QR: "qr",
+  USUARIOS: "usuarios",
   SIN_ACCESO: "sin-acceso",
 } as const;
 
@@ -15,5 +16,6 @@ export const ROUTE = {
   BANDEJAS: `/${ROUTE_PATH.BANDEJAS}`,
   DERIVACIONES: `/${ROUTE_PATH.DERIVACIONES}`,
   QR: `/${ROUTE_PATH.QR}`,
+  USUARIOS: `/${ROUTE_PATH.USUARIOS}`,
   SIN_ACCESO: `/${ROUTE_PATH.SIN_ACCESO}`,
 } as const;

@@ -37,6 +37,14 @@ describe("vistaGuard", () => {
     expect(destino(setup([VistaCodigo.INICIO, VistaCodigo.CASOS], VistaCodigo.QR)())).toBe(ROUTE.INICIO);
   });
 
+  it("la vista USUARIOS deja pasar a quien la tiene", () => {
+    expect(setup([VistaCodigo.INICIO, VistaCodigo.USUARIOS], VistaCodigo.USUARIOS)()).toBe(true);
+  });
+
+  it("sin la vista USUARIOS (gestor, OTRANS) redirige a su primera vista", () => {
+    expect(destino(setup([VistaCodigo.CASOS, VistaCodigo.BANDEJAS], VistaCodigo.USUARIOS)())).toBe(ROUTE.CASOS);
+  });
+
   it("sin ninguna vista redirige a la página de sin acceso, sin dar vueltas", () => {
     expect(destino(setup([], VistaCodigo.INICIO)())).toBe(ROUTE.SIN_ACCESO);
   });

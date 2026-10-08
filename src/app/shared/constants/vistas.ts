@@ -8,4 +8,5 @@ export const RUTA_DE_VISTA: Readonly<Record<VistaCodigo, string>> = {
   [VistaCodigo.BANDEJAS]: ROUTE.BANDEJAS,
   [VistaCodigo.DERIVACIONES]: ROUTE.DERIVACIONES,
   [VistaCodigo.QR]: ROUTE.QR,
+  [VistaCodigo.USUARIOS]: ROUTE.USUARIOS,
 };

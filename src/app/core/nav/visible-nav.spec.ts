@@ -14,10 +14,10 @@ describe("visibleNav", () => {
   it("oculta las entradas sin pantalla aunque el rol tenga todas las vistas, y sus secciones", () => {
     const secciones = visibleNav(NAV_SECTIONS, Object.values(VistaCodigo));
     const visibles = secciones.flatMap((section) => section.entries.map((entry) => entry.id));
-    for (const id of ["revision-ia", "dataset", "modelos", "etiquetas", "usuarios", "evidencias", "auditoria"]) {
+    for (const id of ["revision-ia", "dataset", "modelos", "etiquetas", "evidencias", "auditoria"]) {
       expect(visibles).not.toContain(id);
     }
-    expect(secciones.map((section) => section.id)).toEqual(["operacion"]);
+    expect(secciones.map((section) => section.id)).toEqual(["operacion", "configuracion"]);
   });
 
   it("una entrada sin vista se muestra solo si está implementada", () => {
@@ -54,7 +54,7 @@ describe("visibleNav", () => {
     const todas = Object.values(VistaCodigo);
     const total = NAV_SECTIONS.flatMap((section) => section.entries);
 
-    it("ve todas las secciones y las 14 entradas, también con la sesión sin vistas", () => {
+    it("ve todas las secciones y las 15 entradas, también con la sesión sin vistas", () => {
       for (const vistas of [todas, []]) {
         const secciones = visibleNav(NAV_SECTIONS, vistas, true);
         expect(secciones.map((section) => section.id)).toEqual(NAV_SECTIONS.map((section) => section.id));
@@ -71,40 +71,46 @@ describe("visibleNav", () => {
         "etiquetas",
         "competencias",
         "organismos",
-        "usuarios",
         "evidencias",
         "alertas",
         "auditoria",
       ]);
     });
 
-    it("el gestor con las mismas vistas no ve las entradas sin pantalla", () => {
-      expect(visibleNav(NAV_SECTIONS, todas, false).map((section) => section.id)).toEqual(["operacion"]);
+    it("quien no es administrador no ve las entradas sin pantalla, solo Usuarios si tiene esa vista", () => {
+      expect(visibleNav(NAV_SECTIONS, todas, false).map((section) => section.id)).toEqual(["operacion", "configuracion"]);
+      const sinUsuarios = todas.filter((vista) => vista !== VistaCodigo.USUARIOS);
+      expect(visibleNav(NAV_SECTIONS, sinUsuarios, false).map((section) => section.id)).toEqual(["operacion"]);
     });
   });
 
   describe("menú de los cuatro roles (vistas que manda /auth/me)", () => {
     const TODAS = Object.values(VistaCodigo);
-    const SIN_QR = TODAS.filter((vista) => vista !== VistaCodigo.QR);
-    const SIN_DERIVACIONES_NI_QR = SIN_QR.filter((vista) => vista !== VistaCodigo.DERIVACIONES);
+    const SIN_QR_NI_USUARIOS = TODAS.filter((vista) => vista !== VistaCodigo.QR && vista !== VistaCodigo.USUARIOS);
+    const SIN_DERIVACIONES_QR_NI_USUARIOS = SIN_QR_NI_USUARIOS.filter((vista) => vista !== VistaCodigo.DERIVACIONES);
     const SIN_DERIVACIONES = TODAS.filter((vista) => vista !== VistaCodigo.DERIVACIONES);
     const operacion = (vistas: VistaCodigo[]) =>
-      ids(vistas).filter((id) => ["dashboard", "casos", "bandejas", "derivaciones", "qr"].includes(id));
+      ids(vistas).filter((id) => ["dashboard", "casos", "bandejas", "derivaciones", "qr", "usuarios"].includes(id));
 
-    it("ADMINISTRADOR ve Dashboard, Casos, Mis bandejas, Derivaciones y Códigos QR", () => {
-      expect(operacion(TODAS)).toEqual(["dashboard", "casos", "bandejas", "derivaciones", "qr"]);
+    it("ADMINISTRADOR ve Dashboard, Casos, Mis bandejas, Derivaciones, Códigos QR y Usuarios", () => {
+      expect(operacion(TODAS)).toEqual(["dashboard", "casos", "bandejas", "derivaciones", "qr", "usuarios"]);
     });
 
-    it("GESTOR ve Dashboard, Casos, Mis bandejas y Derivaciones, sin Códigos QR", () => {
-      expect(operacion(SIN_QR)).toEqual(["dashboard", "casos", "bandejas", "derivaciones"]);
+    it("GESTOR ve Dashboard, Casos, Mis bandejas y Derivaciones, sin Códigos QR ni Usuarios", () => {
+      expect(operacion(SIN_QR_NI_USUARIOS)).toEqual(["dashboard", "casos", "bandejas", "derivaciones"]);
     });
 
-    it("OTRANS ve Dashboard, Casos y Mis bandejas, sin Derivaciones ni Códigos QR", () => {
-      expect(operacion(SIN_DERIVACIONES_NI_QR)).toEqual(["dashboard", "casos", "bandejas"]);
+    it("OTRANS ve Dashboard, Casos y Mis bandejas, sin Derivaciones, Códigos QR ni Usuarios", () => {
+      expect(operacion(SIN_DERIVACIONES_QR_NI_USUARIOS)).toEqual(["dashboard", "casos", "bandejas"]);
     });
 
-    it("ESTABLECIMIENTO ve Dashboard, Casos, Mis bandejas y Códigos QR, sin Derivaciones", () => {
-      expect(operacion(SIN_DERIVACIONES)).toEqual(["dashboard", "casos", "bandejas", "qr"]);
+    it("ESTABLECIMIENTO ve Dashboard, Casos, Mis bandejas, Códigos QR y Usuarios, sin Derivaciones", () => {
+      expect(operacion(SIN_DERIVACIONES)).toEqual(["dashboard", "casos", "bandejas", "qr", "usuarios"]);
+    });
+
+    it("la entrada «Usuarios» está implementada, en Configuración, y apunta a /usuarios", () => {
+      const entrada = NAV_SECTIONS.find((section) => section.id === "configuracion")?.entries.find((candidata) => candidata.id === "usuarios");
+      expect(entrada).toMatchObject({ label: "Usuarios", path: "/usuarios", vista: VistaCodigo.USUARIOS, implementada: true });
     });
 
     it("la entrada «Códigos QR» está implementada y apunta a /qr", () => {
