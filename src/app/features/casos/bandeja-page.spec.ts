@@ -420,6 +420,111 @@ describe("BandejaPage", () => {
     expect(Array.from(element.querySelectorAll("button")).some((boton) => boton.textContent?.includes("Limpiar filtros"))).toBe(false);
   });
 
+  describe("filtros aplicados", () => {
+    const chips = (element: HTMLElement) =>
+      Array.from(element.querySelectorAll("section[aria-label='Filtros aplicados'] app-chip-quitable")).map((chip) =>
+        chip.textContent?.trim(),
+      );
+    const quitar = (element: HTMLElement, texto: string) =>
+      element.querySelector<HTMLButtonElement>(`section[aria-label='Filtros aplicados'] button[aria-label='Quitar filtro: ${texto}']`);
+
+    it("sin filtros no muestra la franja", async () => {
+      const { element } = await setup();
+      expect(element.querySelector("section[aria-label='Filtros aplicados']")).toBeNull();
+    });
+
+    it("muestra un chip por cada filtro aplicado: estado, categoría, fechas y búsqueda", async () => {
+      const { element, pestana, boton, escribirFecha, asentar } = await setup();
+      pestana("Estado del caso", "En gestión")?.click();
+      pestana("Categoría", "Quejas")?.click();
+      await asentar();
+      await escribirFecha("Desde", "2026-10-01");
+      await escribirFecha("Hasta", "2026-10-07");
+      const buscador = element.querySelector<HTMLInputElement>("app-search-input input") as HTMLInputElement;
+      buscador.value = "demora";
+      buscador.dispatchEvent(new Event("input"));
+      await asentar();
+      expect(chips(element)).toEqual([
+        "Estado: En gestión",
+        "Categoría: Quejas",
+        "Fecha: del 01/10/2026 al 07/10/2026",
+        "Búsqueda: «demora»",
+      ]);
+      expect(boton("Limpiar todo")).toBeDefined();
+    });
+
+    it("el filtro de establecimiento y el de motivo también aparecen", async () => {
+      const { element, pestana, asentar } = await setup();
+      pestana("Estado del caso", "Archivados")?.click();
+      await asentar();
+      const motivo = element.querySelector<HTMLSelectElement>("section[aria-label='Filtros'] select") as HTMLSelectElement;
+      motivo.value = "NO_CORRESPONDE";
+      motivo.dispatchEvent(new Event("change"));
+      await asentar();
+      expect(chips(element)).toEqual(["Estado: Archivados", "Motivo: No corresponde"]);
+    });
+
+    it("quitar un chip quita solo ese filtro, vuelve a la primera página y lo borra de la franja", async () => {
+      const { element, pestana, boton, asentar, ultimaConsulta } = await setup();
+      pestana("Categoría", "Quejas")?.click();
+      pestana("Estado del caso", "En gestión")?.click();
+      await asentar();
+      boton("Siguiente")?.click();
+      await asentar();
+      expect(ultimaConsulta()).toEqual({ limite: 20, cursor: "cursor-2", estado: "en-gestion", categoria: "queja" });
+
+      quitar(element, "Categoría: Quejas")?.click();
+      await asentar();
+      expect(ultimaConsulta()).toEqual({ limite: 20, estado: "en-gestion" });
+      expect(chips(element)).toEqual(["Estado: En gestión"]);
+      expect(element.querySelector("app-paginador-cursor")?.textContent).toContain("Página 1");
+    });
+
+    it("quitar el chip de fechas vacía los dos campos y quitar el de búsqueda vacía el buscador", async () => {
+      const { element, boton, campoFecha, asentar, ultimaConsulta } = await setup();
+      boton("Hoy")?.click();
+      const buscador = element.querySelector<HTMLInputElement>("app-search-input input") as HTMLInputElement;
+      buscador.value = "demora";
+      buscador.dispatchEvent(new Event("input"));
+      await asentar();
+      expect(ultimaConsulta()).toEqual({ limite: 20, texto: "demora", desde: "2026-10-08", hasta: "2026-10-08" });
+
+      quitar(element, "Fecha: 08/10/2026")?.click();
+      await asentar();
+      expect(campoFecha("Desde").value).toBe("");
+      expect(campoFecha("Hasta").value).toBe("");
+      expect(ultimaConsulta()).toEqual({ limite: 20, texto: "demora" });
+
+      quitar(element, "Búsqueda: «demora»")?.click();
+      await asentar();
+      expect(buscador.value).toBe("");
+      expect(ultimaConsulta()).toEqual({ limite: 20 });
+      expect(element.querySelector("section[aria-label='Filtros aplicados']")).toBeNull();
+    });
+
+    it("Limpiar todo quita todos los filtros y vuelve a pedir una sola vez desde el principio", async () => {
+      const { api, element, pestana, boton, asentar, ultimaConsulta } = await setup();
+      pestana("Categoría", "Reclamos")?.click();
+      boton("Hoy")?.click();
+      await asentar();
+      const antes = api.listar.mock.calls.length;
+      boton("Limpiar todo")?.click();
+      await asentar();
+      expect(api.listar.mock.calls.length).toBe(antes + 1);
+      expect(ultimaConsulta()).toEqual({ limite: 20 });
+      expect(element.querySelector("section[aria-label='Filtros aplicados']")).toBeNull();
+    });
+
+    it("un rango inválido no agrega chip: sigue el último rango válido", async () => {
+      const { element, boton, escribirFecha, asentar } = await setup();
+      boton("Hoy")?.click();
+      await asentar();
+      await escribirFecha("Desde", "2026-10-09");
+      expect(element.textContent).toContain("La fecha");
+      expect(chips(element)).toEqual(["Fecha: 08/10/2026"]);
+    });
+  });
+
   it("si falla la carga lo dice y permite reintentar", async () => {
     const { api, element, boton, pestana, asentar, filas } = await setup();
     api.listar.mockRejectedValueOnce(new IncidenciaError(0, null));

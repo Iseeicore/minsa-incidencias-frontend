@@ -5,6 +5,7 @@ import { FILTRO_TODOS } from "@/features/casos/constants/casos-constants";
 import { AtajoFecha } from "@/features/casos/enums/atajo-fecha.enum";
 import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
+import { FiltroActivoId } from "@/features/casos/enums/filtro-activo.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import { BandejaStore } from "@/features/casos/bandeja.store";
 import { IncidenciaError } from "@/features/casos/services/incidencia-error";
@@ -410,5 +411,63 @@ describe("BandejaStore", () => {
     expect(ultimaConsulta(api)).toEqual({ limite: 20 });
     expect(store.pagina()).toBe(1);
     expect(store.casos()).toHaveLength(20);
+  });
+
+  describe("quitar un filtro", () => {
+    async function conTodosLosFiltros() {
+      const contexto = await setup();
+      const { store } = contexto;
+      await store.cambiarCategoria(FiltroTab.QUEJAS);
+      await store.cambiarBandeja(BandejaTab.ARCHIVADOS);
+      await store.cambiarMotivoArchivo("NO_CORRESPONDE");
+      await store.cambiarFechas("2026-10-01", "2026-10-07");
+      await store.cambiarEstablecimiento(HOSPITAL);
+      store.escribirTexto("demora");
+      await esperar();
+      return contexto;
+    }
+
+    it("expone el texto y el rango que ya se pidieron, no lo que se está escribiendo", async () => {
+      const { store } = await conTodosLosFiltros();
+      expect(store.textoActivo()).toBe("demora");
+      expect(store.rangoAplicado()).toEqual({ desde: "2026-10-01", hasta: "2026-10-07" });
+
+      await store.cambiarFechas("2026-10-09", "2026-10-01");
+      expect(store.rangoAplicado()).toEqual({ desde: "2026-10-01", hasta: "2026-10-07" });
+    });
+
+    it.each([
+      [FiltroActivoId.ESTADO, { limite: 20, categoria: "queja", texto: "demora", establecimiento: "6206", desde: "2026-10-01", hasta: "2026-10-07" }],
+      [FiltroActivoId.CATEGORIA, { limite: 20, estado: "archivado", motivoArchivo: "NO_CORRESPONDE", texto: "demora", establecimiento: "6206", desde: "2026-10-01", hasta: "2026-10-07" }],
+      [FiltroActivoId.MOTIVO, { limite: 20, estado: "archivado", categoria: "queja", texto: "demora", establecimiento: "6206", desde: "2026-10-01", hasta: "2026-10-07" }],
+      [FiltroActivoId.ESTABLECIMIENTO, { limite: 20, estado: "archivado", motivoArchivo: "NO_CORRESPONDE", categoria: "queja", texto: "demora", desde: "2026-10-01", hasta: "2026-10-07" }],
+      [FiltroActivoId.FECHAS, { limite: 20, estado: "archivado", motivoArchivo: "NO_CORRESPONDE", categoria: "queja", texto: "demora", establecimiento: "6206" }],
+      [FiltroActivoId.TEXTO, { limite: 20, estado: "archivado", motivoArchivo: "NO_CORRESPONDE", categoria: "queja", establecimiento: "6206", desde: "2026-10-01", hasta: "2026-10-07" }],
+    ])("«%s» quita solo ese filtro y vuelve a la primera página", async (filtro, esperado) => {
+      const { api, store } = await conTodosLosFiltros();
+      await store.irASiguiente();
+      expect(store.pagina()).toBe(2);
+
+      await store.quitarFiltro(filtro);
+      expect(store.pagina()).toBe(1);
+      expect(ultimaConsulta(api)).toEqual(esperado);
+    });
+
+    it("quitar el estado también quita el motivo de archivo, que solo vale en Archivados", async () => {
+      const { api, store } = await conTodosLosFiltros();
+      await store.quitarFiltro(FiltroActivoId.ESTADO);
+      expect(store.motivoArchivo()).toBe(FILTRO_TODOS);
+      expect(ultimaConsulta(api)).not.toHaveProperty("motivoArchivo");
+    });
+
+    it("quitar el texto lo vacía al instante y una escritura pendiente no lo vuelve a aplicar", async () => {
+      const { api, store } = await setup();
+      store.escribirTexto("demora");
+      await store.quitarFiltro(FiltroActivoId.TEXTO);
+      await esperar();
+      expect(store.texto()).toBe("");
+      expect(store.textoActivo()).toBe("");
+      expect(ultimaConsulta(api)).toEqual({ limite: 20 });
+    });
   });
 });

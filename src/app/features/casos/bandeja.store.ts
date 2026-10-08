@@ -8,6 +8,7 @@ import { MENSAJE_CARGA } from "@/features/casos/constants/casos-messages";
 import type { AtajoFecha } from "@/features/casos/enums/atajo-fecha.enum";
 import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
+import { FiltroActivoId } from "@/features/casos/enums/filtro-activo.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import { mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
@@ -51,6 +52,9 @@ export class BandejaStore {
   readonly desde = signal("");
   readonly hasta = signal("");
   readonly errorFechas = computed(() => errorDeRango(this.desde(), this.hasta()));
+  /** Lo que ya se pidió al servidor: el texto tras la espera y el último rango válido. */
+  readonly textoActivo = this.textoAplicado.asReadonly();
+  readonly rangoAplicado = computed(() => ({ desde: this.desdeAplicada(), hasta: this.hastaAplicada() }));
   readonly estadoCarga = signal<CargaEstado>(CargaEstado.INICIAL);
   readonly error = signal<string | null>(null);
 
@@ -162,18 +166,43 @@ export class BandejaStore {
     this.escribirTexto("");
   }
 
+  /** Quita un solo filtro y vuelve a la primera página. */
+  quitarFiltro(filtro: FiltroActivoId): Promise<void> {
+    switch (filtro) {
+      case FiltroActivoId.ESTADO:
+        return this.cambiarBandeja(BandejaTab.TODOS);
+      case FiltroActivoId.CATEGORIA:
+        return this.cambiarCategoria(FiltroTab.TODOS);
+      case FiltroActivoId.MOTIVO:
+        return this.cambiarMotivoArchivo(FILTRO_TODOS);
+      case FiltroActivoId.ESTABLECIMIENTO:
+        return this.cambiarEstablecimiento(null);
+      case FiltroActivoId.FECHAS:
+        return this.limpiarFechas();
+      case FiltroActivoId.TEXTO:
+        this.borrarTexto();
+        return this.desdeElPrincipio();
+    }
+  }
+
   limpiar(): Promise<void> {
     this.bandeja.set(BandejaTab.TODOS);
     this.categoria.set(FiltroTab.TODOS);
     this.motivoArchivo.set(FILTRO_TODOS);
     this.establecimiento.set(null);
-    this.textoEscrito.set("");
-    this.textoAplicado.set("");
+    this.borrarTexto();
     this.desde.set("");
     this.hasta.set("");
     this.desdeAplicada.set("");
     this.hastaAplicada.set("");
     return this.desdeElPrincipio();
+  }
+
+  /** Vacía el buscador al instante; el valor vacío reinicia la espera y descarta lo que estuviera pendiente. */
+  private borrarTexto(): void {
+    this.textoEscrito.set("");
+    this.textoAplicado.set("");
+    this.entrada.next("");
   }
 
   private desdeElPrincipio(): Promise<void> {

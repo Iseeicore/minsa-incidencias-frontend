@@ -10,12 +10,14 @@ import {
 import type { Caso } from "@/features/casos/types/caso.types";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
 import { textoRenipress } from "@/features/casos/utils/texto-establecimiento";
-import { textoPlazo } from "@/features/casos/utils/texto-plazo";
+import { estaVencido, textoPlazo } from "@/features/casos/utils/texto-plazo";
 import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
 import { Badge } from "@/shared/ui/badge/badge";
 import { Button } from "@/shared/ui/button/button";
 import { ScrollArea } from "@/shared/ui/scroll-area/scroll-area";
 
+const PLAZO_VENCIDO = "font-bold text-danger-700";
+const PLAZO_NORMAL = "text-gray-700";
 const ENCABEZADO = "bg-white pb-3 pr-6 text-xs font-medium text-gray-500";
 
 const COLUMNAS: readonly { readonly key: string; readonly label: string }[] = [
@@ -49,8 +51,8 @@ const COLUMNAS: readonly { readonly key: string; readonly label: string }[] = [
         </thead>
         <tbody class="divide-y divide-gray-100">
           @for (caso of casos(); track caso.codigo) {
-            <tr>
-              <td class="py-3 pr-6 font-medium text-gray-900">{{ caso.codigo }}</td>
+            <tr class="transition-colors hover:bg-gray-50">
+              <td class="py-3 pr-6 font-bold text-gray-900">{{ caso.codigo }}</td>
               <td class="py-3 pr-6 text-gray-700">{{ caso.categoria ? categoria[caso.categoria] : sinDato }}</td>
               <td class="py-3 pr-6">
                 @if (caso.etiquetas.length > 0) {
@@ -96,7 +98,9 @@ const COLUMNAS: readonly { readonly key: string; readonly label: string }[] = [
                   <span class="text-gray-500">{{ sinDato }}</span>
                 }
               </td>
-              <td class="py-3 pr-6 text-gray-700">{{ textoPlazo(caso) }}</td>
+              <td class="py-3 pr-6">
+                <span [class]="clasePlazo(caso)">{{ textoPlazo(caso) }}</span>
+              </td>
               <td class="py-3">
                 @if (caso.acciones.length > 0) {
                   <app-button [size]="ButtonSize.SM" (click)="revisar.emit(caso.codigo)">
@@ -139,4 +143,8 @@ export class CasosTabla {
   protected readonly estado = ESTADO_BADGE;
   protected readonly tonoConfianza = tonoConfianza;
   protected readonly textoPlazo = textoPlazo;
+
+  protected clasePlazo(caso: Caso): string {
+    return estaVencido(caso) ? PLAZO_VENCIDO : PLAZO_NORMAL;
+  }
 }

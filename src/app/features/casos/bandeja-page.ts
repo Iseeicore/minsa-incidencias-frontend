@@ -8,6 +8,7 @@ import { AreaSelector } from "@/features/casos/components/area-selector";
 import { AvisoEnvio } from "@/features/casos/components/aviso-envio";
 import { CasoRevision } from "@/features/casos/components/caso-revision";
 import { CasosTabla } from "@/features/casos/components/casos-tabla";
+import { FiltrosActivos } from "@/features/casos/components/filtros-activos";
 import {
   ATAJOS_FECHA,
   BANDEJAS,
@@ -19,6 +20,8 @@ import {
 import type { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import type { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
+import type { FiltroActivoId } from "@/features/casos/enums/filtro-activo.enum";
+import { filtrosActivos } from "@/features/casos/utils/filtros-activos";
 import { BadgeTone } from "@/shared/enums/badge.enum";
 import { ButtonSize, ButtonTone, ButtonVariant } from "@/shared/enums/button.enum";
 import { Alert } from "@/shared/ui/alert/alert";
@@ -43,6 +46,7 @@ const PARAMETRO_CASO = "caso";
     CasoRevision,
     CasosTabla,
     DateField,
+    FiltrosActivos,
     PaginadorCursor,
     SearchInput,
     SelectField,
@@ -81,6 +85,18 @@ export class BandejaPage {
     () => BANDEJAS.find((bandeja) => bandeja.value === this.store.bandeja()) ?? BANDEJAS[0],
   );
   protected readonly seleccionado = signal<string | null>(null);
+  protected readonly filtrosAplicados = computed(() => {
+    const { desde, hasta } = this.store.rangoAplicado();
+    return filtrosActivos({
+      bandeja: this.store.bandeja(),
+      categoria: this.store.categoria(),
+      motivoArchivo: this.store.motivoArchivo(),
+      establecimiento: this.store.establecimiento(),
+      desde,
+      hasta,
+      texto: this.store.textoActivo(),
+    });
+  });
 
   constructor() {
     effect(() => {
@@ -103,6 +119,10 @@ export class BandejaPage {
 
   protected alCambiarHasta(valor: string): void {
     void this.store.cambiarFechas(this.store.desde(), valor);
+  }
+
+  protected quitarFiltro(filtro: FiltroActivoId): void {
+    void this.store.quitarFiltro(filtro);
   }
 
   protected alCambiarSeleccion(codigo: string | null): void {

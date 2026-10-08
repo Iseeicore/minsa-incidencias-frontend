@@ -29,6 +29,12 @@ export function fechaDeLima(instante: Date): string {
   return new Date(instante.getTime() + DESFASE_LIMA_MS).toISOString().slice(0, 10);
 }
 
+/** `2026-10-08` como `08/10/2026`. */
+export function fechaCorta(fecha: string): string {
+  const [anio, mes, dia] = fecha.split("-");
+  return `${dia}/${mes}/${anio}`;
+}
+
 export function sumarDias(fecha: string, dias: number): string {
   return new Date(enMilisegundos(fecha) + dias * MS_POR_DIA).toISOString().slice(0, 10);
 }

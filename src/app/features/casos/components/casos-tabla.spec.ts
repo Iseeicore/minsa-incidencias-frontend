@@ -119,4 +119,20 @@ describe("CasosTabla", () => {
     expect(element.querySelectorAll("thead button")).toHaveLength(0);
     expect(element.querySelector("[aria-sort]")).toBeNull();
   });
+
+  it("el plazo vencido se destaca y el que está en plazo no", async () => {
+    const { celdas } = await setup([
+      crearCaso({ plazo: { tipo: PlazoTipo.ATENCION, estado: PlazoEstado.VENCIDO, venceEn: null, horasRestantes: -3 } }),
+      crearCaso({ plazo: { tipo: PlazoTipo.ATENCION, estado: PlazoEstado.EN_PLAZO, venceEn: null, horasRestantes: 30 } }),
+    ]);
+    const plazo = (fila: number) => celdas(fila)[9].querySelector("span") as HTMLElement;
+    expect(plazo(0).textContent?.trim()).toBe("Vencido");
+    expect(plazo(0).className).toContain("text-danger-700");
+    expect(plazo(1).className).not.toContain("danger");
+  });
+
+  it("las filas resaltan al pasar el cursor", async () => {
+    const { element } = await setup([crearCaso()]);
+    expect(element.querySelector("tbody tr")?.className).toContain("hover:bg-gray-50");
+  });
 });

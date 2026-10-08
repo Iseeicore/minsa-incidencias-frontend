@@ -2,7 +2,7 @@ import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
 import { crearCaso, crearDetalle } from "@/features/casos/testing/caso-builder";
-import { duracionCorta, textoPlazo, textoReapertura } from "./texto-plazo";
+import { duracionCorta, estaVencido, textoPlazo, textoReapertura } from "./texto-plazo";
 
 const SIN_PLAZO = { tipo: null, estado: null, venceEn: null, horasRestantes: null };
 
@@ -16,6 +16,27 @@ describe("duracionCorta", () => {
     [60, "3 días"],
   ])("%i horas se dicen «%s»", (horas, esperado) => {
     expect(duracionCorta(horas)).toBe(esperado);
+  });
+});
+
+describe("estaVencido", () => {
+  const plazo = (estado: PlazoEstado, horasRestantes: number | null, tipo: PlazoTipo = PlazoTipo.ATENCION) => ({
+    tipo,
+    estado,
+    venceEn: null,
+    horasRestantes,
+  });
+
+  it("vence cuando el servidor lo dice o las horas son negativas", () => {
+    expect(estaVencido(crearCaso({ plazo: plazo(PlazoEstado.VENCIDO, 5) }))).toBe(true);
+    expect(estaVencido(crearCaso({ plazo: plazo(PlazoEstado.EN_PLAZO, -1) }))).toBe(true);
+  });
+
+  it("en plazo, sin plazo, archivado o con vigencia no se marca vencido", () => {
+    expect(estaVencido(crearCaso({ plazo: plazo(PlazoEstado.EN_PLAZO, 10) }))).toBe(false);
+    expect(estaVencido(crearCaso({ plazo: SIN_PLAZO }))).toBe(false);
+    expect(estaVencido(crearCaso({ estado: EstadoCaso.ARCHIVADO, plazo: plazo(PlazoEstado.VENCIDO, -4) }))).toBe(false);
+    expect(estaVencido(crearCaso({ estado: EstadoCaso.RESUELTO, plazo: plazo(PlazoEstado.EN_PLAZO, -2, PlazoTipo.VIGENCIA) }))).toBe(false);
   });
 });
 

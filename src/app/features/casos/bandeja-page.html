@@ -90,6 +90,8 @@
     }
   </section>
 
+  <app-filtros-activos [filtros]="filtrosAplicados()" (quitar)="quitarFiltro($event)" (limpiar)="store.limpiar()" />
+
   <app-card>
     <div class="mb-1 flex items-center justify-between gap-3">
       <h2 class="text-base font-bold text-gray-900">{{ actual().label }}</h2>

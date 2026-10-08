@@ -51,10 +51,10 @@ export const CASOS_ATENCION_DEMO: readonly CasoAtencion[] = [
 ];
 
 export const DERIVACIONES_DEMO: readonly ResumenFila[] = [
-  { label: "Pendientes de derivar", valor: "12" },
-  { label: "Derivadas hoy", valor: "38" },
-  { label: "Reasignadas", valor: "7" },
-  { label: "Fuera de competencia", valor: "4" },
+  { label: "Pendientes de derivar", valor: 12 },
+  { label: "Derivadas hoy", valor: 38 },
+  { label: "Reasignadas", valor: 7 },
+  { label: "Fuera de competencia", valor: 4 },
 ];
 
 export const ALERTAS_DEMO: readonly AlertaResumen[] = [

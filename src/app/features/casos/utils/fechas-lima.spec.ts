@@ -3,6 +3,7 @@ import {
   diasDelRango,
   errorDeRango,
   esFechaValida,
+  fechaCorta,
   fechaDeLima,
   rangoDeAtajo,
   sumarDias,
@@ -21,6 +22,12 @@ describe("fechas en hora de Lima", () => {
 
     it("cruza el cambio de año con la hora de Lima", () => {
       expect(fechaDeLima(new Date("2027-01-01T03:00:00Z"))).toBe("2026-12-31");
+    });
+  });
+
+  describe("fechaCorta", () => {
+    it("escribe día, mes y año", () => {
+      expect(fechaCorta("2026-10-08")).toBe("08/10/2026");
     });
   });
 

@@ -20,11 +20,18 @@ export function textoReapertura(caso: CasoDetalle): string | null {
   return `Reabierto el ${formatearFecha(caso.reapertura.reabiertoEn)}; ${plazo.charAt(0).toLowerCase()}${plazo.slice(1)}`;
 }
 
+/** Plazo de atención ya pasado: lo dice el servidor o las horas restantes son negativas. */
+export function estaVencido(caso: Caso): boolean {
+  const { tipo, estado, horasRestantes } = caso.plazo;
+  if (caso.estado === EstadoCaso.ARCHIVADO || tipo !== PlazoTipo.ATENCION || horasRestantes === null) return false;
+  return estado === PlazoEstado.VENCIDO || horasRestantes < 0;
+}
+
 /** Texto corto del plazo según lo que calculó el servidor: cuánto falta para vencer o para archivarse. */
 export function textoPlazo(caso: Caso): string {
   if (caso.estado === EstadoCaso.ARCHIVADO) return "Archivado";
-  const { tipo, estado, horasRestantes } = caso.plazo;
+  const { tipo, horasRestantes } = caso.plazo;
   if (tipo === null || horasRestantes === null) return SIN_DATO;
   if (tipo === PlazoTipo.VIGENCIA) return `Se archiva en ${duracionCorta(Math.max(horasRestantes, 0))}`;
-  return estado === PlazoEstado.VENCIDO || horasRestantes < 0 ? "Vencido" : `Vence en ${duracionCorta(horasRestantes)}`;
+  return estaVencido(caso) ? "Vencido" : `Vence en ${duracionCorta(horasRestantes)}`;
 }
