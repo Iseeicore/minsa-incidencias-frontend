@@ -16,6 +16,16 @@
     </div>
     <p class="mb-4 text-sm text-gray-600">{{ actual().ayuda }}</p>
 
+    @if (tab() === BandejaTab.ARCHIVADOS) {
+      <app-select-field
+        class="mb-4 md:max-w-xs"
+        label="Filtrar por motivo del archivo"
+        [options]="motivoOpciones"
+        [value]="store.motivoArchivo()"
+        (valueChange)="store.cambiarMotivoArchivo($event)"
+      />
+    }
+
     @if (store.error(); as mensaje) {
       <div class="mb-4 space-y-3">
         <app-alert [tone]="BadgeTone.DANGER">{{ mensaje }}</app-alert>

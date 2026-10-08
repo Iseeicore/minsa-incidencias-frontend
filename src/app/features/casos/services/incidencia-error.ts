@@ -32,6 +32,18 @@ export function toIncidenciaError(error: unknown): IncidenciaError {
   return new IncidenciaError(HttpStatus.NETWORK, null);
 }
 
+const MENSAJE_NO_PROCESABLE: Partial<Record<AccionCaso, string>> = {
+  [AccionCaso.CORREGIR]: MENSAJE_ERROR.CATEGORIA_IGUAL,
+  [AccionCaso.DERIVAR]: MENSAJE_ERROR.AREA_DESTINO_INVALIDA,
+  [AccionCaso.ARCHIVAR]: MENSAJE_ERROR.ARCHIVO_NO_VALIDO,
+  [AccionCaso.REABRIR]: MENSAJE_ERROR.REAPERTURA_NO_VALIDA,
+  [AccionCaso.RESOLVER]: MENSAJE_ERROR.RESOLUCION_NO_VALIDA,
+};
+
+function mensajeDeNoProcesable(accion?: AccionCaso): string {
+  return (accion && MENSAJE_NO_PROCESABLE[accion]) ?? MENSAJE_ERROR.DATOS_NO_VALIDOS;
+}
+
 /** Mensaje para la persona según el estado HTTP; nunca repite el texto que mande el servidor. */
 export function mensajeDeError(error: unknown, accion?: AccionCaso): string {
   if (error instanceof RespuestaInvalidaError) return MENSAJE_ERROR.RESPUESTA_INESPERADA;
@@ -48,8 +60,7 @@ export function mensajeDeError(error: unknown, accion?: AccionCaso): string {
     case HttpStatus.CONFLICT:
       return MENSAJE_ERROR.CONFLICTO;
     case HttpStatus.UNPROCESSABLE:
-      if (accion === AccionCaso.CORREGIR) return MENSAJE_ERROR.CATEGORIA_IGUAL;
-      return accion === AccionCaso.DERIVAR ? MENSAJE_ERROR.AREA_DESTINO_INVALIDA : MENSAJE_ERROR.DATOS_NO_VALIDOS;
+      return mensajeDeNoProcesable(accion);
     case HttpStatus.TOO_MANY_REQUESTS:
       return MENSAJE_ERROR.DEMASIADAS_PETICIONES;
     default:

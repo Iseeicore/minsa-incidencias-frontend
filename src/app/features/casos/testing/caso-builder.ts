@@ -33,6 +33,8 @@ export function crearDetalle(parcial: Partial<CasoDetalle> = {}): CasoDetalle {
   return {
     ...crearCaso(),
     resolucion: null,
+    archivo: null,
+    reapertura: null,
     descripcion: "Texto de prueba",
     reclamante: "Anónimo",
     evidencias: [],
@@ -68,6 +70,8 @@ export function crearDetalleDto(parcial: Partial<CasoDetalleDto> = {}): CasoDeta
   return {
     ...crearResumenDto(),
     resolucion: null,
+    archivo: null,
+    reapertura: null,
     descripcion: "Texto de prueba",
     reclamante: "Anónimo",
     evidencias: [],

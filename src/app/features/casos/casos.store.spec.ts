@@ -3,10 +3,18 @@ import { CasosStore } from "@/features/casos/casos.store";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
+import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
 import { IncidenciaError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
 import { crearDetalle } from "@/features/casos/testing/caso-builder";
 import type { CasoDetalle, RespuestaAccion } from "@/features/casos/types/caso.types";
+
+const RESOLUCION = {
+  medidasTomadas: "Se entregó el medicamento",
+  fundamento: "Había stock en farmacia",
+  resultado: ResultadoResolucion.ATENDIDO,
+} as const;
 
 function pendiente<T>() {
   let resolver!: (valor: T) => void;
@@ -31,6 +39,8 @@ describe("CasosStore", () => {
       derivar: vi.fn(),
       tomar: vi.fn(),
       resolver: vi.fn(),
+      archivar: vi.fn(),
+      reabrir: vi.fn(),
     };
     TestBed.configureTestingModule({ providers: [{ provide: IncidenciasApi, useValue: api }] });
     return { api, store: TestBed.inject(CasosStore) };
@@ -111,7 +121,17 @@ describe("CasosStore", () => {
         (store: CasosStore) => store.corregir("MINSA-2026-000001", CategoriaCaso.QUEJA),
         ["MINSA-2026-000001", CategoriaCaso.QUEJA],
       ],
-      ["resolver", (store: CasosStore) => store.resolver("MINSA-2026-000001", "Se atendió"), ["MINSA-2026-000001", "Se atendió"]],
+      ["resolver", (store: CasosStore) => store.resolver("MINSA-2026-000001", RESOLUCION), ["MINSA-2026-000001", RESOLUCION]],
+      [
+        "archivar",
+        (store: CasosStore) => store.archivar("MINSA-2026-000001", MotivoArchivo.NO_CORRESPONDE, "No es del establecimiento"),
+        ["MINSA-2026-000001", MotivoArchivo.NO_CORRESPONDE, "No es del establecimiento"],
+      ],
+      [
+        "reabrir",
+        (store: CasosStore) => store.reabrir("MINSA-2026-000001", "Llegó información nueva"),
+        ["MINSA-2026-000001", "Llegó información nueva"],
+      ],
     ] as const)("%s llama al servidor, actualiza el detalle y avisa que algo cambió", async (nombre, ejecutar, argumentos) => {
       const { api, store } = setup();
       api[nombre].mockResolvedValue(respuesta(crearDetalle({ estado: EstadoCaso.DERIVADO }), "Listo"));
@@ -175,11 +195,20 @@ describe("CasosStore", () => {
       expect(resultado.ok === false && resultado.error).toContain("distinta");
     });
 
-    it("no permite resolver con la resolución vacía ni pasarse del máximo, sin llamar al servidor", async () => {
+    it("derivar sin área de destino la deja en OTRANS: se llama sin área", async () => {
       const { api, store } = setup();
-      const vacia = await store.resolver("MINSA-2026-000001", "   ");
-      expect(vacia.ok === false && vacia.error).toContain("no puede estar vacía");
-      const larga = await store.resolver("MINSA-2026-000001", "x".repeat(4001));
+      api.derivar.mockResolvedValue(respuesta(crearDetalle({ estado: EstadoCaso.DERIVADO })));
+      await store.derivar("MINSA-2026-000001");
+      expect(api.derivar).toHaveBeenCalledWith("MINSA-2026-000001", undefined);
+    });
+
+    it("no permite resolver con textos cortos o largos, sin llamar al servidor", async () => {
+      const { api, store } = setup();
+      const corta = await store.resolver("MINSA-2026-000001", { ...RESOLUCION, medidasTomadas: "   corta   " });
+      expect(corta.ok === false && corta.error).toContain("Las medidas tomadas necesita al menos 10");
+      const sinFundamento = await store.resolver("MINSA-2026-000001", { ...RESOLUCION, fundamento: "x" });
+      expect(sinFundamento.ok === false && sinFundamento.error).toContain("El fundamento necesita al menos 10");
+      const larga = await store.resolver("MINSA-2026-000001", { ...RESOLUCION, fundamento: "x".repeat(4001) });
       expect(larga.ok === false && larga.error).toContain("4000");
       expect(api.resolver).not.toHaveBeenCalled();
     });
@@ -187,8 +216,47 @@ describe("CasosStore", () => {
     it("manda la resolución sin espacios sobrantes", async () => {
       const { api, store } = setup();
       api.resolver.mockResolvedValue(respuesta(crearDetalle({ estado: EstadoCaso.RESUELTO })));
-      await store.resolver("MINSA-2026-000001", "  Se atendió  ");
-      expect(api.resolver).toHaveBeenCalledWith("MINSA-2026-000001", "Se atendió");
+      await store.resolver("MINSA-2026-000001", {
+        medidasTomadas: "  Se entregó el medicamento  ",
+        fundamento: "  Había stock en farmacia  ",
+        resultado: ResultadoResolucion.CERRADO,
+      });
+      expect(api.resolver).toHaveBeenCalledWith("MINSA-2026-000001", {
+        medidasTomadas: "Se entregó el medicamento",
+        fundamento: "Había stock en farmacia",
+        resultado: ResultadoResolucion.CERRADO,
+      });
+    });
+
+    it("archivar exige una justificación de 10 a 2000 caracteres y la manda recortada", async () => {
+      const { api, store } = setup();
+      const corta = await store.archivar("MINSA-2026-000001", MotivoArchivo.DATOS_INSUFICIENTES, "corta");
+      expect(corta.ok === false && corta.error).toContain("La justificación necesita al menos 10");
+      const larga = await store.archivar("MINSA-2026-000001", MotivoArchivo.DATOS_INSUFICIENTES, "x".repeat(2001));
+      expect(larga.ok === false && larga.error).toContain("2000");
+      expect(api.archivar).not.toHaveBeenCalled();
+
+      api.archivar.mockResolvedValue(respuesta(crearDetalle({ estado: EstadoCaso.ARCHIVADO })));
+      await store.archivar("MINSA-2026-000001", MotivoArchivo.DATOS_INSUFICIENTES, "  Falta el nombre del servicio  ");
+      expect(api.archivar).toHaveBeenCalledWith("MINSA-2026-000001", MotivoArchivo.DATOS_INSUFICIENTES, "Falta el nombre del servicio");
+    });
+
+    it("reabrir exige un motivo de al menos 10 caracteres", async () => {
+      const { api, store } = setup();
+      const corto = await store.reabrir("MINSA-2026-000001", "no");
+      expect(corto.ok === false && corto.error).toContain("El motivo necesita al menos 10");
+      expect(api.reabrir).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["archivar", (store: CasosStore) => store.archivar("MINSA-2026-000001", MotivoArchivo.NO_CORRESPONDE, "No es de este centro"), "no se puede archivar"],
+      ["reabrir", (store: CasosStore) => store.reabrir("MINSA-2026-000001", "Llegó información nueva"), "vigencia"],
+      ["resolver", (store: CasosStore) => store.resolver("MINSA-2026-000001", RESOLUCION), "no se puede resolver"],
+    ] as const)("un 422 al %s explica por qué", async (nombre, ejecutar, texto) => {
+      const { api, store } = setup();
+      api[nombre].mockRejectedValue(new IncidenciaError(422, "UNPROCESSABLE"));
+      const resultado = await ejecutar(store);
+      expect(resultado.ok === false && resultado.error).toContain(texto);
     });
   });
 });

@@ -48,8 +48,16 @@ describe("incidencia-error", () => {
     expect(mensajeDeError(new IncidenciaError(422, "UNPROCESSABLE"), AccionCaso.CORREGIR)).toContain("distinta");
   });
 
-  it("un 422 de otra acción usa el mensaje de datos no válidos", () => {
-    expect(mensajeDeError(new IncidenciaError(422, "UNPROCESSABLE"), AccionCaso.RESOLVER)).toContain("Revisa");
+  it("un 422 de una acción sin mensaje propio usa el de datos no válidos", () => {
+    expect(mensajeDeError(new IncidenciaError(422, "UNPROCESSABLE"), AccionCaso.TOMAR)).toContain("Revisa");
+  });
+
+  it.each([
+    [AccionCaso.ARCHIVAR, "no se puede archivar"],
+    [AccionCaso.REABRIR, "vigencia"],
+    [AccionCaso.RESOLVER, "no se puede resolver"],
+  ])("un 422 al %s explica por qué", (accion, texto) => {
+    expect(mensajeDeError(new IncidenciaError(422, "UNPROCESSABLE"), accion)).toContain(texto);
   });
 
   it("una respuesta con forma inesperada se explica sin mostrar detalles", () => {

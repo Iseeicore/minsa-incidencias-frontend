@@ -1,9 +1,14 @@
+import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
+import type { AreaSesion } from "@/core/auth/auth.types";
+import { SessionStore } from "@/core/auth/session.store";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
+import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
 import { AreasApi } from "@/features/casos/services/areas.api";
 import { IncidenciaError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
@@ -25,7 +30,10 @@ describe("CasoRevision", () => {
     derivar: vi.fn(),
     tomar: vi.fn(),
     resolver: vi.fn(),
+    archivar: vi.fn(),
+    reabrir: vi.fn(),
   };
+  const area = signal<AreaSesion | null>(null);
 
   const HOSPITAL: AreaOpcion = {
     id: "10",
@@ -39,11 +47,13 @@ describe("CasoRevision", () => {
   beforeEach(() => {
     for (const funcion of Object.values(api)) funcion.mockReset();
     areas.listar.mockReset();
+    area.set(null);
     areas.listar.mockResolvedValue({ areas: [HOSPITAL], siguiente: null, hayMas: false });
     TestBed.configureTestingModule({
       providers: [
         { provide: IncidenciasApi, useValue: api },
         { provide: AreasApi, useValue: areas },
+        { provide: SessionStore, useValue: { area } },
         { provide: BUSQUEDA_DEBOUNCE_MS, useValue: 0 },
       ],
     });
@@ -70,8 +80,8 @@ describe("CasoRevision", () => {
       await esperar();
       await fixture.whenStable();
     };
-    const escribir = async (selector: string, valor: string) => {
-      const campo = element.querySelector<HTMLTextAreaElement | HTMLSelectElement>(selector) as HTMLTextAreaElement;
+    const escribir = async (selector: string, valor: string, indice = 0) => {
+      const campo = element.querySelectorAll<HTMLTextAreaElement | HTMLSelectElement>(selector)[indice] as HTMLTextAreaElement;
       campo.value = valor;
       campo.dispatchEvent(new Event(campo.tagName === "SELECT" ? "change" : "input"));
       await fixture.whenStable();
@@ -187,7 +197,7 @@ describe("CasoRevision", () => {
       expect(boton("Derivar el caso")?.disabled).toBe(true);
 
       await elegirArea("hipolito");
-      expect(areas.listar).toHaveBeenCalledWith({ q: "hipolito", limite: 8 });
+      expect(areas.listar).toHaveBeenCalledWith({ q: "hipolito", limite: 8, tipo: "ESTABLECIMIENTO" });
       expect(boton("Derivar el caso")?.disabled).toBe(false);
 
       api.derivar.mockResolvedValue(respuesta({ estado: EstadoCaso.DERIVADO, acciones: [] }, "Caso derivado a Hospital Hipólito Unanue."));
@@ -205,12 +215,44 @@ describe("CasoRevision", () => {
       expect(api.derivar).not.toHaveBeenCalled();
     });
 
-    it("en una denuncia de corrupción no se ofrece derivar ni elegir área: la toma OTRANS", async () => {
-      const { boton, element } = await abrir(
+    it("la corrupción se deriva solo a áreas OTRANS y el área es opcional: sin ella se queda en OTRANS", async () => {
+      const { panel, boton, pulsar, element } = await abrir(
         crearDetalle({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION, acciones: [AccionCaso.DERIVAR, AccionCaso.TOMAR] }),
       );
-      expect(boton("Derivar")).toBeUndefined();
       expect(boton("Tomar en gestión")).toBeDefined();
+      await pulsar("Derivar a un área");
+      expect(element.querySelector("app-area-selector")).not.toBeNull();
+      expect(panel()?.textContent).toContain("se queda en OTRANS");
+      expect(boton("Derivar el caso")?.disabled).toBe(false);
+
+      api.derivar.mockResolvedValue(respuesta({ estado: EstadoCaso.DERIVADO, acciones: [] }, "La denuncia sigue en OTRANS."));
+      await pulsar("Derivar el caso");
+      expect(api.derivar).toHaveBeenCalledWith("MINSA-2026-000001", undefined);
+    });
+
+    it("la corrupción busca solo áreas de tipo OTRANS y deriva a la elegida", async () => {
+      areas.listar.mockResolvedValue({
+        areas: [{ id: "3", codigo: "OTRANS-2", nombre: "OTRANS Lima Sur", tipoArea: TipoArea.OTRANS, establecimiento: null }],
+        siguiente: null,
+        hayMas: false,
+      });
+      const { pulsar, elegirArea } = await abrir(
+        crearDetalle({ categoria: CategoriaCaso.DENUNCIA_CORRUPCION, acciones: [AccionCaso.DERIVAR] }),
+      );
+      await pulsar("Derivar a un área");
+      await elegirArea("lima");
+      expect(areas.listar).toHaveBeenCalledWith({ q: "lima", limite: 8, tipo: "OTRANS" });
+
+      api.derivar.mockResolvedValue(respuesta({ estado: EstadoCaso.DERIVADO, acciones: [] }, "Derivada."));
+      await pulsar("Derivar el caso");
+      expect(api.derivar).toHaveBeenCalledWith("MINSA-2026-000001", "OTRANS-2");
+    });
+
+    it("sin la acción derivar no hay botón ni selector, sea cual sea la categoría", async () => {
+      const { boton, element } = await abrir(
+        crearDetalle({ categoria: CategoriaCaso.RECLAMO, acciones: [AccionCaso.CONFIRMAR, AccionCaso.ARCHIVAR] }),
+      );
+      expect(boton("Derivar")).toBeUndefined();
       expect(element.querySelector("app-area-selector")).toBeNull();
     });
 
@@ -322,23 +364,220 @@ describe("CasoRevision", () => {
   });
 
   describe("resolver", () => {
-    it("exige el texto y lo manda al servidor", async () => {
+    const MEDIDAS = "Se entregó el medicamento al paciente.";
+    const FUNDAMENTO = "Había stock en la farmacia del hospital.";
+
+    it("pide medidas, fundamento y resultado, con mínimo de 10 caracteres y contador", async () => {
       const { panel, boton, pulsar, escribir } = await abrir(crearDetalle({ estado: EstadoCaso.EN_GESTION, acciones: [AccionCaso.RESOLVER] }));
       await pulsar("Resolver el caso");
       expect(boton("Registrar resolución")?.disabled).toBe(true);
       expect(panel()?.textContent).toContain("no se puede deshacer");
+      expect(panel()?.textContent).toContain("Mínimo 10 caracteres");
+      expect(panel()?.textContent).toContain("0 / 4000");
 
-      await escribir("textarea", "Se entregó el medicamento.");
+      await escribir("textarea", "corto", 0);
+      await escribir("textarea", FUNDAMENTO, 1);
+      await escribir("select", "ATENDIDO");
+      expect(panel()?.textContent).toContain("5 / 4000");
+      expect(boton("Registrar resolución")?.disabled).toBe(true);
+
+      await escribir("textarea", MEDIDAS, 0);
       expect(boton("Registrar resolución")?.disabled).toBe(false);
+    });
+
+    it("sin resultado no se puede registrar", async () => {
+      const { boton, pulsar, escribir } = await abrir(crearDetalle({ estado: EstadoCaso.EN_GESTION, acciones: [AccionCaso.RESOLVER] }));
+      await pulsar("Resolver el caso");
+      await escribir("textarea", MEDIDAS, 0);
+      await escribir("textarea", FUNDAMENTO, 1);
+      expect(boton("Registrar resolución")?.disabled).toBe(true);
+    });
+
+    it("manda los tres campos y muestra la resolución en tres campos", async () => {
+      const { panel, pulsar, escribir } = await abrir(crearDetalle({ estado: EstadoCaso.EN_GESTION, acciones: [AccionCaso.RESOLVER] }));
+      await pulsar("Resolver el caso");
+      await escribir("textarea", MEDIDAS, 0);
+      await escribir("textarea", FUNDAMENTO, 1);
+      await escribir("select", "CERRADO");
       api.resolver.mockResolvedValue(
-        respuesta({ estado: EstadoCaso.RESUELTO, resolucion: "Se entregó el medicamento.", acciones: [] }, "Caso resuelto."),
+        respuesta(
+          {
+            estado: EstadoCaso.RESUELTO,
+            resolucion: { medidasTomadas: MEDIDAS, fundamento: FUNDAMENTO, resultado: ResultadoResolucion.CERRADO },
+            acciones: [],
+          },
+          "Caso resuelto.",
+        ),
       );
       await pulsar("Registrar resolución");
 
-      expect(api.resolver).toHaveBeenCalledWith("MINSA-2026-000001", "Se entregó el medicamento.");
+      expect(api.resolver).toHaveBeenCalledWith("MINSA-2026-000001", {
+        medidasTomadas: MEDIDAS,
+        fundamento: FUNDAMENTO,
+        resultado: "CERRADO",
+      });
       expect(panel()?.querySelector("[role='status']")?.textContent).toContain("Caso resuelto");
-      expect(panel()?.textContent).toContain("Se entregó el medicamento.");
-      expect(panel()?.textContent).toContain("Este caso ya está cerrado");
+      const texto = panel()?.textContent ?? "";
+      expect(texto).toMatch(/Resultado\s*Cerrado/);
+      expect(texto).toMatch(/Medidas tomadas\s*Se entregó el medicamento al paciente\./);
+      expect(texto).toMatch(/Fundamento\s*Había stock en la farmacia del hospital\./);
+      expect(texto).toContain("Este caso ya está cerrado");
+    });
+  });
+
+  describe("archivar", () => {
+    const DETALLE = "Faltan el servicio y la fecha del hecho.";
+
+    it("pide motivo y justificación de al menos 10 caracteres", async () => {
+      const { boton, pulsar, escribir, panel } = await abrir(crearDetalle({ acciones: [AccionCaso.ARCHIVAR] }));
+      await pulsar("Archivar el caso");
+      const opciones = Array.from(panel()?.querySelectorAll("option") ?? []).map((opcion) => opcion.textContent?.trim());
+      expect(opciones).toEqual(["Elige un motivo", "Datos insuficientes", "No corresponde"]);
+      expect(boton("Archivar el caso")?.disabled).toBe(true);
+
+      await escribir("select", "DATOS_INSUFICIENTES");
+      await escribir("textarea", "corto");
+      expect(boton("Archivar el caso")?.disabled).toBe(true);
+      await escribir("textarea", DETALLE);
+      expect(boton("Archivar el caso")?.disabled).toBe(false);
+    });
+
+    it("pide una confirmación explícita antes de enviar y permite volver", async () => {
+      const { panel, boton, pulsar, escribir } = await abrir(crearDetalle({ acciones: [AccionCaso.ARCHIVAR] }));
+      await pulsar("Archivar el caso");
+      await escribir("select", "NO_CORRESPONDE");
+      await escribir("textarea", DETALLE);
+      await pulsar("Archivar el caso");
+
+      expect(panel()?.textContent).toContain("deja de contar para el entrenamiento de la IA");
+      expect(api.archivar).not.toHaveBeenCalled();
+
+      await pulsar("Volver");
+      expect(boton("Sí, archivar el caso")).toBeUndefined();
+      expect(boton("Archivar el caso")).toBeDefined();
+      expect(api.archivar).not.toHaveBeenCalled();
+    });
+
+    it("al confirmar manda el motivo y la justificación y muestra el archivo", async () => {
+      const { panel, pulsar, escribir } = await abrir(crearDetalle({ acciones: [AccionCaso.ARCHIVAR] }));
+      await pulsar("Archivar el caso");
+      await escribir("select", "DATOS_INSUFICIENTES");
+      await escribir("textarea", DETALLE);
+      await pulsar("Archivar el caso");
+
+      api.archivar.mockResolvedValue(
+        respuesta(
+          {
+            estado: EstadoCaso.ARCHIVADO,
+            archivo: { motivo: MotivoArchivo.DATOS_INSUFICIENTES, detalle: DETALLE, archivadoEn: "2026-10-08T15:30:00.000Z" },
+            acciones: [AccionCaso.REABRIR],
+          },
+          "Caso archivado.",
+        ),
+      );
+      await pulsar("Sí, archivar el caso");
+
+      expect(api.archivar).toHaveBeenCalledWith("MINSA-2026-000001", "DATOS_INSUFICIENTES", DETALLE);
+      expect(panel()?.querySelector("[role='status']")?.textContent).toContain("Caso archivado");
+      const texto = panel()?.textContent ?? "";
+      expect(texto).toMatch(/Motivo\s*Datos insuficientes/);
+      expect(texto).toMatch(/Justificación\s*Faltan el servicio y la fecha del hecho\./);
+    });
+  });
+
+  describe("reabrir", () => {
+    const ARCHIVADO = {
+      estado: EstadoCaso.ARCHIVADO,
+      acciones: [AccionCaso.REABRIR],
+      archivo: { motivo: MotivoArchivo.NO_CORRESPONDE, detalle: "No es de este centro.", archivadoEn: "2026-10-01T10:00:00.000Z" },
+    } as const;
+
+    it("pide un motivo de al menos 10 caracteres y lo manda", async () => {
+      const { panel, boton, pulsar, escribir } = await abrir(crearDetalle(ARCHIVADO));
+      await pulsar("Reabrir el caso");
+      expect(boton("Confirmar reapertura")?.disabled).toBe(true);
+      await escribir("textarea", "corto");
+      expect(boton("Confirmar reapertura")?.disabled).toBe(true);
+
+      await escribir("textarea", "Llegó información nueva.");
+      api.reabrir.mockResolvedValue(
+        respuesta(
+          {
+            estado: EstadoCaso.CLASIFICADO,
+            acciones: [AccionCaso.CONFIRMAR],
+            reapertura: { reabiertoEn: "2026-10-08T16:00:00.000Z", motivo: "Llegó información nueva." },
+          },
+          "Caso reabierto.",
+        ),
+      );
+      await pulsar("Confirmar reapertura");
+      expect(api.reabrir).toHaveBeenCalledWith("MINSA-2026-000001", "Llegó información nueva.");
+      expect(panel()?.querySelector("[role='status']")?.textContent).toContain("Caso reabierto");
+      expect(panel()?.textContent).toMatch(/Última reapertura[\s\S]*Llegó información nueva\./);
+    });
+
+    it("lo archivado por vigencia de la resolución no se puede reabrir: el botón se oculta y se explica", async () => {
+      const { panel, boton } = await abrir(
+        crearDetalle({
+          estado: EstadoCaso.ARCHIVADO,
+          acciones: [AccionCaso.REABRIR],
+          archivo: { motivo: MotivoArchivo.RESUELTA_VIGENCIA, detalle: null, archivadoEn: "2026-10-01T10:00:00.000Z" },
+        }),
+      );
+      expect(boton("Reabrir")).toBeUndefined();
+      expect(panel()?.textContent).toContain("cumplió su vigencia y no se puede reabrir");
+    });
+
+    it("lo que venció sin atenderse sí se puede reabrir", async () => {
+      const { boton } = await abrir(
+        crearDetalle({
+          estado: EstadoCaso.ARCHIVADO,
+          acciones: [AccionCaso.REABRIR],
+          archivo: { motivo: MotivoArchivo.VENCIDA_SIN_ATENDER, detalle: null, archivadoEn: "2026-10-01T10:00:00.000Z" },
+        }),
+      );
+      expect(boton("Reabrir el caso")).toBeDefined();
+    });
+  });
+
+  describe("cierre del caso", () => {
+    it("un archivo automático dice que se archivó solo y no tiene justificación de una persona", async () => {
+      const { panel } = await abrir(
+        crearDetalle({
+          estado: EstadoCaso.ARCHIVADO,
+          archivo: { motivo: MotivoArchivo.VENCIDA_SIN_ATENDER, detalle: null, archivadoEn: "2026-10-01T10:00:00.000Z" },
+        }),
+      );
+      const texto = panel()?.textContent ?? "";
+      expect(texto).toMatch(/Motivo\s*Venció sin atenderse/);
+      expect(texto).toMatch(/Justificación\s*Archivado automáticamente/);
+    });
+
+    it("un caso sin cierre no muestra resolución, archivo ni reapertura", async () => {
+      const { panel } = await abrir(crearDetalle());
+      const texto = panel()?.textContent ?? "";
+      expect(texto).not.toContain("Medidas tomadas");
+      expect(texto).not.toContain("Justificación");
+      expect(texto).not.toContain("Última reapertura");
+    });
+  });
+
+  describe("corregir según el área de quien revisa", () => {
+    it("un establecimiento no puede elegir corrupción", async () => {
+      area.set({ codigo: "EESS-6206", nombre: "Hospital Dos de Mayo", tipo: TipoArea.ESTABLECIMIENTO });
+      const { element, pulsar } = await abrir(crearDetalle({ acciones: [AccionCaso.CORREGIR] }));
+      await pulsar("Corregir categoría");
+      const opciones = Array.from(element.querySelectorAll("[role='dialog'] option")).map((opcion) => opcion.getAttribute("value"));
+      expect(opciones).not.toContain("denuncia-corrupcion");
+      expect(opciones).toContain("queja");
+    });
+
+    it("OTRANS y el administrador (sin área) sí pueden elegir corrupción", async () => {
+      area.set({ codigo: "OTRANS", nombre: "OTRANS", tipo: TipoArea.OTRANS });
+      const otrans = await abrir(crearDetalle({ acciones: [AccionCaso.CORREGIR] }));
+      await otrans.pulsar("Corregir categoría");
+      const deOtrans = Array.from(otrans.element.querySelectorAll("[role='dialog'] option")).map((opcion) => opcion.getAttribute("value"));
+      expect(deOtrans).toContain("denuncia-corrupcion");
     });
   });
 

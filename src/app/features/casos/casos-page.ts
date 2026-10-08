@@ -6,7 +6,12 @@ import { SessionStore } from "@/core/auth/session.store";
 import { AreaSelector } from "@/features/casos/components/area-selector";
 import { CasoRevision } from "@/features/casos/components/caso-revision";
 import { CasosTabla } from "@/features/casos/components/casos-tabla";
-import { ESTADO_OPCIONES, TABS_POR_TIPO_AREA, TABS_SIN_AREA } from "@/features/casos/constants/casos-constants";
+import {
+  ESTADO_OPCIONES,
+  OPCIONES_FILTRO_MOTIVO,
+  TABS_POR_TIPO_AREA,
+  TABS_SIN_AREA,
+} from "@/features/casos/constants/casos-constants";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import type { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import { ListaCasosStore } from "@/features/casos/lista-casos.store";
@@ -52,6 +57,7 @@ export class CasosPage {
     return area ? TABS_POR_TIPO_AREA[area.tipo] : TABS_SIN_AREA;
   });
   protected readonly estadoOpciones = ESTADO_OPCIONES;
+  protected readonly motivoOpciones = OPCIONES_FILTRO_MOTIVO;
   protected readonly seleccionado = signal<string | null>(null);
 
   constructor() {

@@ -24,7 +24,10 @@ const INVALID_CLASSES = "border-danger-200 focus:border-danger-500";
       ></textarea>
     </label>
     @if (maxlength(); as maximo) {
-      <p class="mt-1 text-right text-xs font-medium text-gray-500">{{ value().length }} / {{ maximo }}</p>
+      <p class="mt-1 flex justify-between gap-3 text-xs font-medium text-gray-500">
+        <span [class.text-danger-600]="faltaMinimo()">{{ avisoMinimo() }}</span>
+        <span>{{ value().length }} / {{ maximo }}</span>
+      </p>
     }
   `,
 })
@@ -33,12 +36,24 @@ export class TextareaField {
   readonly placeholder = input("");
   readonly rows = input(4);
   readonly maxlength = input<number>();
+  /** Solo avisa cuántos caracteres faltan; quien lo usa decide si bloquea el envío. */
+  readonly minlength = input<number>();
   readonly invalid = input(false, { transform: booleanAttribute });
   readonly value = model("");
 
   protected readonly classes = computed(() =>
     joinClasses(BASE_CLASSES, this.invalid() ? INVALID_CLASSES : VALID_CLASSES),
   );
+
+  protected readonly faltaMinimo = computed(() => {
+    const minimo = this.minlength();
+    return minimo !== undefined && this.value().trim().length < minimo;
+  });
+
+  protected readonly avisoMinimo = computed(() => {
+    const minimo = this.minlength();
+    return minimo === undefined ? "" : `Mínimo ${minimo} caracteres`;
+  });
 
   protected alEscribir(evento: Event): void {
     this.value.set((evento.target as HTMLTextAreaElement).value);

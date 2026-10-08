@@ -115,6 +115,44 @@ describe("BandejasPage", () => {
     expect(element.textContent).toContain("MINSA-2026-000009");
   });
 
+  it("solo la bandeja Archivados ofrece filtrar por motivo, y al elegirlo lo pide al servidor", async () => {
+    const { api, element, elegir, fixture } = await setup();
+    expect(element.textContent).not.toContain("Todos los motivos");
+    await elegir("Archivados");
+    expect(element.textContent).toContain("Todos los motivos");
+
+    const select = element.querySelector<HTMLSelectElement>("app-select-field select") as HTMLSelectElement;
+    select.value = "NO_CORRESPONDE";
+    select.dispatchEvent(new Event("change"));
+    await fixture.whenStable();
+    await esperar();
+    await fixture.whenStable();
+    expect(api.listar).toHaveBeenCalledWith({ estado: "archivado", limite: 100, motivoArchivo: "NO_CORRESPONDE" });
+
+    await elegir("Resueltos");
+    expect(element.textContent).not.toContain("Todos los motivos");
+  });
+
+  it("un caso archivado se abre para reabrirlo", async () => {
+    const { api, element, elegir, fixture } = await setup({
+      ...datosBase(),
+      archivado: lista([crearCaso({ codigo: "MINSA-2026-000009", estado: EstadoCaso.ARCHIVADO, acciones: [AccionCaso.REABRIR] })]),
+    });
+    api.detalle.mockResolvedValue(
+      crearDetalle({ codigo: "MINSA-2026-000009", estado: EstadoCaso.ARCHIVADO, acciones: [AccionCaso.REABRIR] }),
+    );
+    await elegir("Archivados");
+    const revisar = Array.from(element.querySelectorAll<HTMLButtonElement>("tbody button")).find((boton) =>
+      boton.textContent?.includes("Revisar"),
+    ) as HTMLButtonElement;
+    revisar.click();
+    await fixture.whenStable();
+    await esperar();
+    await fixture.whenStable();
+    const botones = Array.from(element.querySelectorAll<HTMLButtonElement>("[role='dialog'] button")).map((boton) => boton.textContent?.trim());
+    expect(botones).toContain("Reabrir el caso");
+  });
+
   it("una bandeja vacía lo dice", async () => {
     const { element, elegir } = await setup();
     await elegir("Resueltos");
@@ -144,7 +182,7 @@ describe("BandejasPage", () => {
     expect(element.querySelector("header")?.textContent).toContain("Área: Hospital Dos de Mayo");
   });
 
-  it("sin área (administrador o gestor) no muestra la línea del área", async () => {
+  it("sin área (administrador) no muestra la línea del área", async () => {
     const { element } = await setup();
     expect(element.querySelector("header")?.textContent).not.toContain("Área:");
   });

@@ -1,8 +1,10 @@
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
+import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
 import { TipoEvidencia } from "@/features/casos/enums/tipo-evidencia.enum";
 import { RespuestaInvalidaError } from "@/features/casos/services/incidencia-error";
 import { crearDetalleDto, crearResumenDto } from "@/features/casos/testing/caso-builder";
@@ -74,7 +76,7 @@ describe("mapearDetalle", () => {
   it("agrega el relato, el reclamante, la resolución, las pruebas y el historial", () => {
     const detalle = mapearDetalle(
       crearDetalleDto({
-        resolucion: "Se resolvió",
+        resolucion: { medidasTomadas: "Se entregó", fundamento: "Había stock", resultado: "CERRADO" },
         descripcion: "Texto del ciudadano",
         reclamante: "Luis A. · DNI ••••1907",
         evidencias: [
@@ -84,12 +86,38 @@ describe("mapearDetalle", () => {
         historial: [{ titulo: "Recibido por WhatsApp", detalle: "Registrado.", hora: "hace 3 h", fecha: "2026-10-05" }],
       }),
     );
-    expect(detalle.resolucion).toBe("Se resolvió");
+    expect(detalle.resolucion).toEqual({
+      medidasTomadas: "Se entregó",
+      fundamento: "Había stock",
+      resultado: ResultadoResolucion.CERRADO,
+    });
+    expect(detalle.archivo).toBeNull();
+    expect(detalle.reapertura).toBeNull();
     expect(detalle.descripcion).toBe("Texto del ciudadano");
     expect(detalle.reclamante).toBe("Luis A. · DNI ••••1907");
     expect(detalle.evidencias.map((evidencia) => evidencia.tipo)).toEqual([TipoEvidencia.IMAGEN, TipoEvidencia.VIDEO]);
     expect(detalle.evidencias[1].sensible).toBe(true);
     expect(detalle.historial).toEqual([{ titulo: "Recibido por WhatsApp", detalle: "Registrado.", hora: "hace 3 h" }]);
+  });
+
+  it("traduce el archivo, también el automático sin justificación, y la última reapertura", () => {
+    const detalle = mapearDetalle(
+      crearDetalleDto({
+        archivo: { motivo: "RESUELTA_VIGENCIA", detalle: null, archivadoEn: "2026-10-08T12:00:00.000Z" },
+        reapertura: { reabiertoEn: "2026-10-01T09:00:00.000Z", motivo: "Faltaba una prueba" },
+      }),
+    );
+    expect(detalle.archivo).toEqual({ motivo: MotivoArchivo.RESUELTA_VIGENCIA, detalle: null, archivadoEn: "2026-10-08T12:00:00.000Z" });
+    expect(detalle.reapertura).toEqual({ reabiertoEn: "2026-10-01T09:00:00.000Z", motivo: "Faltaba una prueba" });
+  });
+
+  it("un motivo de archivo o un resultado desconocidos se rechazan", () => {
+    expect(() =>
+      mapearDetalle(crearDetalleDto({ archivo: { motivo: "RARO", detalle: null, archivadoEn: "2026-10-08T12:00:00.000Z" } })),
+    ).toThrow(RespuestaInvalidaError);
+    expect(() =>
+      mapearDetalle(crearDetalleDto({ resolucion: { medidasTomadas: "a", fundamento: "b", resultado: "RARO" } })),
+    ).toThrow(RespuestaInvalidaError);
   });
 
   it("un tipo de prueba desconocido se muestra como documento", () => {

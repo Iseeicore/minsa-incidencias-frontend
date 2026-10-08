@@ -4,5 +4,7 @@ export const AccionCaso = {
   DERIVAR: "derivar",
   TOMAR: "tomar",
   RESOLVER: "resolver",
+  ARCHIVAR: "archivar",
+  REABRIR: "reabrir",
 } as const;
 export type AccionCaso = (typeof AccionCaso)[keyof typeof AccionCaso];

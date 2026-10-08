@@ -2,6 +2,8 @@ import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
+import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
+import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
 import { TipoEvidencia } from "@/features/casos/enums/tipo-evidencia.enum";
 import { TipoArea } from "@/shared/enums/tipo-area.enum";
 import { BadgeTone } from "@/shared/enums/badge.enum";
@@ -20,6 +22,10 @@ export const LIMITE_AREAS = 8;
 export const MINIMO_BUSQUEDA_AREA = 2;
 export const LIMITE_BANDEJA = 100;
 export const MAX_RESOLUCION = 4000;
+export const MAX_ARCHIVO_DETALLE = 2000;
+export const MAX_REAPERTURA_MOTIVO = 2000;
+export const MIN_TEXTO_REVISION = 10;
+export const ARCHIVADO_POR_SISTEMA = "Archivado automáticamente";
 
 export const CATEGORIA_LABEL: Record<CategoriaCaso, string> = {
   [CategoriaCaso.DENUNCIA_CORRUPCION]: "Denuncia por corrupción",
@@ -34,7 +40,40 @@ export const ACCION_LABEL: Record<AccionCaso, string> = {
   [AccionCaso.DERIVAR]: "Derivar al área",
   [AccionCaso.TOMAR]: "Tomar en gestión",
   [AccionCaso.RESOLVER]: "Resolver el caso",
+  [AccionCaso.ARCHIVAR]: "Archivar el caso",
+  [AccionCaso.REABRIR]: "Reabrir el caso",
 };
+
+export const MOTIVO_ARCHIVO_LABEL: Record<MotivoArchivo, string> = {
+  [MotivoArchivo.DATOS_INSUFICIENTES]: "Datos insuficientes",
+  [MotivoArchivo.NO_CORRESPONDE]: "No corresponde",
+  [MotivoArchivo.VENCIDA_SIN_ATENDER]: "Venció sin atenderse",
+  [MotivoArchivo.RESUELTA_VIGENCIA]: "Resolución cumplió su vigencia",
+};
+
+export const RESULTADO_LABEL: Record<ResultadoResolucion, string> = {
+  [ResultadoResolucion.ATENDIDO]: "Atendido",
+  [ResultadoResolucion.CERRADO]: "Cerrado",
+};
+
+const SIN_ELEGIR = "";
+
+/** Los dos motivos que elige una persona al archivar; los otros dos los pone el sistema. */
+export const OPCIONES_MOTIVO_ARCHIVO_MANUAL: readonly SelectOption[] = [
+  { value: SIN_ELEGIR, label: "Elige un motivo" },
+  { value: MotivoArchivo.DATOS_INSUFICIENTES, label: MOTIVO_ARCHIVO_LABEL[MotivoArchivo.DATOS_INSUFICIENTES] },
+  { value: MotivoArchivo.NO_CORRESPONDE, label: MOTIVO_ARCHIVO_LABEL[MotivoArchivo.NO_CORRESPONDE] },
+];
+
+export const OPCIONES_RESULTADO: readonly SelectOption[] = [
+  { value: SIN_ELEGIR, label: "Elige un resultado" },
+  ...Object.values(ResultadoResolucion).map((resultado) => ({ value: resultado, label: RESULTADO_LABEL[resultado] })),
+];
+
+export const OPCIONES_FILTRO_MOTIVO: readonly SelectOption[] = [
+  { value: FILTRO_TODOS, label: "Todos los motivos" },
+  ...Object.values(MotivoArchivo).map((motivo) => ({ value: motivo, label: MOTIVO_ARCHIVO_LABEL[motivo] })),
+];
 
 export const TIPO_EVIDENCIA_LABEL: Record<TipoEvidencia, string> = {
   [TipoEvidencia.IMAGEN]: "Imagen",

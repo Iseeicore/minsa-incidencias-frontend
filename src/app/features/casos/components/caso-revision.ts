@@ -1,10 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, model, signal, untracked } from "@angular/core";
+import { SessionStore } from "@/core/auth/session.store";
 import { CasosStore } from "@/features/casos/casos.store";
 import { AreaSelector } from "@/features/casos/components/area-selector";
+import { CasoCierre } from "@/features/casos/components/caso-cierre";
+import { FormularioArchivo, type DatosArchivo } from "@/features/casos/components/formulario-archivo";
+import { FormularioReapertura } from "@/features/casos/components/formulario-reapertura";
+import { FormularioResolucion } from "@/features/casos/components/formulario-resolucion";
 import {
   CATEGORIA_LABEL,
   ESTADO_BADGE,
-  MAX_RESOLUCION,
   PRIORIDAD_CASO_BADGE,
   SIN_AREA,
   SIN_DATO,
@@ -17,8 +21,10 @@ import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { ModoPanel } from "@/features/casos/enums/modo-panel.enum";
+import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import type { AreaOpcion } from "@/features/casos/types/area.types";
-import type { ResultadoAccion } from "@/features/casos/types/caso.types";
+import type { DatosResolucion, ResultadoAccion } from "@/features/casos/types/caso.types";
+import { categoriasCorregibles, tipoAreaDeDestino } from "@/features/casos/utils/categorias-corregibles";
 import { tonoConfianza } from "@/features/casos/utils/confianza-tone";
 import { textoRenipress } from "@/features/casos/utils/texto-establecimiento";
 import { textoPlazo } from "@/features/casos/utils/texto-plazo";
@@ -29,17 +35,29 @@ import { Badge } from "@/shared/ui/badge/badge";
 import { Button } from "@/shared/ui/button/button";
 import { Drawer } from "@/shared/ui/drawer/drawer";
 import { SelectField, type SelectOption } from "@/shared/ui/select-field/select-field";
-import { TextareaField } from "@/shared/ui/textarea-field/textarea-field";
 import { Timeline } from "@/shared/ui/timeline/timeline";
 
 @Component({
   selector: "app-caso-revision",
-  imports: [Alert, AreaSelector, Badge, Button, Drawer, SelectField, TextareaField, Timeline],
+  imports: [
+    Alert,
+    AreaSelector,
+    Badge,
+    Button,
+    CasoCierre,
+    Drawer,
+    FormularioArchivo,
+    FormularioReapertura,
+    FormularioResolucion,
+    SelectField,
+    Timeline,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./caso-revision.html",
 })
 export class CasoRevision {
   private readonly store = inject(CasosStore);
+  private readonly area = inject(SessionStore).area;
 
   readonly codigo = model<string | null>(null);
 
@@ -49,7 +67,6 @@ export class CasoRevision {
   protected readonly ButtonTone = ButtonTone;
   protected readonly ButtonVariant = ButtonVariant;
   protected readonly ModoPanel = ModoPanel;
-  protected readonly maxResolucion = MAX_RESOLUCION;
   protected readonly sinDato = SIN_DATO;
   protected readonly sinArea = SIN_AREA;
   protected readonly sinEstablecimiento = SIN_ESTABLECIMIENTO;
@@ -63,7 +80,6 @@ export class CasoRevision {
   protected readonly modo = signal<ModoPanel>(ModoPanel.NINGUNO);
   protected readonly nuevaCategoria = signal("");
   protected readonly areaElegida = signal<AreaOpcion | null>(null);
-  protected readonly resolucion = signal("");
   protected readonly feedback = signal<ResultadoAccion | null>(null);
   protected readonly evidenciasAbiertas = signal<readonly string[]>([]);
   protected readonly procesando = signal(false);
@@ -74,11 +90,15 @@ export class CasoRevision {
   protected readonly noDisponible = computed(() => this.errorCarga() === MENSAJE_ERROR.NO_DISPONIBLE);
 
   protected readonly esCorrupcion = computed(() => this.caso()?.categoria === CategoriaCaso.DENUNCIA_CORRUPCION);
+  protected readonly tipoDestino = computed(() => tipoAreaDeDestino(this.caso()?.categoria ?? null));
 
-  /** Una denuncia de corrupción nunca se deriva a un establecimiento: la toma OTRANS. */
-  protected readonly acciones = computed(() =>
-    (this.caso()?.acciones ?? []).filter((accion) => accion !== AccionCaso.DERIVAR || !this.esCorrupcion()),
-  );
+  /** Las acciones las manda el servidor; solo se oculta reabrir en lo que se archivó por vigencia, que no se reabre. */
+  protected readonly acciones = computed(() => {
+    const caso = this.caso();
+    if (!caso) return [];
+    const sinReapertura = caso.archivo?.motivo === MotivoArchivo.RESUELTA_VIGENCIA;
+    return caso.acciones.filter((accion) => accion !== AccionCaso.REABRIR || !sinReapertura);
+  });
 
   protected readonly plazoTexto = computed(() => {
     const caso = this.caso();
@@ -89,7 +109,7 @@ export class CasoRevision {
 
   protected readonly opcionesCategoria = computed<readonly SelectOption[]>(() => [
     { value: "", label: "Elige una categoría" },
-    ...Object.values(CategoriaCaso)
+    ...categoriasCorregibles(this.area()?.tipo ?? null)
       .filter((categoria) => categoria !== this.caso()?.categoria)
       .map((categoria) => ({ value: categoria, label: CATEGORIA_LABEL[categoria] })),
   ]);
@@ -99,6 +119,9 @@ export class CasoRevision {
   protected readonly motivoSinAcciones = computed(() => {
     const caso = this.caso();
     if (!caso || this.acciones().length > 0) return "";
+    if (caso.archivo?.motivo === MotivoArchivo.RESUELTA_VIGENCIA) {
+      return "Este caso se archivó porque la resolución cumplió su vigencia y no se puede reabrir.";
+    }
     if (caso.estado === EstadoCaso.RESUELTO || caso.estado === EstadoCaso.ARCHIVADO) return "Este caso ya está cerrado.";
     if (caso.categoria === CategoriaCaso.OTRO && caso.estado === EstadoCaso.CLASIFICADO && caso.revisadoPorHumano) {
       return "La categoría Otro no tiene un área a la que derivar y la revisión de la categoría ya se hizo.";
@@ -136,8 +159,8 @@ export class CasoRevision {
 
   protected aplicarDerivacion(): void {
     const area = this.areaElegida();
-    if (!area) return;
-    void this.ejecutar((codigo) => this.store.derivar(codigo, area.codigo));
+    if (!area && !this.esCorrupcion()) return;
+    void this.ejecutar((codigo) => this.store.derivar(codigo, area?.codigo));
   }
 
   protected tomar(): void {
@@ -160,15 +183,32 @@ export class CasoRevision {
     this.modo.set(ModoPanel.RESOLVER);
   }
 
-  protected aplicarResolucion(): void {
-    void this.ejecutar((codigo) => this.store.resolver(codigo, this.resolucion()));
+  protected aplicarResolucion(datos: DatosResolucion): void {
+    void this.ejecutar((codigo) => this.store.resolver(codigo, datos));
+  }
+
+  protected abrirArchivo(): void {
+    this.feedback.set(null);
+    this.modo.set(ModoPanel.ARCHIVAR);
+  }
+
+  protected aplicarArchivo(datos: DatosArchivo): void {
+    void this.ejecutar((codigo) => this.store.archivar(codigo, datos.motivo, datos.detalle));
+  }
+
+  protected abrirReapertura(): void {
+    this.feedback.set(null);
+    this.modo.set(ModoPanel.REABRIR);
+  }
+
+  protected aplicarReapertura(motivo: string): void {
+    void this.ejecutar((codigo) => this.store.reabrir(codigo, motivo));
   }
 
   protected cancelar(): void {
     this.modo.set(ModoPanel.NINGUNO);
     this.nuevaCategoria.set("");
     this.areaElegida.set(null);
-    this.resolucion.set("");
   }
 
   protected abrirEvidencia(nombre: string): void {

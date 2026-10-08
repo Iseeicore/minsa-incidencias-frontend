@@ -8,6 +8,7 @@ import { mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { AreasApi } from "@/features/casos/services/areas.api";
 import type { AreaOpcion } from "@/features/casos/types/area.types";
 import { textoRenipress } from "@/features/casos/utils/texto-establecimiento";
+import { TipoArea } from "@/shared/enums/tipo-area.enum";
 
 let siguienteId = 0;
 
@@ -82,6 +83,8 @@ export class AreaSelector {
   readonly placeholder = input("Busca por nombre o código...");
   /** Solo áreas que son un establecimiento (con código RENIPRESS): lo que puede recibir una derivación. */
   readonly soloEstablecimientos = input(true);
+  /** Si se indica, pide solo áreas de ese tipo y decide por sí mismo si hacen falta los datos de establecimiento. */
+  readonly tipo = input<TipoArea>();
   readonly seleccionada = model<AreaOpcion | null>(null);
 
   protected readonly idLista = `area-selector-${this.id}`;
@@ -180,9 +183,11 @@ export class AreaSelector {
     const token = ++this.peticion;
     this.cargando.set(true);
     try {
-      const lista = await this.api.listar({ q: texto, limite: LIMITE_AREAS });
+      const tipo = this.tipo();
+      const lista = await this.api.listar({ q: texto, limite: LIMITE_AREAS, ...(tipo && { tipo }) });
       if (token !== this.peticion) return;
-      const areas = this.soloEstablecimientos() ? lista.areas.filter((area) => area.establecimiento !== null) : lista.areas;
+      const soloEstablecimientos = tipo ? tipo === TipoArea.ESTABLECIMIENTO : this.soloEstablecimientos();
+      const areas = soloEstablecimientos ? lista.areas.filter((area) => area.establecimiento !== null) : lista.areas;
       this.resultados.set(areas);
       this.hayMas.set(lista.hayMas);
       this.error.set(null);

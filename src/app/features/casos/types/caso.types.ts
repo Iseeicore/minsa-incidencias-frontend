@@ -1,10 +1,12 @@
 import type { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import type { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import type { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import type { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import type { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import type { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import type { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import type { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
+import type { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
 import type { TipoEvidencia } from "@/features/casos/enums/tipo-evidencia.enum";
 import type { Prioridad } from "@/shared/enums/prioridad.enum";
 import type { TimelineItem } from "@/shared/ui/timeline/timeline";
@@ -56,8 +58,28 @@ export interface Caso {
   readonly acciones: readonly AccionCaso[];
 }
 
+export interface DatosResolucion {
+  readonly medidasTomadas: string;
+  readonly fundamento: string;
+  readonly resultado: ResultadoResolucion;
+}
+
+export interface ArchivoCaso {
+  readonly motivo: MotivoArchivo;
+  /** Justificación de la persona; `null` si lo archivó el sistema. */
+  readonly detalle: string | null;
+  readonly archivadoEn: string;
+}
+
+export interface ReaperturaCaso {
+  readonly reabiertoEn: string;
+  readonly motivo: string;
+}
+
 export interface CasoDetalle extends Caso {
-  readonly resolucion: string | null;
+  readonly resolucion: DatosResolucion | null;
+  readonly archivo: ArchivoCaso | null;
+  readonly reapertura: ReaperturaCaso | null;
   readonly descripcion: string;
   readonly reclamante: string;
   readonly evidencias: readonly EvidenciaCaso[];

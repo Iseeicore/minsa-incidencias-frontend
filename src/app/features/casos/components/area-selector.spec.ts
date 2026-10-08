@@ -64,6 +64,26 @@ describe("AreaSelector", () => {
     return { fixture, element, campo, opcionesVisibles, escribir, teclear, asentar };
   }
 
+  it("con tipo pide solo áreas de ese tipo; OTRANS no exige datos de establecimiento", async () => {
+    const { fixture, escribir, opcionesVisibles } = await setup();
+    api.listar.mockResolvedValue(respuesta([OTRANS]));
+    fixture.componentRef.setInput("tipo", TipoArea.OTRANS);
+    await fixture.whenStable();
+    await escribir("otr");
+    expect(api.listar).toHaveBeenCalledWith({ q: "otr", limite: 8, tipo: "OTRANS" });
+    expect(opcionesVisibles().map((opcion) => opcion.textContent?.trim())).toEqual(["OTRANS"]);
+  });
+
+  it("con tipo ESTABLECIMIENTO manda el tipo y descarta lo que no tenga datos de establecimiento", async () => {
+    const { fixture, escribir, opcionesVisibles } = await setup();
+    api.listar.mockResolvedValue(respuesta([HOSPITAL, OTRANS]));
+    fixture.componentRef.setInput("tipo", TipoArea.ESTABLECIMIENTO);
+    await fixture.whenStable();
+    await escribir("hos");
+    expect(api.listar).toHaveBeenCalledWith({ q: "hos", limite: 8, tipo: "ESTABLECIMIENTO" });
+    expect(opcionesVisibles()).toHaveLength(1);
+  });
+
   it("es un combobox con etiqueta y la lista cerrada al empezar", async () => {
     const { element, campo } = await setup();
     expect(campo().getAttribute("role")).toBe("combobox");

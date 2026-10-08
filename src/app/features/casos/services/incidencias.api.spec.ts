@@ -5,7 +5,9 @@ import { environment } from "@env/environment";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
+import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
 import { crearDetalleDto, crearResumenDto } from "@/features/casos/testing/caso-builder";
 import { IncidenciaError, RespuestaInvalidaError } from "./incidencia-error";
 import { IncidenciasApi } from "./incidencias.api";
@@ -213,15 +215,86 @@ describe("IncidenciasApi", () => {
       await resultado;
     });
 
-    it("resolver manda el texto de la resolución", async () => {
+    it("derivar sin área manda el cuerpo vacío: una denuncia de corrupción se queda en OTRANS", async () => {
       const { api, http } = setup();
-      const resultado = api.resolver("MINSA-2026-000001", "Se atendió");
+      const resultado = api.derivar("MINSA-2026-000001");
+      const peticion = http.expectOne(`${BASE}/MINSA-2026-000001/derivar`);
+      expect(peticion.request.body).toEqual({});
+      peticion.flush({ mensaje: "Derivado", caso: crearDetalleDto({ estado: "derivado" }) });
+      await resultado;
+    });
+
+    it("resolver manda las medidas, el fundamento y el resultado, y traduce la resolución", async () => {
+      const { api, http } = setup();
+      const resultado = api.resolver("MINSA-2026-000001", {
+        medidasTomadas: "Se entregó el medicamento",
+        fundamento: "Había stock",
+        resultado: ResultadoResolucion.ATENDIDO,
+      });
       const peticion = http.expectOne(`${BASE}/MINSA-2026-000001/resolver`);
-      expect(peticion.request.body).toEqual({ resolucion: "Se atendió" });
-      peticion.flush({ mensaje: "Resuelto", caso: crearDetalleDto({ estado: "resuelto", resolucion: "Se atendió" }) });
+      expect(peticion.request.body).toEqual({
+        medidasTomadas: "Se entregó el medicamento",
+        fundamento: "Había stock",
+        resultado: "ATENDIDO",
+      });
+      peticion.flush({
+        mensaje: "Resuelto",
+        caso: crearDetalleDto({
+          estado: "resuelto",
+          resolucion: { medidasTomadas: "Se entregó el medicamento", fundamento: "Había stock", resultado: "ATENDIDO" },
+        }),
+      });
       const respuesta = await resultado;
       expect(respuesta.caso?.estado).toBe(EstadoCaso.RESUELTO);
-      expect(respuesta.caso?.resolucion).toBe("Se atendió");
+      expect(respuesta.caso?.resolucion).toEqual({
+        medidasTomadas: "Se entregó el medicamento",
+        fundamento: "Había stock",
+        resultado: ResultadoResolucion.ATENDIDO,
+      });
+    });
+
+    it("archivar manda el motivo y la justificación, y traduce el archivo", async () => {
+      const { api, http } = setup();
+      const resultado = api.archivar("MINSA-2026-000001", MotivoArchivo.NO_CORRESPONDE, "Es de otra institución");
+      const peticion = http.expectOne(`${BASE}/MINSA-2026-000001/archivar`);
+      expect(peticion.request.method).toBe("POST");
+      expect(peticion.request.body).toEqual({ motivo: "NO_CORRESPONDE", detalle: "Es de otra institución" });
+      peticion.flush({
+        mensaje: "Archivado",
+        caso: crearDetalleDto({
+          estado: "archivado",
+          archivo: { motivo: "NO_CORRESPONDE", detalle: "Es de otra institución", archivadoEn: "2026-10-08T12:00:00.000Z" },
+        }),
+      });
+      const respuesta = await resultado;
+      expect(respuesta.caso?.archivo).toEqual({
+        motivo: MotivoArchivo.NO_CORRESPONDE,
+        detalle: "Es de otra institución",
+        archivadoEn: "2026-10-08T12:00:00.000Z",
+      });
+    });
+
+    it("reabrir manda el motivo y traduce la última reapertura", async () => {
+      const { api, http } = setup();
+      const resultado = api.reabrir("MINSA-2026-000001", "Llegó información nueva");
+      const peticion = http.expectOne(`${BASE}/MINSA-2026-000001/reabrir`);
+      expect(peticion.request.body).toEqual({ motivo: "Llegó información nueva" });
+      peticion.flush({
+        mensaje: "Reabierto",
+        caso: crearDetalleDto({ reapertura: { reabiertoEn: "2026-10-09T08:00:00.000Z", motivo: "Llegó información nueva" } }),
+      });
+      const respuesta = await resultado;
+      expect(respuesta.caso?.reapertura).toEqual({ reabiertoEn: "2026-10-09T08:00:00.000Z", motivo: "Llegó información nueva" });
+    });
+
+    it("el listado manda estado y motivoArchivo cuando se piden los archivados", async () => {
+      const { api, http } = setup();
+      const resultado = api.listar({ estado: "archivado", motivoArchivo: "NO_CORRESPONDE", limite: 20 });
+      const peticion = http.expectOne((req) => req.url === BASE);
+      expect(peticion.request.params.get("estado")).toBe("archivado");
+      expect(peticion.request.params.get("motivoArchivo")).toBe("NO_CORRESPONDE");
+      peticion.flush({ items: [], siguiente: null, hayMas: false });
+      await resultado;
     });
 
     it("si la corrección saca el caso de la vista, el caso viene null y el mensaje lo avisa", async () => {

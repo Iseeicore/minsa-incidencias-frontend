@@ -1,19 +1,34 @@
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
 import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
+import { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import { NivelAtencion } from "@/features/casos/enums/nivel-atencion.enum";
 import { PlazoEstado } from "@/features/casos/enums/plazo-estado.enum";
 import { PlazoTipo } from "@/features/casos/enums/plazo-tipo.enum";
+import { ResultadoResolucion } from "@/features/casos/enums/resultado-resolucion.enum";
 import { TipoEvidencia } from "@/features/casos/enums/tipo-evidencia.enum";
 import { RespuestaInvalidaError } from "@/features/casos/services/incidencia-error";
-import type { AreaCaso, Caso, CasoDetalle, EstablecimientoCaso, EvidenciaCaso, PlazoCaso } from "@/features/casos/types/caso.types";
 import type {
+  ArchivoCaso,
+  AreaCaso,
+  Caso,
+  CasoDetalle,
+  DatosResolucion,
+  EstablecimientoCaso,
+  EvidenciaCaso,
+  PlazoCaso,
+  ReaperturaCaso,
+} from "@/features/casos/types/caso.types";
+import type {
+  ArchivoDto,
   AreaDto,
   CasoDetalleDto,
   CasoResumenDto,
   EstablecimientoDto,
   EvidenciaDto,
   PlazoDto,
+  ReaperturaDto,
+  ResolucionDto,
 } from "@/features/casos/types/incidencias-api.types";
 import { Prioridad } from "@/shared/enums/prioridad.enum";
 import type { TimelineItem } from "@/shared/ui/timeline/timeline";
@@ -84,6 +99,24 @@ export function mapearResumen(dto: CasoResumenDto): Caso {
   };
 }
 
+function mapearResolucion(dto: ResolucionDto | null): DatosResolucion | null {
+  if (dto === null) return null;
+  return {
+    medidasTomadas: dto.medidasTomadas,
+    fundamento: dto.fundamento,
+    resultado: valorDe(ResultadoResolucion, dto.resultado, "resolucion.resultado"),
+  };
+}
+
+function mapearArchivo(dto: ArchivoDto | null): ArchivoCaso | null {
+  if (dto === null) return null;
+  return { motivo: valorDe(MotivoArchivo, dto.motivo, "archivo.motivo"), detalle: dto.detalle, archivadoEn: dto.archivadoEn };
+}
+
+function mapearReapertura(dto: ReaperturaDto | null): ReaperturaCaso | null {
+  return dto === null ? null : { reabiertoEn: dto.reabiertoEn, motivo: dto.motivo };
+}
+
 export function mapearDetalle(dto: CasoDetalleDto): CasoDetalle {
   const historial: TimelineItem[] = dto.historial.map((item) => ({
     titulo: item.titulo,
@@ -92,7 +125,9 @@ export function mapearDetalle(dto: CasoDetalleDto): CasoDetalle {
   }));
   return {
     ...mapearResumen(dto),
-    resolucion: dto.resolucion,
+    resolucion: mapearResolucion(dto.resolucion),
+    archivo: mapearArchivo(dto.archivo),
+    reapertura: mapearReapertura(dto.reapertura),
     descripcion: dto.descripcion,
     reclamante: dto.reclamante,
     evidencias: dto.evidencias.map(mapearEvidencia),

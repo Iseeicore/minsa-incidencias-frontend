@@ -86,6 +86,23 @@ describe("BandejasStore", () => {
     expect(store.error()).toBeNull();
   });
 
+  it("el motivo del archivo se manda solo en la consulta de archivados y vuelve a pedir las bandejas", async () => {
+    const { api, store } = await setup();
+    const antes = api.listar.mock.calls.length;
+    await store.cambiarMotivoArchivo("VENCIDA_SIN_ATENDER");
+    await esperar();
+    const consultas = api.listar.mock.calls.slice(antes).map(([consulta]) => consulta);
+    expect(consultas).toHaveLength(5);
+    expect(consultas.find((consulta) => consulta.estado === "archivado")).toEqual({
+      estado: "archivado",
+      limite: 100,
+      motivoArchivo: "VENCIDA_SIN_ATENDER",
+    });
+    for (const consulta of consultas.filter((otra) => otra.estado !== "archivado")) {
+      expect(consulta.motivoArchivo).toBeUndefined();
+    }
+  });
+
   it("cuando una acción cambia algo, vuelve a pedir los cinco estados", async () => {
     const { api, casos } = await setup();
     const antes = api.listar.mock.calls.length;

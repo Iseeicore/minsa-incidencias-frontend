@@ -26,6 +26,19 @@ describe("TextareaField", () => {
     expect(area.getAttribute("maxlength")).toBe("100");
   });
 
+  it("con minlength avisa el mínimo y lo marca en rojo mientras falten caracteres", async () => {
+    const { fixture, element, area } = await setup(100);
+    fixture.componentRef.setInput("minlength", 10);
+    await fixture.whenStable();
+    expect(element.textContent).toContain("Mínimo 10 caracteres");
+    expect(element.querySelector(".text-danger-600")).not.toBeNull();
+
+    area.value = "Texto con más de diez";
+    area.dispatchEvent(new Event("input"));
+    await fixture.whenStable();
+    expect(element.querySelector(".text-danger-600")).toBeNull();
+  });
+
   it("marca el campo como inválido para lectores de pantalla", async () => {
     const { fixture, area } = await setup();
     fixture.componentRef.setInput("invalid", true);

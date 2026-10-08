@@ -21,6 +21,14 @@
       [value]="lista.estado()"
       (valueChange)="lista.cambiarEstado($event)"
     />
+    @if (lista.verArchivados()) {
+      <app-select-field
+        label="Filtrar por motivo del archivo"
+        [options]="motivoOpciones"
+        [value]="lista.motivoArchivo()"
+        (valueChange)="lista.cambiarMotivoArchivo($event)"
+      />
+    }
   </section>
 
   @if (veTodasLasAreas()) {

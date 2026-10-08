@@ -3,7 +3,7 @@ import { SessionStore } from "@/core/auth/session.store";
 import { BandejasStore } from "@/features/casos/bandejas.store";
 import { CasoRevision } from "@/features/casos/components/caso-revision";
 import { CasosTabla } from "@/features/casos/components/casos-tabla";
-import { LIMITE_BANDEJA, TAMANO_PAGINA } from "@/features/casos/constants/casos-constants";
+import { LIMITE_BANDEJA, OPCIONES_FILTRO_MOTIVO, TAMANO_PAGINA } from "@/features/casos/constants/casos-constants";
 import { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import { BadgeTone } from "@/shared/enums/badge.enum";
@@ -12,6 +12,7 @@ import { Alert } from "@/shared/ui/alert/alert";
 import { Button } from "@/shared/ui/button/button";
 import { Card } from "@/shared/ui/card/card";
 import { Paginador } from "@/shared/ui/paginador/paginador";
+import { SelectField } from "@/shared/ui/select-field/select-field";
 import { Tabs, type TabOption } from "@/shared/ui/tabs/tabs";
 
 const BANDEJAS: readonly { readonly value: BandejaTab; readonly label: string; readonly ayuda: string }[] = [
@@ -21,12 +22,12 @@ const BANDEJAS: readonly { readonly value: BandejaTab; readonly label: string; r
   { value: BandejaTab.EN_GESTION, label: "En gestión", ayuda: "Derivados o que el área está atendiendo." },
   { value: BandejaTab.POR_VENCER, label: "Por vencer", ayuda: "Abiertos que están por cumplir el plazo de atención o que ya lo cumplieron." },
   { value: BandejaTab.RESUELTOS, label: "Resueltos", ayuda: "Con resolución vigente; se archivan cuando cumplen su vigencia." },
-  { value: BandejaTab.ARCHIVADOS, label: "Archivados", ayuda: "Resueltos que cumplieron su vigencia y los que vencieron sin atenderse." },
+  { value: BandejaTab.ARCHIVADOS, label: "Archivados", ayuda: "Archivados a mano, vencidos sin atender y resueltos que cumplieron su vigencia. Ábrelos para ver el motivo o reabrirlos." },
 ];
 
 @Component({
   selector: "app-bandejas-page",
-  imports: [Alert, Button, Card, CasoRevision, CasosTabla, Paginador, Tabs],
+  imports: [Alert, Button, Card, CasoRevision, CasosTabla, Paginador, SelectField, Tabs],
   providers: [BandejasStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./bandejas-page.html",
@@ -41,6 +42,8 @@ export class BandejasPage {
   protected readonly ButtonVariant = ButtonVariant;
   protected readonly CargaEstado = CargaEstado;
   protected readonly limite = LIMITE_BANDEJA;
+  protected readonly motivoOpciones = OPCIONES_FILTRO_MOTIVO;
+  protected readonly BandejaTab = BandejaTab;
   protected readonly tamano = TAMANO_PAGINA;
   protected readonly tab = signal<string>(BandejaTab.PARA_ACTUAR);
   protected readonly pagina = signal(1);

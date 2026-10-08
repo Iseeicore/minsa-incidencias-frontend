@@ -17,8 +17,8 @@ export interface SesionUsuario {
   nombreCompleto: string;
   correo: string;
   vistas: VistaCodigo[];
-  /** Códigos de rol de la sesión. Solo distingue al ADMINISTRADOR del GESTOR para el menú: el servidor decide los permisos. */
+  /** Códigos de rol de la sesión. Solo distingue al ADMINISTRADOR para el menú: el servidor decide los permisos. */
   roles: RolCodigo[];
-  /** Área a la que pertenece la persona; `null` para ADMINISTRADOR y GESTOR, que no tienen área. */
+  /** Área a la que pertenece la persona (GESTOR, OTRANS y ESTABLECIMIENTO la tienen); `null` solo para el ADMINISTRADOR. */
   area: AreaSesion | null;
 }

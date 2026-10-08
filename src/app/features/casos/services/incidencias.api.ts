@@ -4,7 +4,14 @@ import { firstValueFrom, type Observable } from "rxjs";
 import { API_BASE_URL } from "@/core/config/api.config";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import type { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
-import type { CasoDetalle, CasosPorVencer, ListaCasos, RespuestaAccion } from "@/features/casos/types/caso.types";
+import type { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
+import type {
+  CasoDetalle,
+  CasosPorVencer,
+  DatosResolucion,
+  ListaCasos,
+  RespuestaAccion,
+} from "@/features/casos/types/caso.types";
 import type {
   CasoDetalleDto,
   ConsultaCasos,
@@ -47,16 +54,25 @@ export class IncidenciasApi {
     return this.ejecutar(codigo, AccionCaso.CORREGIR, { categoria });
   }
 
-  derivar(codigo: string, areaDestino: string): Promise<RespuestaAccion> {
-    return this.ejecutar(codigo, AccionCaso.DERIVAR, { areaDestino });
+  /** Sin área de destino, una denuncia de corrupción se queda en OTRANS. */
+  derivar(codigo: string, areaDestino?: string): Promise<RespuestaAccion> {
+    return this.ejecutar(codigo, AccionCaso.DERIVAR, areaDestino === undefined ? {} : { areaDestino });
   }
 
   tomar(codigo: string): Promise<RespuestaAccion> {
     return this.ejecutar(codigo, AccionCaso.TOMAR, {});
   }
 
-  resolver(codigo: string, resolucion: string): Promise<RespuestaAccion> {
-    return this.ejecutar(codigo, AccionCaso.RESOLVER, { resolucion });
+  resolver(codigo: string, resolucion: DatosResolucion): Promise<RespuestaAccion> {
+    return this.ejecutar(codigo, AccionCaso.RESOLVER, resolucion);
+  }
+
+  archivar(codigo: string, motivo: MotivoArchivo, detalle: string): Promise<RespuestaAccion> {
+    return this.ejecutar(codigo, AccionCaso.ARCHIVAR, { motivo, detalle });
+  }
+
+  reabrir(codigo: string, motivo: string): Promise<RespuestaAccion> {
+    return this.ejecutar(codigo, AccionCaso.REABRIR, { motivo });
   }
 
   private async ejecutar(codigo: string, accion: AccionCaso, cuerpo: object): Promise<RespuestaAccion> {

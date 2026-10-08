@@ -136,6 +136,36 @@ describe("CasosPage", () => {
     expect(ultimaConsulta()).toMatchObject({ estado: "derivado" });
   });
 
+  it("con el estado Archivado aparece el filtro por motivo, lo manda al servidor y desaparece con otro estado", async () => {
+    const { element, asentar, ultimaConsulta } = await setup();
+    const selects = () => element.querySelectorAll<HTMLSelectElement>("section[aria-label='Filtros'] select");
+    expect(selects()).toHaveLength(1);
+
+    selects()[0].value = "archivado";
+    selects()[0].dispatchEvent(new Event("change"));
+    await asentar();
+    expect(selects()).toHaveLength(2);
+    const motivos = Array.from(selects()[1].options).map((opcion) => opcion.textContent?.trim());
+    expect(motivos).toEqual([
+      "Todos los motivos",
+      "Datos insuficientes",
+      "No corresponde",
+      "Venció sin atenderse",
+      "Resolución cumplió su vigencia",
+    ]);
+
+    selects()[1].value = "DATOS_INSUFICIENTES";
+    selects()[1].dispatchEvent(new Event("change"));
+    await asentar();
+    expect(ultimaConsulta()).toEqual({ limite: 20, estado: "archivado", motivoArchivo: "DATOS_INSUFICIENTES" });
+
+    selects()[0].value = "derivado";
+    selects()[0].dispatchEvent(new Event("change"));
+    await asentar();
+    expect(selects()).toHaveLength(1);
+    expect(ultimaConsulta()).toEqual({ limite: 20, estado: "derivado" });
+  });
+
   it("buscar manda el texto al servidor cuando la persona deja de escribir", async () => {
     const { element, asentar, ultimaConsulta } = await setup();
     const input = element.querySelector<HTMLInputElement>("input[type='search']") as HTMLInputElement;
@@ -240,7 +270,7 @@ describe("CasosPage", () => {
       expect(element.querySelector("app-area-selector")).toBeNull();
     });
 
-    it("sin área (administrador o gestor) ve todas las pestañas y el filtro por establecimiento", async () => {
+    it("sin área (administrador) ve todas las pestañas y el filtro por establecimiento", async () => {
       const { element } = await setup();
       expect(pestanasDe(element)).toHaveLength(6);
       expect(element.querySelector("app-area-selector")).not.toBeNull();

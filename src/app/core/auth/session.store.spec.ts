@@ -26,7 +26,7 @@ describe("SessionStore", () => {
     expect(sessionStorage.length).toBe(0);
   });
 
-  it("sin área (administrador o gestor) ve las áreas de todos; con área, solo la suya", async () => {
+  it("sin área (administrador) ve las áreas de todos; con área, solo la suya", async () => {
     const sinArea = setup({ me: async () => ({ ...SESION, vistas: [...SESION.vistas], roles: [...SESION.roles], area: null }) });
     expect(sinArea.veTodasLasAreas()).toBe(false);
     await sinArea.cargar();

@@ -143,6 +143,31 @@ describe("ListaCasosStore", () => {
     expect(ultimaConsulta(api)).not.toHaveProperty("estado");
   });
 
+  it("los archivados se filtran por motivo en el servidor; otro estado no manda motivo", async () => {
+    const { api, store } = await setup();
+    await store.cambiarEstado("archivado");
+    expect(store.verArchivados()).toBe(true);
+    expect(ultimaConsulta(api)).toEqual({ limite: 20, estado: "archivado" });
+
+    await store.cambiarMotivoArchivo("NO_CORRESPONDE");
+    expect(ultimaConsulta(api)).toEqual({ limite: 20, estado: "archivado", motivoArchivo: "NO_CORRESPONDE" });
+    expect(store.hayFiltros()).toBe(true);
+
+    await store.cambiarEstado("resuelto");
+    expect(store.verArchivados()).toBe(false);
+    expect(store.motivoArchivo()).toBe(FILTRO_TODOS);
+    expect(ultimaConsulta(api)).toEqual({ limite: 20, estado: "resuelto" });
+  });
+
+  it("limpiar también quita el motivo del archivo", async () => {
+    const { api, store } = await setup();
+    await store.cambiarEstado("archivado");
+    await store.cambiarMotivoArchivo("DATOS_INSUFICIENTES");
+    await store.limpiar();
+    expect(store.motivoArchivo()).toBe(FILTRO_TODOS);
+    expect(ultimaConsulta(api)).toEqual({ limite: 20 });
+  });
+
   it("filtrar por establecimiento manda su código RENIPRESS, vuelve al principio y se quita con null", async () => {
     const { api, store } = await setup();
     await store.irASiguiente();

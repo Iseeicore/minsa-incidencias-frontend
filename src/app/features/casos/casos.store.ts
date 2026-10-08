@@ -1,17 +1,30 @@
 import { inject, Injectable, signal } from "@angular/core";
-import { MAX_RESOLUCION } from "@/features/casos/constants/casos-constants";
+import {
+  MAX_ARCHIVO_DETALLE,
+  MAX_REAPERTURA_MOTIVO,
+  MAX_RESOLUCION,
+  MIN_TEXTO_REVISION,
+} from "@/features/casos/constants/casos-constants";
 import { AccionCaso } from "@/features/casos/enums/accion-caso.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
 import type { CategoriaCaso } from "@/features/casos/enums/categoria-caso.enum";
+import type { MotivoArchivo } from "@/features/casos/enums/motivo-archivo.enum";
 import { IncidenciaError, mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
-import type { CasoDetalle, RespuestaAccion, ResultadoAccion } from "@/features/casos/types/caso.types";
+import type { CasoDetalle, DatosResolucion, RespuestaAccion, ResultadoAccion } from "@/features/casos/types/caso.types";
 import { HttpStatus } from "@/shared/enums/http-status.enum";
 
 const ESTADOS_QUE_PIDEN_RECARGAR: readonly number[] = [HttpStatus.NOT_FOUND, HttpStatus.CONFLICT];
 
 function fallo(error: string): ResultadoAccion {
   return { ok: false, error };
+}
+
+/** Texto de revisión dentro del rango que acepta el servidor (sin contar los espacios de los bordes); `null` si es válido. */
+function errorDeTexto(nombre: string, texto: string, maximo: number): string | null {
+  if (texto.length < MIN_TEXTO_REVISION) return `${nombre} necesita al menos ${MIN_TEXTO_REVISION} caracteres.`;
+  if (texto.length > maximo) return `${nombre} no puede pasar de ${maximo} caracteres.`;
+  return null;
 }
 
 /**
@@ -67,7 +80,7 @@ export class CasosStore {
     return this.ejecutar(AccionCaso.CORREGIR, () => this.api.corregir(codigo, categoria));
   }
 
-  derivar(codigo: string, areaDestino: string): Promise<ResultadoAccion> {
+  derivar(codigo: string, areaDestino?: string): Promise<ResultadoAccion> {
     return this.ejecutar(AccionCaso.DERIVAR, () => this.api.derivar(codigo, areaDestino));
   }
 
@@ -75,11 +88,29 @@ export class CasosStore {
     return this.ejecutar(AccionCaso.TOMAR, () => this.api.tomar(codigo));
   }
 
-  async resolver(codigo: string, resolucion: string): Promise<ResultadoAccion> {
-    const texto = resolucion.trim();
-    if (texto === "") return fallo("La resolución no puede estar vacía.");
-    if (texto.length > MAX_RESOLUCION) return fallo(`La resolución no puede pasar de ${MAX_RESOLUCION} caracteres.`);
-    return this.ejecutar(AccionCaso.RESOLVER, () => this.api.resolver(codigo, texto));
+  async resolver(codigo: string, datos: DatosResolucion): Promise<ResultadoAccion> {
+    const medidasTomadas = datos.medidasTomadas.trim();
+    const fundamento = datos.fundamento.trim();
+    const error =
+      errorDeTexto("Las medidas tomadas", medidasTomadas, MAX_RESOLUCION) ?? errorDeTexto("El fundamento", fundamento, MAX_RESOLUCION);
+    if (error) return fallo(error);
+    return this.ejecutar(AccionCaso.RESOLVER, () =>
+      this.api.resolver(codigo, { medidasTomadas, fundamento, resultado: datos.resultado }),
+    );
+  }
+
+  async archivar(codigo: string, motivo: MotivoArchivo, detalle: string): Promise<ResultadoAccion> {
+    const texto = detalle.trim();
+    const error = errorDeTexto("La justificación", texto, MAX_ARCHIVO_DETALLE);
+    if (error) return fallo(error);
+    return this.ejecutar(AccionCaso.ARCHIVAR, () => this.api.archivar(codigo, motivo, texto));
+  }
+
+  async reabrir(codigo: string, motivo: string): Promise<ResultadoAccion> {
+    const texto = motivo.trim();
+    const error = errorDeTexto("El motivo", texto, MAX_REAPERTURA_MOTIVO);
+    if (error) return fallo(error);
+    return this.ejecutar(AccionCaso.REABRIR, () => this.api.reabrir(codigo, texto));
   }
 
   private async ejecutar(accion: AccionCaso, llamada: () => Promise<RespuestaAccion>): Promise<ResultadoAccion> {

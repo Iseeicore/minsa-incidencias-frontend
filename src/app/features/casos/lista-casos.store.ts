@@ -6,6 +6,7 @@ import { BUSQUEDA_DEBOUNCE_MS } from "@/features/casos/constants/casos-config";
 import { CATEGORIA_POR_TAB, FILTRO_TODOS, TAMANO_PAGINA } from "@/features/casos/constants/casos-constants";
 import { MENSAJE_CARGA } from "@/features/casos/constants/casos-messages";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
+import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { FiltroTab } from "@/features/casos/enums/filtro-tab.enum";
 import { mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
@@ -35,6 +36,9 @@ export class ListaCasosStore {
   readonly hayMas = signal(false);
   readonly tab = signal<FiltroTab>(FiltroTab.TODOS);
   readonly estado = signal<string>(FILTRO_TODOS);
+  /** Solo cuenta con el estado archivado: por qué se archivaron los casos que se listan. */
+  readonly motivoArchivo = signal<string>(FILTRO_TODOS);
+  readonly verArchivados = computed(() => this.estado() === EstadoCaso.ARCHIVADO);
   readonly establecimiento = signal<AreaOpcion | null>(null);
   readonly texto = this.textoEscrito.asReadonly();
   readonly estadoCarga = signal<CargaEstado>(CargaEstado.INICIAL);
@@ -48,6 +52,7 @@ export class ListaCasosStore {
     () =>
       this.tab() !== FiltroTab.TODOS ||
       this.estado() !== FILTRO_TODOS ||
+      this.motivoArchivo() !== FILTRO_TODOS ||
       this.establecimiento() !== null ||
       this.textoAplicado() !== "" ||
       this.textoEscrito().trim() !== "",
@@ -102,6 +107,12 @@ export class ListaCasosStore {
 
   cambiarEstado(estado: string): Promise<void> {
     this.estado.set(estado);
+    if (estado !== EstadoCaso.ARCHIVADO) this.motivoArchivo.set(FILTRO_TODOS);
+    return this.desdeElPrincipio();
+  }
+
+  cambiarMotivoArchivo(motivo: string): Promise<void> {
+    this.motivoArchivo.set(motivo);
     return this.desdeElPrincipio();
   }
 
@@ -118,6 +129,7 @@ export class ListaCasosStore {
   limpiar(): Promise<void> {
     this.tab.set(FiltroTab.TODOS);
     this.estado.set(FILTRO_TODOS);
+    this.motivoArchivo.set(FILTRO_TODOS);
     this.establecimiento.set(null);
     this.textoEscrito.set("");
     this.textoAplicado.set("");
@@ -154,6 +166,7 @@ export class ListaCasosStore {
 
   private consulta(cursor: string | null): ConsultaCasos {
     const estado = this.estado();
+    const motivoArchivo = this.motivoArchivo();
     const categoria = CATEGORIA_POR_TAB[this.tab()];
     const texto = this.textoAplicado();
     const establecimiento = this.establecimiento()?.establecimiento;
@@ -161,6 +174,7 @@ export class ListaCasosStore {
       limite: this.tamano,
       ...(cursor !== null && { cursor }),
       ...(estado !== FILTRO_TODOS && { estado }),
+      ...(estado === EstadoCaso.ARCHIVADO && motivoArchivo !== FILTRO_TODOS && { motivoArchivo }),
       ...(categoria && { categoria }),
       ...(texto !== "" && { texto }),
       ...(establecimiento && { establecimiento: establecimiento.codigoRenipress }),

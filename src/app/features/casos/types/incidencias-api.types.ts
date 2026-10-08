@@ -53,8 +53,27 @@ export interface HistorialDto {
   readonly fecha: string;
 }
 
+export interface ResolucionDto {
+  readonly medidasTomadas: string;
+  readonly fundamento: string;
+  readonly resultado: string;
+}
+
+export interface ArchivoDto {
+  readonly motivo: string;
+  readonly detalle: string | null;
+  readonly archivadoEn: string;
+}
+
+export interface ReaperturaDto {
+  readonly reabiertoEn: string;
+  readonly motivo: string;
+}
+
 export interface CasoDetalleDto extends CasoResumenDto {
-  readonly resolucion: string | null;
+  readonly resolucion: ResolucionDto | null;
+  readonly archivo: ArchivoDto | null;
+  readonly reapertura: ReaperturaDto | null;
   readonly descripcion: string;
   readonly reclamante: string;
   readonly evidencias: readonly EvidenciaDto[];
@@ -83,6 +102,8 @@ export interface ConsultaCasos {
   readonly limite?: number;
   readonly cursor?: string;
   readonly estado?: string;
+  /** Solo con `estado=archivado`: por qué se archivó. */
+  readonly motivoArchivo?: string;
   readonly categoria?: string;
   readonly texto?: string;
   /** Código RENIPRESS; filtro para quien ve varios establecimientos. */

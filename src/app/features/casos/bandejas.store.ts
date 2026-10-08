@@ -1,6 +1,6 @@
 import { computed, effect, inject, Injectable, signal, untracked } from "@angular/core";
 import { CasosStore } from "@/features/casos/casos.store";
-import { LIMITE_BANDEJA } from "@/features/casos/constants/casos-constants";
+import { FILTRO_TODOS, LIMITE_BANDEJA } from "@/features/casos/constants/casos-constants";
 import { MENSAJE_CARGA } from "@/features/casos/constants/casos-messages";
 import type { BandejaTab } from "@/features/casos/enums/bandeja-tab.enum";
 import { CargaEstado } from "@/features/casos/enums/carga-estado.enum";
@@ -8,6 +8,7 @@ import { EstadoCaso } from "@/features/casos/enums/estado-caso.enum";
 import { mensajeDeError } from "@/features/casos/services/incidencia-error";
 import { IncidenciasApi } from "@/features/casos/services/incidencias.api";
 import type { Caso } from "@/features/casos/types/caso.types";
+import type { ConsultaCasos } from "@/features/casos/types/incidencias-api.types";
 import { casosDeBandeja, type CasosPorEstado } from "@/features/casos/utils/bandeja-de-casos";
 
 const ESTADOS_DE_BANDEJA: readonly EstadoCaso[] = [
@@ -30,6 +31,8 @@ export class BandejasStore {
   private peticion = 0;
 
   readonly porEstado = signal<CasosPorEstado>({});
+  /** Por qué se archivaron los casos de la bandeja Archivados; el servidor filtra. */
+  readonly motivoArchivo = signal<string>(FILTRO_TODOS);
   readonly estadoCarga = signal<CargaEstado>(CargaEstado.INICIAL);
   readonly error = signal<string | null>(null);
 
@@ -54,13 +57,18 @@ export class BandejasStore {
     return this.casosDe(tab).length;
   }
 
+  cambiarMotivoArchivo(motivo: string): Promise<void> {
+    this.motivoArchivo.set(motivo);
+    return this.recargar();
+  }
+
   async recargar(): Promise<void> {
     const token = ++this.peticion;
     this.estadoCarga.set(CargaEstado.CARGANDO);
     this.error.set(null);
     try {
       const listas = await Promise.all(
-        ESTADOS_DE_BANDEJA.map((estado) => this.api.listar({ estado, limite: LIMITE_BANDEJA })),
+        ESTADOS_DE_BANDEJA.map((estado) => this.api.listar(this.consulta(estado))),
       );
       if (token !== this.peticion) return;
       const porEstado: CasosPorEstado = {};
@@ -75,5 +83,11 @@ export class BandejasStore {
       this.error.set(`${MENSAJE_CARGA.LISTA} ${mensajeDeError(error)}`);
       this.estadoCarga.set(CargaEstado.ERROR);
     }
+  }
+
+  private consulta(estado: EstadoCaso): ConsultaCasos {
+    const motivo = this.motivoArchivo();
+    const filtraPorMotivo = estado === EstadoCaso.ARCHIVADO && motivo !== FILTRO_TODOS;
+    return { estado, limite: LIMITE_BANDEJA, ...(filtraPorMotivo && { motivoArchivo: motivo }) };
   }
 }
