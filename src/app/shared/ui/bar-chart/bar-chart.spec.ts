@@ -45,6 +45,15 @@ describe("BarChart", () => {
     expect(pilas(element)[0].getAttribute("title")).toContain("A: 5");
   });
 
+  it("escribe el total sobre cada barra, también cuando es cero", async () => {
+    const element = await setup([
+      { label: "A", base: 30, extra: 12 },
+      { label: "B", base: 0, extra: 0 },
+    ]);
+    const totales = pilas(element).map((pila) => pila.querySelector("span[aria-hidden='true']")?.textContent?.trim());
+    expect(totales).toEqual(["42", "0"]);
+  });
+
   it("sin datos no falla y no dibuja pilas", async () => {
     const element = await setup([]);
     expect(pilas(element)).toHaveLength(0);

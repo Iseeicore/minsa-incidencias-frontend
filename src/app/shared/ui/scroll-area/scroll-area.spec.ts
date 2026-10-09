@@ -16,10 +16,15 @@ describe("ScrollArea", () => {
     expect(element.getAttribute("tabindex")).toBe("0");
   });
 
-  it("desplaza en los dos ejes, limita la altura y nunca excede a su contenedor", async () => {
+  it("desplaza solo en horizontal, crece con su contenido y nunca excede a su contenedor", async () => {
     const element = await setup();
-    expect(element.className).toContain("overflow-auto");
-    expect(element.className).toContain("max-h-128");
+    expect(element.className).toContain("overflow-x-auto");
+    expect(element.className).not.toContain("max-h-");
     expect(element.className).toContain("max-w-full");
+  });
+
+  it("es el bloque contenedor de lo que lleva dentro, para que los sr-only absolutos de las filas no ensanchen la pagina", async () => {
+    const element = await setup();
+    expect(element.classList.contains("relative")).toBe(true);
   });
 });

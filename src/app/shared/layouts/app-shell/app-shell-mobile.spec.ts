@@ -1,3 +1,5 @@
+import { provideHttpClient } from "@angular/common/http";
+import { provideHttpClientTesting } from "@angular/common/http/testing";
 import { signal } from "@angular/core";
 import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
@@ -21,14 +23,16 @@ describe("AppShell en pantalla chica", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  const ana: SesionUsuario = { nombreCompleto: "Ana Prueba", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"] };
+  const ana: SesionUsuario = { nombreCompleto: "Ana Prueba", correo: "ana@minsa.gob.pe", vistas: ["INICIO", "CASOS"], roles: ["GESTOR"], area: null };
 
   async function setup() {
     TestBed.configureTestingModule({
       imports: [AppShell],
       providers: [
         provideRouter([{ path: "**", children: [] }]),
-        { provide: SessionStore, useValue: { sesion: signal(ana), cerrar: vi.fn() } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: SessionStore, useValue: { sesion: signal(ana), esAdministrador: signal(false), cerrar: vi.fn() } },
       ],
     });
     const fixture = TestBed.createComponent(AppShell);

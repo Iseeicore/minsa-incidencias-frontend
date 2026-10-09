@@ -1,0 +1,15 @@
+<div class="space-y-6">
+  <header>
+    <p class="text-sm font-medium text-gray-600">Operación</p>
+    <h1 class="text-3xl font-bold text-gray-900">Códigos QR</h1>
+    <p class="mt-1 text-sm text-gray-600">
+      {{ esAdministrador() ? "Genera el QR de WhatsApp de un establecimiento para presentar incidencias." : "El QR de WhatsApp de tu establecimiento para presentar incidencias." }}
+    </p>
+  </header>
+
+  @if (esAdministrador()) {
+    <app-qr-administrador />
+  } @else {
+    <app-qr-propio />
+  }
+</div>

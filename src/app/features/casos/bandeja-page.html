@@ -1,0 +1,79 @@
+<div class="space-y-6">
+  <header>
+    <p class="text-sm font-medium text-gray-600">Operación</p>
+    <h1 class="text-3xl font-bold text-gray-900">Bandeja</h1>
+    @if (area(); as miArea) {
+      <p class="mt-1 text-sm text-gray-600">Área: {{ miArea.nombre }}</p>
+    }
+  </header>
+
+  <app-aviso-envio />
+
+  <app-tabs
+    label="Estado del caso"
+    [variante]="TabsVariante.TARJETA"
+    [options]="bandejas()"
+    [value]="store.bandeja()"
+    (valueChange)="cambiarBandeja($event)"
+  />
+
+  <app-card class="space-y-5">
+    <div>
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+        <h2 class="text-xl font-bold text-gray-900">{{ actual().label }}</h2>
+        @if (totalTexto(); as total) {
+          <p class="text-sm font-medium text-gray-600">{{ total }} en la bandeja</p>
+        }
+      </div>
+      <p class="mt-1 text-sm text-gray-600">{{ actual().ayuda }}</p>
+    </div>
+
+    <app-bandeja-filtros />
+
+    @if (store.error(); as mensaje) {
+      <div class="space-y-3">
+        <app-alert [tone]="BadgeTone.DANGER">{{ mensaje }}</app-alert>
+        <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="store.reintentar()">
+          Reintentar
+        </app-button>
+      </div>
+    }
+
+    @if (store.casos().length > 0) {
+      <div class="min-w-0" [attr.aria-busy]="store.estadoCarga() === CargaEstado.CARGANDO">
+        <app-casos-tabla
+          [casos]="store.casos()"
+          [descripcion]="'Casos de la bandeja ' + actual().label"
+          (revisar)="seleccionado.set($event)"
+        />
+      </div>
+      <app-paginador-cursor
+        class="block"
+        [pagina]="store.pagina()"
+        [cantidad]="store.casos().length"
+        [hayAnterior]="store.hayAnterior()"
+        [hayMas]="store.hayMas()"
+        [cargando]="store.estadoCarga() === CargaEstado.CARGANDO"
+        (anterior)="store.irAAnterior()"
+        (siguiente)="store.irASiguiente()"
+      />
+    } @else if (store.estadoCarga() === CargaEstado.INICIAL || store.estadoCarga() === CargaEstado.CARGANDO) {
+      <p class="py-10 text-center text-sm font-medium text-gray-700" aria-live="polite">Cargando casos…</p>
+    } @else if (store.vacio()) {
+      <div class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-gray-200 py-12 text-center">
+        <p class="text-sm font-medium text-gray-700">
+          {{ store.hayFiltros() ? "No hay casos con estos filtros." : "No hay casos." }}
+        </p>
+        @if (store.hayFiltros()) {
+          <app-button [variant]="ButtonVariant.OUTLINE" [tone]="ButtonTone.NEUTRAL" [size]="ButtonSize.SM" (click)="store.limpiar()">
+            Limpiar filtros
+          </app-button>
+        }
+      </div>
+    }
+  </app-card>
+
+  <p class="text-xs text-gray-500">{{ notaPlazos }}</p>
+</div>
+
+<app-caso-revision [codigo]="seleccionado()" (codigoChange)="alCambiarSeleccion($event)" />

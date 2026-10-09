@@ -19,7 +19,7 @@
         <ul class="space-y-1">
           @for (entrada of seccion.entries; track entrada.id) {
             <li>
-              @if (entrada.path; as ruta) {
+              @if (entrada.implementada && entrada.path; as ruta) {
                 <a
                   #enlace="routerLinkActive"
                   routerLinkActive

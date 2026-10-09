@@ -26,15 +26,24 @@ describe("InicioPage", () => {
     expect(element.textContent).toContain("Casos que requieren atención");
   });
 
-  it("el gráfico, las listas y la tabla están en regiones desplazables con nombre", async () => {
+  it("la tabla y las alertas están en regiones desplazables con nombre", async () => {
     const { element } = await setup();
     const nombres = Array.from(element.querySelectorAll("app-scroll-area[role='region']")).map((region) =>
       region.getAttribute("aria-label"),
     );
     expect(nombres).toEqual(
-      expect.arrayContaining(["Distribución por categoría", "Casos que requieren atención", "Derivaciones", "Alertas"]),
+      expect.arrayContaining(["Casos que requieren atención", "Alertas"]),
     );
     expect(element.querySelector("app-bar-chart app-scroll-area")).not.toBeNull();
+  });
+
+  it("la distribución por categoría y las derivaciones se dibujan como barras horizontales", async () => {
+    const { element } = await setup();
+    const listas = Array.from(element.querySelectorAll("app-hbar-list")).map((lista) =>
+      lista.querySelector("ul")?.getAttribute("aria-label"),
+    );
+    expect(listas).toEqual(["Casos por categoría", "Derivaciones por estado"]);
+    expect(element.querySelectorAll("app-hbar-list [role='meter']")).toHaveLength(8);
   });
 
   it("las pestañas de periodo se desplazan en lugar de romper el diseño", async () => {

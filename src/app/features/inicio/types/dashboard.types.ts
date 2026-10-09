@@ -25,7 +25,7 @@ export interface CasoAtencion {
 
 export interface ResumenFila {
   readonly label: string;
-  readonly valor: string;
+  readonly valor: number;
 }
 
 export interface AlertaResumen {

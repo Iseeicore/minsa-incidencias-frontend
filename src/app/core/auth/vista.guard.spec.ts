@@ -22,11 +22,36 @@ describe("vistaGuard", () => {
   });
 
   it("sin la vista redirige a la primera vista que sí tiene", () => {
-    expect(destino(setup([VistaCodigo.BANDEJAS, VistaCodigo.DERIVACIONES])())).toBe(ROUTE.BANDEJAS);
+    expect(destino(setup([VistaCodigo.CASOS, VistaCodigo.DERIVACIONES], VistaCodigo.QR)())).toBe(ROUTE.BANDEJA);
   });
 
   it("prefiere el inicio si el usuario lo tiene", () => {
     expect(destino(setup([VistaCodigo.INICIO, VistaCodigo.DERIVACIONES], VistaCodigo.CASOS)())).toBe(ROUTE.INICIO);
+  });
+
+  it("el gestor, sin la vista DERIVACIONES, no entra a /derivaciones y vuelve a su primera vista", () => {
+    expect(destino(setup([VistaCodigo.INICIO, VistaCodigo.CASOS], VistaCodigo.DERIVACIONES)())).toBe(ROUTE.INICIO);
+  });
+
+  it("la vista QR deja pasar a quien la tiene", () => {
+    expect(setup([VistaCodigo.INICIO, VistaCodigo.QR], VistaCodigo.QR)()).toBe(true);
+  });
+
+  it("sin la vista QR (gestor, OTRANS) redirige a su primera vista", () => {
+    expect(destino(setup([VistaCodigo.INICIO, VistaCodigo.CASOS], VistaCodigo.QR)())).toBe(ROUTE.INICIO);
+  });
+
+  it("la vista USUARIOS deja pasar a quien la tiene", () => {
+    expect(setup([VistaCodigo.INICIO, VistaCodigo.USUARIOS], VistaCodigo.USUARIOS)()).toBe(true);
+  });
+
+  it("sin la vista USUARIOS (gestor, OTRANS) redirige a su primera vista", () => {
+    expect(destino(setup([VistaCodigo.CASOS], VistaCodigo.USUARIOS)())).toBe(ROUTE.BANDEJA);
+  });
+
+  it("si el servidor sigue mandando la vista BANDEJAS, la ignora y no se queda dando vueltas", () => {
+    const vistas = ["BANDEJAS", "DERIVACIONES"] as unknown as VistaCodigo[];
+    expect(destino(setup(vistas, VistaCodigo.CASOS)())).toBe(ROUTE.DERIVACIONES);
   });
 
   it("sin ninguna vista redirige a la página de sin acceso, sin dar vueltas", () => {

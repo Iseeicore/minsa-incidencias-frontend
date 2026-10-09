@@ -21,20 +21,27 @@ export const routes: Routes = [
         loadComponent: () => import("@/features/inicio/inicio-page").then((module) => module.InicioPage),
       },
       {
-        path: ROUTE_PATH.CASOS,
+        path: ROUTE_PATH.BANDEJA,
         canActivate: [vistaGuard(VistaCodigo.CASOS)],
-        loadComponent: () => import("@/features/casos/casos-page").then((module) => module.CasosPage),
+        loadComponent: () => import("@/features/casos/bandeja-page").then((module) => module.BandejaPage),
       },
-      {
-        path: ROUTE_PATH.BANDEJAS,
-        canActivate: [vistaGuard(VistaCodigo.BANDEJAS)],
-        loadComponent: () => import("@/features/casos/bandejas-page").then((module) => module.BandejasPage),
-      },
+      { path: ROUTE_PATH.CASOS_ANTIGUA, pathMatch: "full", redirectTo: ROUTE_PATH.BANDEJA },
+      { path: ROUTE_PATH.BANDEJAS_ANTIGUA, pathMatch: "full", redirectTo: ROUTE_PATH.BANDEJA },
       {
         path: ROUTE_PATH.DERIVACIONES,
         canActivate: [vistaGuard(VistaCodigo.DERIVACIONES)],
         loadComponent: () =>
           import("@/features/derivaciones/derivaciones-page").then((module) => module.DerivacionesPage),
+      },
+      {
+        path: ROUTE_PATH.QR,
+        canActivate: [vistaGuard(VistaCodigo.QR)],
+        loadComponent: () => import("@/features/qr/qr-page").then((module) => module.QrPage),
+      },
+      {
+        path: ROUTE_PATH.USUARIOS,
+        canActivate: [vistaGuard(VistaCodigo.USUARIOS)],
+        loadComponent: () => import("@/features/usuarios/usuarios-page").then((module) => module.UsuariosPage),
       },
       {
         path: ROUTE_PATH.SIN_ACCESO,
